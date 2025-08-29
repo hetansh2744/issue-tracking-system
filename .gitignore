@@ -54,3 +54,6 @@ obj/
 # Eclipse files
 .project
 .settings
+
+# VS code files
+.vscode
