@@ -10,4 +10,21 @@ const string& assignedTo){
     }
     Issue newIssue(title,desc,assignedTo);
      return repo.saveIssue(newIssue);
+}
+
+bool IssueTrackerController::updateIssueField(int id, const string& field,
+const string& value) {
+    Issue issue = repo.getIssue(id);
+
+    if (field == "title") {
+        issue.setTitle(value)
+    } elseif (field == "description") {
+        issue.setDescription(value)
+    } elseif (field == "assignedTo") {
+        issue.setassignedTo(value)
+    } else {
+        return false;
     }
+
+    repo.saveIssue(issue) {}
+}
