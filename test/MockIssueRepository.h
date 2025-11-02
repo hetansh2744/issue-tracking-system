@@ -1,14 +1,14 @@
 #ifndef MOCK_ISSUE_REPOSITORY_H
 #define MOCK_ISSUE_REPOSITORY_H
 
-#include <gmock/gmock.h> 
+#include <gmock/gmock.h>
 #include <string>
 #include <vector>
 #include <ctime>
 #include <stdexcept>
 
 class User {
-public:
+ public:
     std::string id;
     std::string name;
     std::vector<int> assignedIssueIDs;
@@ -17,21 +17,21 @@ public:
 };
 
 class Comment {
-public:
+ public:
     int id = 0;
     int issueId = 0;
     std::string authorId;
     std::string text;
     std::string timestamp;
 
-    Comment(int iId = 0, std::string aId = "", std::string t = "", int i = 0) 
+    Comment(int iId = 0, std::string aId = "", std::string t = "", int i = 0)
         : id(i), issueId(iId), authorId(aId), text(t) {
-        timestamp = std::to_string(std::time(0)); 
+        timestamp = std::to_string(std::time(0));
     }
 };
 
 class Issue {
-public:
+ public:
     int id = 0;
     std::string title;
     std::string assignedTo;
@@ -53,7 +53,7 @@ public:
  * * methods throw std::out_of_range if an ID is not found.
  */
 class IssueRepository {
-public:
+ public:
     virtual ~IssueRepository() = default;
 
     virtual Issue getIssue(int id) = 0;
@@ -75,7 +75,7 @@ public:
  * @brief Mock implementation of the IssueRepository for testing the Controller.
  */
 class MockIssueRepository : public IssueRepository {
-public:
+ public:
     // Mock for saveIssue: Used by createIssue
     MOCK_METHOD1(saveIssue, Issue(const Issue& issue));
     MOCK_METHOD1(getIssue, Issue(int id));

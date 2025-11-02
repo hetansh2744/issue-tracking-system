@@ -3,18 +3,18 @@
 IssueTrackerController::IssueTrackerController(IssueRepository& repository)
     : repo(repository) {}
 
-Issue IssueTrackerController::createIssue(const string& title, const string& desc,
-const string& assignedTo){ 
+Issue IssueTrackerController::createIssue(const string& title,
+    const string& desc, const string& assignedTo) {
     if (title.empty() || desc.empty()) {
         return Issue("", "", "");
     }
-    Issue newIssue(title,desc,assignedTo);
-     return repo.saveIssue(newIssue);
+    Issue newIssue(title, desc, assignedTo);
+     return repo->saveIssue(newIssue);
 }
 
 bool IssueTrackerController::updateIssueField(int id, const string& field,
 const string& value) {
-    Issue issue = repo.getIssue(id);
+    Issue issue = repo->getIssue(id);
 
     if (field == "title") {
         issue.setTitle(value)
@@ -26,5 +26,5 @@ const string& value) {
         return false;
     }
 
-    repo.saveIssue(issue) {}
+    repo->saveIssue(issue) {}
 }
