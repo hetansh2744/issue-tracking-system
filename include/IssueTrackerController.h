@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include "IssueRepository.h"
+#include "Issue.h"
+#include "User.h"
 
 class IssueTrackerController {
  private:
