@@ -61,3 +61,43 @@ TEST_F(IssueTrackerControllerTest, CreateIssue_Success) {
     ASSERT_EQ(result.id, 2001) << "The returned issue should have the ID assigned by the repo.";
     ASSERT_EQ(result.title, "New Issue");
 }
+
+/**
+ * @brief Test Case 3: Create Issue - Failure Path (Blank Title)
+ * * Verifies that the Controller's validation logic prevents saving when the title is empty.
+ */
+TEST_F(IssueTrackerControllerTest, CreateIssue_FailsOnBlankTitle) {
+    // 1. Arrange: 
+    // The saveIssue method should NOT be called because the controller will handle validation.
+    EXPECT_CALL(mockRepo, saveIssue(Matcher<const Issue&>(_)))
+        .Times(0); 
+
+    IssueTrackerController controller(mockRepo);
+
+    // 2. Act
+    Issue result = controller.createIssue("", "Description", "userA");
+
+    // 3. Assert
+    ASSERT_EQ(result.id, 0) << "Failed issue should return a placeholder issue with ID 0.";
+    ASSERT_TRUE(result.title.empty()) << "Failed issue should return a placeholder with an empty title.";
+}
+
+/**
+ * @brief Test Case 4: Create Issue - Failure Path (Blank Description)
+ * * Verifies that the Controller's validation logic prevents saving when the description is empty.
+ */
+TEST_F(IssueTrackerControllerTest, CreateIssue_FailsOnBlankDescription) {
+    // 1. Arrange: 
+    // The saveIssue method should NOT be called.
+    EXPECT_CALL(mockRepo, saveIssue(Matcher<const Issue&>(_)))
+        .Times(0); 
+
+    IssueTrackerController controller(mockRepo);
+
+    // 2. Act
+    Issue result = controller.createIssue("Valid Title", "", "userB");
+
+    // 3. Assert
+    ASSERT_EQ(result.id, 0) << "Failed issue should return a placeholder issue with ID 0.";
+    ASSERT_TRUE(result.description.empty()) << "Failed issue should return a placeholder with an empty description.";
+}
