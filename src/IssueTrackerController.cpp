@@ -18,9 +18,9 @@ const std::string& value) {
 
     if (field == "title") {
         issue.setTitle(value)
-    } else if(field == "description") {
+    } else if (field == "description") {
         issue.setDescription(value)
-    } else if(field == "assignedTo") {
+    } else if (field == "assignedTo") {
         issue.setassignedTo(value)
     } else {
         return false;
