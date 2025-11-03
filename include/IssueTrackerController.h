@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include "IssueRepository.h"
-#include "entities.h"
+#include "Entities.h"
 
 
 class IssueTrackerController {
