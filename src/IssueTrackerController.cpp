@@ -41,7 +41,7 @@ bool IssueTrackerController::assignUserToIssue(int issueId,
 
         // 2. Get Issue
         Issue issue = repo->getIssue(issueId);
-  
+
         // 3. Update field
         issue.setassignedTo(userId);
 
