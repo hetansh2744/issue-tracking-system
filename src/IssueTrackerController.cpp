@@ -79,3 +79,7 @@ bool IssueTrackerController::deleteIssue(int issueId) {
 std::vector<Issue> IssueTrackerController::listAllIssues() {
     return repo->listIssues();
 }
+
+std::vector<Issue> IssueTrackerController::findIssuesByUserId(const std::string& userId) {
+    return repo->findIssues(userId);
+}
