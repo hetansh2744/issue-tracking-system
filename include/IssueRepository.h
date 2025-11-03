@@ -3,8 +3,8 @@
 
 #include <string>
 #include <vector>
-#include <stdexcept> 
-#include "Entities.h" 
+#include <stdexcept>
+#include "Entities.h"
 
 /**
  * @brief Abstract interface for the persistence layer (Model).
@@ -12,7 +12,6 @@
  */
 class IssueRepository {
  public:
-
     virtual ~IssueRepository() = default;
 
     virtual Issue saveIssue(const Issue& issue) = 0;
@@ -25,8 +24,7 @@ class IssueRepository {
     virtual Comment saveComment(const Comment& comment) = 0;
     virtual Comment getComment(int id) = 0;
     virtual bool deleteComment(int id) = 0;
-    
-    // --- User Operations ---
+
     virtual User saveUser(const User& user) = 0;
     virtual User getUser(const std::string& id) = 0;
     virtual std::vector<User> listAllUsers() = 0;
