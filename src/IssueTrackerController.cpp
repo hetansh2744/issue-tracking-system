@@ -75,3 +75,7 @@ bool IssueTrackerController::unassignUserFromIssue(int issueId) {
 bool IssueTrackerController::deleteIssue(int issueId) {
     return repo->deleteIssue(issueId);
 }
+
+std::vector<Issue> IssueTrackerController::listAllIssues() {
+    return repo->listIssues();
+}
