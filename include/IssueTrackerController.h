@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 #include "IssueRepository.h"
 #include "Entities.h"
-
 
 class IssueTrackerController {
  private:
@@ -42,4 +42,4 @@ IssueRepository* repo;
     std::vector<User> listAllUsers();
 };
 
-#endif
+#endif // ISSUE_TRACKER_CONTROLLER_H

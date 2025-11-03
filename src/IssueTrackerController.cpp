@@ -29,12 +29,12 @@ const std::string& value) {
 
     repo->saveIssue(issue);
     return true;
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         return false;
     }
 }
 bool IssueTrackerController::assignUserToIssue(int issueId,
-    const string& userId) {
+    const std::string& userId) {
     try {
         // 1. Check existense of user
         repo->getUser(userId);
@@ -48,7 +48,7 @@ bool IssueTrackerController::assignUserToIssue(int issueId,
         // 4. Save Issue
         repo->saveIssue(issue);
         return true;
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         // Issue or User not found
         return false;
     }
@@ -59,12 +59,12 @@ bool IssueTrackerController::unassignUserFromIssue(int issueId) {
         // 1. Get Issue
         Issue issue = repo->getIssue(issueId);
         // 2. Update field (set to empty)
-        issue.assignedTo = "";
+        issue.setassignedTo("");
 
         // 3. Save Issue
         repo->saveIssue(issue);
         return true;
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         // Issue not found
         return false;
     }
@@ -106,7 +106,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
         repo->saveIssue(issue);
 
         return savedComment;
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         // Issue or User not found
         return Comment(0, "", "");
     }
@@ -129,7 +129,7 @@ bool IssueTrackerController::updateComment(int commentId,
         // 4. Save Comment
         repo->saveComment(comment);
         return true;
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         // Comment not found
         return false;
     }
@@ -152,7 +152,7 @@ bool IssueTrackerController::deleteComment(int commentId) {
             return true;
         }
         return false;
-    } catch (const out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         // Comment or Issue not found
         return false;
     }
@@ -176,6 +176,5 @@ bool IssueTrackerController::removeUser(const std::string& userId) {
 }
 
 std::vector<User> IssueTrackerController::listAllUsers() {
-    // CHANGED: Use arrow operator (->) for pointer member.
     return repo->listAllUsers();
 }

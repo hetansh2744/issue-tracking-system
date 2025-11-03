@@ -56,7 +56,7 @@ class Issue {
     void removeComment(int commentId); // Implementation needed later
     void setTitle(std::string title);
     void setDescription(std::string description);
-    void setsetassignedTo(std::string assignment);
+    void setassignedTo(std::string assignment);
 };
 
 #endif // ENTITIES_H
