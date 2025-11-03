@@ -20,3 +20,30 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
     MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
 };
+
+TEST(IssueTrackerControllerTest, CreateIssueValid) {
+    MockIssueRepository mockRepo;
+
+    Issue newIssue("title", "desc", "user123");
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .WillOnce(testing::Return(newIssue));
+
+    IssueTrackerController controller(&mockRepo);
+    Issue result = controller.createIssue("title",
+        "desc", "user123");
+
+    EXPECT_EQ(result.title, "title");
+    EXPECT_EQ(result.description, "desc");
+    EXPECT_EQ(result.assignedTo, "user123");
+}
+
+TEST(IssueTrackerControllerTest, CreateIssueInvalidEmptyFields) {
+    MockIssueRepository mockRepo;
+
+    IssueTrackerController controller(&mockRepo);
+    Issue result = controller.createIssue("", "", "user123");
+
+    EXPECT_EQ(result.title, "");
+    EXPECT_EQ(result.description, "");
+    EXPECT_EQ(result.assignedTo, "");
+}
