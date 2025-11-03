@@ -42,4 +42,4 @@ IssueRepository* repo;
     std::vector<User> listAllUsers();
 };
 
-#endif // ISSUE_TRACKER_CONTROLLER_H
+#endif // ISSUE_TRACKER_CONTROLLER_H.0
