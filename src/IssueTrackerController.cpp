@@ -115,7 +115,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId, const std::string
 
 bool IssueTrackerController::updateComment(int commentId, const std::string& newText) {
     try {
-        // 1. Validation
+        // 1. Validate
         if (newText.empty()) {
             return false;
         }
@@ -123,7 +123,7 @@ bool IssueTrackerController::updateComment(int commentId, const std::string& new
         // 2. Get Comment
         Comment comment = repo->getComment(commentId);
         
-        // 3. Update field
+        // 3. Update
         comment.text = newText;
 
         // 4. Save Comment
@@ -157,4 +157,26 @@ bool IssueTrackerController::deleteComment(int commentId) {
         // Comment or Issue not found
         return false;
     }
+}
+
+User IssueTrackerController::createUser(const std::string& name) {
+    // 1. Validate
+    if (name.empty()) {
+        return User("", "");
+    }
+
+    // 2. Create User
+    User newUser(name, ""); // Create user with blank ID as repository will handle it
+
+    // 3. Save User
+    return repo->saveUser(newUser);
+}
+
+bool IssueTrackerController::removeUser(const std::string& userId) {
+    return repo->deleteUser(userId);
+}
+
+std::vector<User> IssueTrackerController::listAllUsers() {
+    // CHANGED: Use arrow operator (->) for pointer member.
+    return repo->listAllUsers();
 }
