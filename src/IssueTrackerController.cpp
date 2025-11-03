@@ -71,3 +71,7 @@ bool IssueTrackerController::unassignUserFromIssue(int issueId) {
         return false;
     }
 }
+
+bool IssueTrackerController::deleteIssue(int issueId) {
+    return repo->deleteIssue(issueId);
+}
