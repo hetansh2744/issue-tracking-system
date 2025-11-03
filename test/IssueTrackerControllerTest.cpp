@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "IssueTrackerController.h"
 
 class MockIssueRepository : public IssueRepository {
