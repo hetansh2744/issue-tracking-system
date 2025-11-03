@@ -54,6 +54,9 @@ class Issue {
     // Minimal methods for the Controller logic
     void addComment(int commentId) { commentIds.push_back(commentId); }
     void removeComment(int commentId); // Implementation needed later
+    void setTitle(std::string title);
+    void setDescription(std::string description);
+    void setsetassignedTo(std::string assignment);
 };
 
 #endif // ENTITIES_H
