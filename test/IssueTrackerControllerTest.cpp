@@ -8,7 +8,7 @@
  * * Provides a MockIssueRepository instance that can be used and verified in tests.
  */
 class IssueTrackerControllerTest : public Test {
-protected:
+ protected:
     MockIssueRepository mockRepo;
 };
 
@@ -78,8 +78,8 @@ TEST_F(IssueTrackerControllerTest, CreateIssue_FailsOnBlankTitle) {
     Issue result = controller->createIssue("", "Description", "userA");
 
     // 3. Assert
-    ASSERT_EQ(result.id, 0) << "Failed issue should return a placeholder 
-    issue with ID 0.";
+    ASSERT_EQ(result.id, 0) << "Failed issue should return a placeholder" <<
+    " issue with ID 0.";
     ASSERT_TRUE(result.title.empty()) << "Failed issue should return a" <<
     " placeholder with an empty title.";
 }
@@ -100,8 +100,8 @@ TEST_F(IssueTrackerControllerTest, CreateIssue_FailsOnBlankDescription) {
     Issue result = controller->createIssue("Valid Title", "", "userB");
 
     // 3. Assert
-    ASSERT_EQ(result.id, 0) << "Failed issue should return a 
-    placeholder issue with ID 0.";
+    ASSERT_EQ(result.id, 0) << "Failed issue should return a" <<
+    " placeholder issue with ID 0.";
     ASSERT_TRUE(result.description.empty()) << "Failed issue should return" <<
     " a placeholder with an empty description.";
 }
