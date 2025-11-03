@@ -1,3 +1,6 @@
+#ifndef ISSUE_TRACKER_CONTROLLER_H
+#define ISSUE_TRACKER_CONTROLLER_H
+
 #include <iostream>
 #include <string>
 #include <vector>
