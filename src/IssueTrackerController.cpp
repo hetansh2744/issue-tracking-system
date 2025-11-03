@@ -44,12 +44,30 @@ bool IssueTrackerController::assignUserToIssue(int issueId, const string& userId
         // 3. Update field
         issue.setassignedTo(userId);
 
-        // 4. saveIssue
+        // 4. Save Issue
         repo->saveIssue(issue);
         return true;
 
     } catch (const out_of_range& e) {
         // Issue or User not found
+        return false;
+    }
+}
+
+bool IssueTrackerController::unassignUserFromIssue(int issueId) {
+    try {
+        // 1. Get Issue
+        Issue issue = repo->getIssue(issueId);
+        
+        // 2. Update field (set to empty)
+        issue.assignedTo = "";
+
+        // 3. Save Issue
+        repo->saveIssue(issue);
+        return true;
+
+    } catch (const out_of_range& e) {
+        // Issue not found
         return false;
     }
 }
