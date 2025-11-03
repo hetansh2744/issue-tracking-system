@@ -1,6 +1,6 @@
 #include "IssueTrackerController.h"
 
-IssueTrackerController::IssueTrackerController(IssueRepository& repository)
+IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
 
 Issue IssueTrackerController::createIssue(const string& title,
@@ -18,9 +18,9 @@ const string& value) {
 
     if (field == "title") {
         issue.setTitle(value)
-    } elseif (field == "description") {
+    } elseif(field == "description") {
         issue.setDescription(value)
-    } elseif (field == "assignedTo") {
+    } elseif(field == "assignedTo") {
         issue.setassignedTo(value)
     } else {
         return false;

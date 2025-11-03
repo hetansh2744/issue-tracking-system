@@ -6,17 +6,17 @@
 #include "User.h"
 
 class IssueTrackerController {
-
-    private:
+ private:
 IssueRepository* repo;
 
-public:
-    IssueTrackerController(IssueRepository& repository);
+ public:
+    IssueTrackerController(IssueRepository* repository);
 
     Issue createIssue(const std::string& title, const std::string& desc,
     const std::string& assignedTo);
 
-    bool updateIssueField(int id, const std::string& field, const std::string& value);
+    bool updateIssueField(int id, const std::string& field,
+    const std::string& value);
 
     bool assignUserToIssue(int issueId, const std::string& userId);
 

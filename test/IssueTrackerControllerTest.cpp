@@ -3,10 +3,6 @@
 #include "MockIssueRepository.h"
 #include "IssueTrackerController.h"
 
-using namespace testing;
-
-// --- Test Fixture ---
-
 /**
  * @brief Test fixture for IssueTrackerController.
  * * Provides a MockIssueRepository instance that can be used and verified in tests.
@@ -59,8 +55,8 @@ TEST_F(IssueTrackerControllerTest, CreateIssue_Success) {
     "assignedUser");
 
     // 3. Assert
-    ASSERT_EQ(result.id, 2001) << "The returned issue should have the 
-    ID assigned by the repo.";
+    ASSERT_EQ(result.id, 2001) << "The returned issue should have the" <<
+    " ID assigned by the repo.";
     ASSERT_EQ(result.title, "New Issue");
 }
 
@@ -84,8 +80,8 @@ TEST_F(IssueTrackerControllerTest, CreateIssue_FailsOnBlankTitle) {
     // 3. Assert
     ASSERT_EQ(result.id, 0) << "Failed issue should return a placeholder 
     issue with ID 0.";
-    ASSERT_TRUE(result.title.empty()) << "Failed issue should return a 
-    placeholder with an empty title.";
+    ASSERT_TRUE(result.title.empty()) << "Failed issue should return a" <<
+    " placeholder with an empty title.";
 }
 
 /**
@@ -106,6 +102,6 @@ TEST_F(IssueTrackerControllerTest, CreateIssue_FailsOnBlankDescription) {
     // 3. Assert
     ASSERT_EQ(result.id, 0) << "Failed issue should return a 
     placeholder issue with ID 0.";
-    ASSERT_TRUE(result.description.empty()) << "Failed issue should return a 
-    placeholder with an empty description.";
+    ASSERT_TRUE(result.description.empty()) << "Failed issue should return" <<
+    " a placeholder with an empty description.";
 }
