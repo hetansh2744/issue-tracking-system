@@ -3,12 +3,13 @@
 #include "IssueTrackerController.h"
 
 class MockIssueRepository : public IssueRepository {
-public:
+ public:
     MOCK_METHOD(Issue, saveIssue, (const Issue& issue), (override));
     MOCK_METHOD(Issue, getIssue, (int id), (override));
     MOCK_METHOD(bool, deleteIssue, (int id), (override));
     MOCK_METHOD(std::vector<Issue>, listIssues, (), (override));
-    MOCK_METHOD(std::vector<Issue>, findIssues, (const std::string& userId), (override));
+    MOCK_METHOD(std::vector<Issue>, findIssues,
+        (const std::string& userId), (override));
 
     MOCK_METHOD(Comment, saveComment, (const Comment& comment), (override));
     MOCK_METHOD(Comment, getComment, (int id), (override));
