@@ -3,8 +3,8 @@
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
 
-Issue IssueTrackerController::createIssue(const string& title,
-    const string& desc, const string& assignedTo) {
+Issue IssueTrackerController::createIssue(const std::string& title,
+    const std::string& desc, const std::string& assignedTo) {
     if (title.empty() || desc.empty()) {
         return Issue("", "", "");
     }
@@ -12,8 +12,8 @@ Issue IssueTrackerController::createIssue(const string& title,
      return repo->saveIssue(newIssue);
 }
 
-bool IssueTrackerController::updateIssueField(int id, const string& field,
-const string& value) {
+bool IssueTrackerController::updateIssueField(int id, const std::string& field,
+const std::string& value) {
     Issue issue = repo->getIssue(id);
 
     if (field == "title") {
