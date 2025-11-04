@@ -6,7 +6,9 @@
 #include <vector>
 #include <stdexcept>
 #include "IssueRepository.hpp"
-#include "Entities.hpp"
+#include "User.hpp"
+#include "Issue.hpp"
+#include "Comment.hpp"
 
 class IssueTrackerController {
  private:
