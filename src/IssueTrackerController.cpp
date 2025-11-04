@@ -5,6 +5,7 @@ IssueTrackerController::IssueTrackerController(IssueRepository* repository)
 
 Issue IssueTrackerController::createIssue(const std::string& title,
     const std::string& desc, const std::string& assignedTo) {
+        std::cout<< "running " ;
     if (title.empty() || desc.empty()) {
         return Issue("", "", "");
     }
