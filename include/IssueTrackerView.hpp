@@ -1,8 +1,8 @@
-#include "IssueTrackerController.hpp"
 #include <iostream>
 #include <string>
 #include <vector>
 
+#include "IssueTrackerController.hpp"
 class IssueTrackerView {
  private:
     IssueTrackerController* controller;
