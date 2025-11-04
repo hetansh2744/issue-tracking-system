@@ -21,6 +21,7 @@ class IssueTrackerView {
     void createUser();
     void listUsers();
     void removeUser();
+    void updateUser();
  public:
     // Constructor: takes a pointer to the controller
     explicit IssueTrackerView(IssueTrackerController* controller);

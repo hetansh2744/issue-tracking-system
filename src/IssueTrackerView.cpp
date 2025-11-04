@@ -198,3 +198,14 @@ void IssueTrackerView::removeUser() {
     std::getline(std::cin, userId);
     controller->removeUser(userId);
 }
+
+void IssueTrackerView:: updateUser() {
+    int choice;
+    std::cout <<"1: Assigned Issues " << std::endl;
+    std::cout <<"2: " << std::endl;
+    std::cout <<"3: " << std::endl;
+    std::cout <<"4: " << std::endl;
+
+
+
+}
