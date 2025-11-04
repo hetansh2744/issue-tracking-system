@@ -269,7 +269,7 @@ TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
     MockIssueRepository mockRepo;
 
     IssueTrackerController controller(&mockRepo);
-    User result = controller.createUser("","");
+    User result = controller.createUser("", "");
 
     EXPECT_EQ(result.name, "");
     EXPECT_EQ(result.roll, "");
