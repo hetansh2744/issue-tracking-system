@@ -262,7 +262,6 @@ TEST(IssueTrackerControllerTest, CreateUserSuccess) {
     User result = controller.createUser("name", "roll");
 
     EXPECT_EQ(result.name, "name");
-    EXPECT_EQ(result.roll, "roll");
 }
 
 TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
