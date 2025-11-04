@@ -193,10 +193,5 @@ void IssueTrackerView::removeUser() {
     std::string userId;
     std::cout << "Enter User ID to remove: ";
     std::getline(std::cin, userId);
-    bool success = controller->removeUser(userId);
-    if (sucess) {
-        std::cout << "User removed." << std::endl;
-    } else {
-        std::cout << "User not removed." << std::endl;
-    }
+    controller->removeUser(userId);
 }
