@@ -110,13 +110,12 @@ void IssueTrackerView::deleteIssue() {
 void IssueTrackerView::listIssues() {
     std::vector<Issue> issues = controller->listAllIssues();
     std::cout << "All Issues";
-    for (const auto& i : issues){
+    for (const auto& i : issues) {
         std::cout << "ID:" << i.id <<std::endl;
         std::cout << "Title:" << i.title <<std::endl;
         std::cout << "Description:" << i.description <<std::endl;
         std::cout << "Assigned To:" << i.assignedTo <<std::endl;
         std::cout << "Comments:" << i.commentIds.size() <<std::endl;
-
     }
 }
 
@@ -194,7 +193,10 @@ void IssueTrackerView::removeUser() {
     std::string userId;
     std::cout << "Enter User ID to remove: ";
     std::getline(std::cin, userId);
-
     bool success = controller->removeUser(userId);
-    std::cout << (success ? "User removed.\n" : "Failed to remove user.\n");
+    if (sucess) {
+        std::cout << "User removed." << std::endl;
+    } else {
+        std::cout << "User not removed." << std::endl;
+    }
 }
