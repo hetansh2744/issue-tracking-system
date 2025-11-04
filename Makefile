@@ -20,7 +20,7 @@ CXX=g++
 CXXVERSION= -std=c++14
 CXXFLAGS= ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
-LINKFLAGS= -lgtest
+LINKFLAGS= -lgtest -lgmock -pthread
 
 # Directories
 SRC_DIR = src
