@@ -1,4 +1,4 @@
-#include "IssueTrackerView.h"
+#include "IssueTrackerView.hpp"
 
 IssueTrackerView::IssueTrackerView(IssueTrackerController* controller)
     : controller(controller) {}
