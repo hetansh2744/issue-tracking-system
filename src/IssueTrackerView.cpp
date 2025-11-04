@@ -18,6 +18,9 @@ void IssueTrackerView::displayMenu() {
     std::cout << "11. Create User\n";
     std::cout << "12. List All Users\n";
     std::cout << "13. Remove User\n";
+    std::cout << "14. Update User\n";
+    //implement!
+
     std::cout << "0. Exit\n";
     std::cout << "Select an option: ";
 }
