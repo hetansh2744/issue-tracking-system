@@ -259,20 +259,20 @@ TEST(IssueTrackerControllerTest, CreateUserSuccess) {
     EXPECT_CALL(mockRepo, saveUser(testing::_)).WillOnce(testing::Return(user));
 
     IssueTrackerController controller(&mockRepo);
-    User result = controller.createUser("name");
+    User result = controller.createUser("name", "roll");
 
     EXPECT_EQ(result.name, "name");
-    EXPECT_EQ(result.id, "123");
+    EXPECT_EQ(result.roll, "roll");
 }
 
 TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
     MockIssueRepository mockRepo;
 
     IssueTrackerController controller(&mockRepo);
-    User result = controller.createUser("");
+    User result = controller.createUser("","");
 
     EXPECT_EQ(result.name, "");
-    EXPECT_EQ(result.id, "");
+    EXPECT_EQ(result.roll, "");
 }
 
 // removeUser
