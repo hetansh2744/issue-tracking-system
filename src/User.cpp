@@ -1,4 +1,4 @@
-#include "User.h"
+#include "User.hpp"
 
 std::string getName(){
     return name;
