@@ -158,9 +158,10 @@ bool IssueTrackerController::deleteComment(int commentId) {
     }
 }
 
-User IssueTrackerController::createUser(const std::string& name, const std::string& roll) {
+User IssueTrackerController::createUser(const std::string& name,
+    const std::string& roll) {
     // 1. Validate
-    if (name.empty() || roll.empty() ) {
+    if (name.empty() || roll.empty()) {
         return User("", "");
     }
 
