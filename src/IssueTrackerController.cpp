@@ -34,16 +34,16 @@ const std::string& value) {
     }
 }
 bool IssueTrackerController::assignUserToIssue(int issueId,
-    const std::string& userId) {
+    const std::string& user_name) {
     try {
         // 1. Check existense of user
-        repo->getUser(userId);
+        repo->getUser(user_name);
 
         // 2. Get Issue
         Issue issue = repo->getIssue(issueId);
 
         // 3. Update field
-        issue.setassignedTo(userId);
+        issue.setassignedTo(user_name);
 
         // 4. Save Issue
         repo->saveIssue(issue);
@@ -79,8 +79,8 @@ std::vector<Issue> IssueTrackerController::listAllIssues() {
 }
 
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
-    const std::string& userId) {
-    return repo->findIssues(userId);
+    const std::string& user_name) {
+    return repo->findIssues(user_name);
 }
 Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
@@ -158,21 +158,21 @@ bool IssueTrackerController::deleteComment(int commentId) {
     }
 }
 
-User IssueTrackerController::createUser(const std::string& name) {
+User IssueTrackerController::createUser(const std::string& name, const std::string& roll) {
     // 1. Validate
-    if (name.empty()) {
+    if (name.empty() || roll.empty() ) {
         return User("", "");
     }
 
     // 2. Create User
-    User newUser(name, ""); // Creates with blank ID so repo can assign
+    User newUser(name, roll); // Creates with blank ID so repo can assign
 
     // 3. Save User
     return repo->saveUser(newUser);
 }
 
-bool IssueTrackerController::removeUser(const std::string& userId) {
-    return repo->deleteUser(userId);
+bool IssueTrackerController::removeUser(const std::string& user_name) {
+    return repo->deleteUser(user_name);
 }
 
 std::vector<User> IssueTrackerController::listAllUsers() {

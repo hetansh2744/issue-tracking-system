@@ -21,7 +21,7 @@ IssueRepository* repo;
     bool updateIssueField(int id, const std::string& field,
     const std::string& value);
 
-    bool assignUserToIssue(int issueId, const std::string& userId);
+    bool assignUserToIssue(int issueId, const std::string& user);
 
     bool unassignUserFromIssue(int issueId);
 
@@ -34,13 +34,13 @@ IssueRepository* repo;
 
     bool deleteComment(int commentId);
 
-    User createUser(const std::string& name);
+    User createUser(const std::string& name, const std::string& roll);
 
-    bool removeUser(const std::string& id);
+    bool removeUser(const std::string& user_name);
 
     std::vector<Issue> listAllIssues();
 
-    std::vector<Issue> findIssuesByUserId(const std::string& userId);
+    std::vector<Issue> findIssuesByUserId(const std::string& user_name);
 
     std::vector<User> listAllUsers();
 };

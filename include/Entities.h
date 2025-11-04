@@ -6,13 +6,13 @@
 
 class User {
  public:
-    std::string id;
+    std::string roll;
     std::string name;
     std::vector<int> assignedIssueIds;
 
     // Default constructor for returning failure/invalid objects
-    User(const std::string& name = "", const std::string& id = "")
-        : name(name), id(id) {}
+    User(const std::string& name = "", const std::string& roll = "")
+        : name(name), roll(roll) {}
 
     // Minimal methods
     void addAssignedIssue(int issueId) { assignedIssueIds.push_back(issueId); }
