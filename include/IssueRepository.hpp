@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include "Entities.h"
+#include "Entities.hpp"
 
 /**
  * @brief Abstract interface for the persistence layer (Model).

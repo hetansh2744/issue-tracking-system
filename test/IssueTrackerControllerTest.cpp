@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "IssueTrackerController.h"
+#include "IssueTrackerController.hpp"
 
 // ---------------- Mock Repository ----------------
 class MockIssueRepository : public IssueRepository {

@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include "IssueRepository.h"
-#include "Entities.h"
+#include "IssueRepository.hpp"
+#include "Entities.hpp"
 
 class IssueTrackerController {
  private:
