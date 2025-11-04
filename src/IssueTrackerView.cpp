@@ -59,7 +59,6 @@ void IssueTrackerView::createIssue() {
     std::getline(std::cin, assignedTo);
 
     Issue issue = controller->createIssue(title, desc, assignedTo);
-
 }
 
 void IssueTrackerView::updateIssue() {

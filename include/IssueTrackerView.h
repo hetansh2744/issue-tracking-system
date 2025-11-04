@@ -4,9 +4,8 @@
 #include <vector>
 
 class IssueTrackerView {
-private:
+ private:
     IssueTrackerController* controller;
-
     // Helper functions for menu options
     void displayMenu();
     void createIssue();
@@ -22,11 +21,8 @@ private:
     void createUser();
     void listUsers();
     void removeUser();
-
 public:
     // Constructor: takes a pointer to the controller
     explicit IssueTrackerView(IssueTrackerController* controller);
-
-    // Starts the main loop for user interaction
     void run();
 };
