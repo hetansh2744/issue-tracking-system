@@ -156,7 +156,7 @@ TEST(IssueTrackerControllerTest, DeleteIssue) {
 TEST(IssueTrackerControllerTest, ListAllIssues) {
     MockIssueRepository mockRepo;
     std::vector<Issue> issues = { Issue("t1",
-        "d1", "u1"), Issue("t2","d2","u2") };
+        "d1", "u1"), Issue("t2", "d2", "u2") };
     EXPECT_CALL(mockRepo, listIssues()).WillOnce(testing::Return(issues));
 
     IssueTrackerController controller(&mockRepo);
@@ -184,7 +184,7 @@ TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
     EXPECT_CALL(mockRepo, getIssue(1)).WillOnce(testing::Return(issue));
     EXPECT_CALL(mockRepo,
         getUser("author")).WillOnce(testing::Return(User("author")));
-    Comment newComment(1,"author", "text");
+    Comment newComment(1, "author", "text");
     EXPECT_CALL(mockRepo,
         saveComment(testing::_)).WillOnce(testing::Return(newComment));
     EXPECT_CALL(mockRepo, saveIssue(testing::_)).Times(testing::Exactly(1));
@@ -211,7 +211,7 @@ TEST(IssueTrackerControllerTest, AddCommentToIssueEmptyText) {
 // updateComment
 TEST(IssueTrackerControllerTest, UpdateCommentSuccess) {
     MockIssueRepository mockRepo;
-    Comment comment(1,"author", "oldText");
+    Comment comment(1, "author", "oldText");
     EXPECT_CALL(mockRepo, getComment(5)).WillOnce(testing::Return(comment));
     EXPECT_CALL(mockRepo, saveComment(testing::_)).Times(testing::Exactly(1));
 
@@ -235,7 +235,7 @@ TEST(IssueTrackerControllerTest, UpdateCommentThrows) {
 // deleteComment
 TEST(IssueTrackerControllerTest, DeleteCommentSuccess) {
     MockIssueRepository mockRepo;
-    Comment comment(1,"author", "text");
+    Comment comment(1, "author", "text");
     comment.id = 5;
     Issue issue("title", "desc", "user");
     issue.id = 1;
