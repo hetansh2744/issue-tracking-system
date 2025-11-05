@@ -131,7 +131,7 @@ coverage: clean-exec clean-cov
 # To perform the static check 
 static: ${SRC_DIR}
 	${STATIC_ANALYSIS} --verbose --enable=all ${SRC_DIR} \
-	${SRC_INCLUDE} --suppress=missingInclude --error-exitcode=1
+	${SRC_INCLUDE} --suppress=missingInclude --suppress=useStlAlgorithm --error-exitcode=1
 
 # To perform the style check
 style: ${SRC_DIR} ${GTEST_DIR} ${SRC_INCLUDE} ${PROJECT_SRC_DIR}

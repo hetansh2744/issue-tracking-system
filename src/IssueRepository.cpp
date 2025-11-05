@@ -133,13 +133,10 @@ class InMemoryIssueRepository : public IssueRepository {
   std::vector<User> listAllUsers() const override {
     std::vector<User> users;
     users.reserve(userById_.size());
-    //for (const auto& pair : userById_) {
-      //users.push_back(pair.second);
-    //}
-    std::transform(someMap.begin(), someMap.end(),
-               std::back_inserter(users),
-               [](const auto& pair) { return pair.second; });
-    //return users;
+    for (const auto& pair : userById_) {
+      users.push_back(pair.second);
+    }
+    return users;
   }
 };
 
