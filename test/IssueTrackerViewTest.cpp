@@ -3,7 +3,7 @@
 #include "IssueTrackerView.hpp"
 
 class MockIssueTrackerController : public IssueTrackerController {
-public:
+ public:
     MOCK_METHOD(Issue, createIssue, (const std::string&,
          const std::string&, const std::string&), (override));
     MOCK_METHOD(bool, updateIssueField, (int, const std::string&,
@@ -33,7 +33,7 @@ using ::testing::Return;
 using ::testing::StrictMock;
 
 class IssueTrackerViewTest : public ::testing::Test {
-protected:
+ protected:
     StrictMock<MockIssueTrackerController> mockController;
     std::unique_ptr<IssueTrackerView> view;
 

@@ -178,7 +178,8 @@ void IssueTrackerView::findIssuesByUser() {
 
     std::vector<Issue> issues = controller->findIssuesByUserId(userId);
     for (const auto& i : issues) {
-        std::cout << "ID: " << i.getId() << " | Title: " << i.getTitle() << "\n";
+        std::cout << "ID: " << i.getId() <<
+         " | Title: " << i.getTitle() << "\n";
     }
 }
 
@@ -226,7 +227,8 @@ void IssueTrackerView::createUser() {
     std::string name;
     std::cout << "Enter username: ";
     std::getline(std::cin, name);
-    User u = controller->createUser(name, ""); //! Temp added "" until roles are added
+    User u = controller->createUser(name, ""); 
+    //! Temp added "" until roles are added
     if (u.getName().empty())
         std::cout << "Failed to create user.\n";
     else
