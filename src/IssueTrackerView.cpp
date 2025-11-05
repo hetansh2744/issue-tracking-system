@@ -227,7 +227,7 @@ void IssueTrackerView::createUser() {
     std::string name;
     std::cout << "Enter username: ";
     std::getline(std::cin, name);
-    User u = controller->createUser(name, ""); 
+    User u = controller->createUser(name, "");
     //! Temp added "" until roles are added
     if (u.getName().empty())
         std::cout << "Failed to create user.\n";
