@@ -225,10 +225,12 @@ void IssueTrackerView::deleteComment() {
 
 void IssueTrackerView::createUser() {
     std::string name;
+    std::string role;
     std::cout << "Enter username: ";
     std::getline(std::cin, name);
-    User u = controller->createUser(name, "");
-    //! Temp added "" until roles are added
+    std::cout << "Enter role: ";
+    std::getline(std::cin, role);
+    User u = controller->createUser(name, role);
     if (u.getName().empty())
         std::cout << "Failed to create user.\n";
     else

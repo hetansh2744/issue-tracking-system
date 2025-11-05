@@ -35,10 +35,10 @@ using ::testing::StrictMock;
 class IssueTrackerViewTest : public ::testing::Test {
  protected:
     StrictMock<MockIssueTrackerController> mockController;
-    std::unique_ptr<IssueTrackerView> view;
+    IssueTrackerView* view;
 
     void SetUp() override {
-        view = std::make_unique<IssueTrackerView>(&mockController);
+        view = new IssueTrackerView(&mockController);
     }
 };
 
