@@ -7,8 +7,8 @@
 class User {
  private:
     std::string name;
-    std::string role; 
-public:
+    std::string role;
+ public:
     User(std::string name, std::string role) : name(name), role(role) {}
     std::string getName();
     std::string getRole();

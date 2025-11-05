@@ -58,7 +58,6 @@ bool IssueTrackerController::updateIssueField(int id, const std::string& field,
         } else {
             return false;
         }
-
     } catch (const std::out_of_range&) {
         return false;
     } catch (const std::invalid_argument&) {
@@ -161,9 +160,13 @@ bool IssueTrackerController::updateUser(const std::string& user,
     const std::string& field, const std::string& value) {
     try {
         User user = repo->getUser(user);
-        if (field == "name") user.setName(value);
-        else if (field == "role") user.setRole(value);
-        else return false;
+        if (field == "name") {
+            user.setName(value);
+        } else if (field == "role") {
+            user.setRole(value);
+        } else {
+            return false;
+        }
         repo->saveUser(user);
         return true;
     } catch (...) {
