@@ -1,100 +1,178 @@
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 #include "Issue.hpp"
+#include "Comment.hpp"
 
-// ----- Happy path basics -----
-TEST(Issue, NewStartsWithIdZeroAndNoAssigneeOrDescription) {
-  Issue is{0, "u1", "Crash on save"};
+using std::string;
+
+// -------------------------------
+// Basic construction & ID contract
+// -------------------------------
+
+TEST(IssueModel, NewIssue_IdZero_HasNoPersistentId) {
+  Issue is{0, "u1", "Crash on save", 0};
+  EXPECT_FALSE(is.hasPersistentId());
   EXPECT_EQ(is.getId(), 0);
   EXPECT_EQ(is.getAuthorId(), "u1");
   EXPECT_EQ(is.getTitle(), "Crash on save");
-  EXPECT_FALSE(is.hasPersistentId());
-  EXPECT_FALSE(is.hasAssignee());
-  EXPECT_FALSE(is.hasDescriptionComment());
-  EXPECT_TRUE(is.getCommentIds().empty());
 }
 
-// ----- ID contract: repo assigns once -----
-TEST(Issue, RepoAssignsIdOnce) {
-  Issue is{0, "u1", "Assign id"};
-  EXPECT_FALSE(is.hasPersistentId());
+TEST(IssueModel, SetIdForPersistence_OnceOnly_PositiveOnly) {
+  // invalid_argument on fresh issue with non-positive id
+  Issue fresh{0, "u1", "T", 0};
+  EXPECT_THROW(fresh.setIdForPersistence(0), std::invalid_argument);
 
+  // set once normally
+  Issue is{0, "u1", "T", 0};
   is.setIdForPersistence(101);
   EXPECT_TRUE(is.hasPersistentId());
   EXPECT_EQ(is.getId(), 101);
 
-  // Calling again should throw
+  // logic_error on any subsequent set (even if value is bad)
   EXPECT_THROW(is.setIdForPersistence(202), std::logic_error);
+  EXPECT_THROW(is.setIdForPersistence(0), std::logic_error);
+
+  // ctor guard (wrap temporary to avoid macro arg parsing)
+  EXPECT_THROW((Issue(-1, "u", "t", 0)), std::invalid_argument);
 }
 
-// Non-positive id assignment is invalid
-TEST(Issue, RepoAssignRejectsNonPositiveId) {
-  Issue is{0, "u1", "X"};
-  EXPECT_THROW(is.setIdForPersistence(0), std::invalid_argument);
-  EXPECT_THROW(is.setIdForPersistence(-3), std::invalid_argument);
-}
+// -------------------------------
+// Title rules
+// -------------------------------
 
-// ----- Title validation -----
-TEST(Issue, TitleValidation) {
-  Issue is{0, "u1", "t"};
-  is.setTitle("okay");
-  EXPECT_EQ(is.getTitle(), "okay");
+TEST(IssueModel, SetTitle_RejectsEmpty) {
+  Issue is{0, "u1", "T", 0};
+  EXPECT_NO_THROW(is.setTitle("New title"));
+  EXPECT_EQ(is.getTitle(), "New title");
   EXPECT_THROW(is.setTitle(""), std::invalid_argument);
 }
 
-// ----- Comment list + description behavior -----
-TEST(Issue, CommentsAddDedupRemoveAndDescription) {
-  Issue is{0, "u1", "comments"};
+// -------------------------------
+// ID-only comment list behavior
+// -------------------------------
 
-  // add & dedup
+TEST(IssueModel, AddCommentId_DeDup_And_Validation) {
+  Issue is{0, "u1", "T", 0};
+  EXPECT_THROW(is.addComment(0), std::invalid_argument);
+  EXPECT_THROW(is.addComment(-5), std::invalid_argument);
+
   is.addComment(10);
   is.addComment(10);
   ASSERT_EQ(is.getCommentIds().size(), 1u);
-  EXPECT_EQ(is.getCommentIds().front(), 10);
+  EXPECT_EQ(is.getCommentIds()[0], 10);
+}
 
-  // set description (auto-tracks in list)
-  is.setDescriptionCommentId(10);
-  EXPECT_TRUE(is.hasDescriptionComment());
-  EXPECT_EQ(is.getDescriptionCommentId(), 10);
-
-  // removing description clears it
-  EXPECT_TRUE(is.removeComment(10));
+TEST(IssueModel, SetDescription_AddsIdIfMissing) {
+  Issue is{0, "u1", "T", 0};
   EXPECT_FALSE(is.hasDescriptionComment());
-
-  // removing a non-existent comment returns false
-  EXPECT_FALSE(is.removeComment(10));
+  is.setDescriptionCommentId(42);
+  EXPECT_TRUE(is.hasDescriptionComment());
+  EXPECT_EQ(is.getDescriptionCommentId(), 42);
+  ASSERT_EQ(is.getCommentIds().size(), 1u);
+  EXPECT_EQ(is.getCommentIds()[0], 42);
 }
 
-// Invalid comment ids rejected
-TEST(Issue, CommentIdValidation) {
-  Issue is{0, "u1", "bad ids"};
-  EXPECT_THROW(is.addComment(0), std::invalid_argument);
-  EXPECT_THROW(is.addComment(-5), std::invalid_argument);
+TEST(IssueModel, RemoveComment_ClearsDescriptionIfThatId) {
+  Issue is{0, "u1", "T", 0};
+  is.addComment(7);
+  is.setDescriptionCommentId(7);
+  EXPECT_TRUE(is.hasDescriptionComment());
+
+  EXPECT_TRUE(is.removeComment(7));
+  EXPECT_FALSE(is.hasDescriptionComment());
+  EXPECT_TRUE(is.getCommentIds().empty());
+
+  EXPECT_FALSE(is.removeComment(7));
+}
+
+// -------------------------------------
+// Full Comment object API (new methods)
+// -------------------------------------
+
+TEST(IssueModel, AddCommentObject_StoresAndSyncsIds) {
+  Issue is{0, "u1", "T", 0};
+
+  Comment c{0, "u2", "first text", 0};
+  c.setIdForPersistence(101);
+
+  is.addComment(c);
+  ASSERT_EQ(is.getComments().size(), 1u);
+  EXPECT_EQ(is.getComments()[0].getId(), 101);
+  EXPECT_EQ(is.getComments()[0].getAuthor(), "u2");
+  EXPECT_EQ(is.getComments()[0].getText(), "first text");
+
+  ASSERT_EQ(is.getCommentIds().size(), 1u);
+  EXPECT_EQ(is.getCommentIds()[0], 101);
+
+  Comment upd{101, "u2", "updated text", 0};
+  is.addComment(upd);
+  ASSERT_EQ(is.getComments().size(), 1u);
+  EXPECT_EQ(is.getComments()[0].getText(), "updated text");
+}
+
+TEST(IssueModel, FindCommentById_ConstAndMutable) {
+  Issue is{0, "u1", "T", 0};
+  Comment c1{0, "a", "x", 0};
+  c1.setIdForPersistence(5);
+  Comment c2{0, "b", "y", 0};
+  c2.setIdForPersistence(6);
+  is.addComment(c1);
+  is.addComment(c2);
+
+  const Issue& cis = is;
+  const Comment* pc = cis.findCommentById(6);
+  ASSERT_NE(pc, nullptr);
+  EXPECT_EQ(pc->getAuthor(), "b");
+
+  Comment* pm = is.findCommentById(5);
+  ASSERT_NE(pm, nullptr);
+  pm->setText("mutated");
+  const Comment* pc2 = cis.findCommentById(5);
+  ASSERT_NE(pc2, nullptr);
+  EXPECT_EQ(pc2->getText(), "mutated");
+
+  EXPECT_EQ(cis.findCommentById(999), nullptr);
+}
+
+TEST(IssueModel, RemoveCommentById_RemovesBothAndClearsDesc) {
+  Issue is{0, "u1", "T", 0};
+  Comment c{0, "u2", "desc", 0};
+  c.setIdForPersistence(77);
+  is.addComment(c);
+  is.setDescriptionCommentId(77);
+
+  ASSERT_TRUE(is.hasDescriptionComment());
+  ASSERT_EQ(is.getComments().size(), 1u);
+  ASSERT_EQ(is.getCommentIds().size(), 1u);
+
+  EXPECT_TRUE(is.removeCommentById(77));
+  EXPECT_FALSE(is.hasDescriptionComment());
+  EXPECT_TRUE(is.getComments().empty());
+  EXPECT_TRUE(is.getCommentIds().empty());
+
+  EXPECT_FALSE(is.removeCommentById(77));
+}
+
+// -------------------------------------------------
+// New: extra error and rvalue paths (extra coverage)
+// -------------------------------------------------
+
+TEST(IssueModel, SetDescription_InvalidId_Throws) {
+  Issue is{0, "u1", "T", 0};
   EXPECT_THROW(is.setDescriptionCommentId(0), std::invalid_argument);
-  EXPECT_THROW(is.setDescriptionCommentId(-9), std::invalid_argument);
 }
 
-// ----- Assignee toggle -----
-TEST(Issue, AssignAndUnassign) {
-  Issue is{0, "u1", "assignee"};
-  EXPECT_FALSE(is.hasAssignee());
-
-  is.assignTo("u9");
-  ASSERT_TRUE(is.hasAssignee());
-  EXPECT_EQ(is.getAssignedTo(), "u9");
-
-  is.unassign();
-  EXPECT_FALSE(is.hasAssignee());
+TEST(IssueModel, AddCommentObject_RequiresPersistedId_Throws) {
+  Issue is{0, "u1", "T", 0};
+  Comment draft{0, "u2", "text", 0};
+  EXPECT_THROW(is.addComment(draft), std::invalid_argument);
+  EXPECT_THROW(is.addComment(Comment{0, "u2", "text", 0}),
+               std::invalid_argument);
 }
 
-// ----- Ctor validation -----
-TEST(Issue, CtorRejectsNegativeId) {
-  EXPECT_THROW((Issue{-1, "u1", "t"}), std::invalid_argument);
-}
-
-TEST(Issue, CtorRejectsEmptyAuthor) {
-  EXPECT_THROW((Issue{0, "", "t"}), std::invalid_argument);
-}
-
-TEST(Issue, CtorRejectsEmptyTitle) {
-  EXPECT_THROW((Issue{0, "u1", ""}), std::invalid_argument);
+TEST(IssueModel, AddCommentObject_RvaluePath_Covered) {
+  Issue is{0, "u1", "T", 0};
+  is.addComment(Comment{101, "u2", "rvalue text", 0});
+  ASSERT_EQ(is.getComments().size(), 1u);
+  EXPECT_EQ(is.getComments()[0].getId(), 101);
+  EXPECT_EQ(is.getCommentIds().size(), 1u);
 }

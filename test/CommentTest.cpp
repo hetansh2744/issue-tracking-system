@@ -1,35 +1,47 @@
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 #include "Comment.hpp"
 
+using std::string;
+
+// --------------------------------------
+// Core happy-path tests (existing ones)
+// --------------------------------------
+
 TEST(Comment, ConstructNewWithIdZero) {
-  Comment c{0, "u1", "hi"};
+  Comment c{0, "u1", "hello", 0};
+  EXPECT_FALSE(c.hasPersistentId());
   EXPECT_EQ(c.getId(), 0);
   EXPECT_EQ(c.getAuthor(), "u1");
-  EXPECT_EQ(c.getText(), "hi");
-  EXPECT_EQ(c.getTimeStamp(), 0);
-  //cover the fresh-object path of hasPersistentId()
-  EXPECT_FALSE(c.hasPersistentId());
+  EXPECT_EQ(c.getText(), "hello");
 }
 
 TEST(Comment, RepoAssignsIdOnce) {
-  Comment c{0, "u1", "t"};
-  EXPECT_FALSE(c.hasPersistentId());
-  c.setIdForPersistence(5);
+  Comment c{0, "u1", "t", 0};
+  c.setIdForPersistence(10);
   EXPECT_TRUE(c.hasPersistentId());
-  EXPECT_EQ(c.getId(), 5);
-  //cover the “id already set” guard/throw
-  EXPECT_THROW(c.setIdForPersistence(6), std::logic_error);
+  EXPECT_EQ(c.getId(), 10);
+  EXPECT_THROW(c.setIdForPersistence(11), std::logic_error);
 }
 
 TEST(Comment, TextValidation) {
-  Comment c{0, "u1", "ok"};
-  c.setText("updated");
-  EXPECT_EQ(c.getText(), "updated");
+  Comment c{0, "u1", "t", 0};
+  EXPECT_NO_THROW(c.setText("abc"));
+  EXPECT_EQ(c.getText(), "abc");
   EXPECT_THROW(c.setText(""), std::invalid_argument);
 }
 
 TEST(Comment, TimestampSet) {
   Comment c{0, "u1", "t", 0};
-  c.setTimeStamp(123456789);
-  EXPECT_EQ(c.getTimeStamp(), 123456789);
+  c.setTimeStamp(1234);
+  EXPECT_EQ(c.getTimeStamp(), 1234);
+}
+
+// -------------------------------------------------
+// New: ctor validation branches (extra coverage)
+// -------------------------------------------------
+
+TEST(Comment, CtorRejectsInvalidInputs) {
+  EXPECT_THROW((Comment(-1, "u", "t", 0)), std::invalid_argument);
+  EXPECT_THROW((Comment(0, "", "t", 0)), std::invalid_argument);
+  EXPECT_THROW((Comment(0, "u", "", 0)), std::invalid_argument);
 }
