@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "IssueTrackerController.hpp"
+
 class IssueTrackerView {
  private:
     IssueTrackerController* controller;
