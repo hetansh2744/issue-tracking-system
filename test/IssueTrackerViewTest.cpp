@@ -4,18 +4,26 @@
 
 class MockIssueTrackerController : public IssueTrackerController {
 public:
-    MOCK_METHOD(Issue, createIssue, (const std::string&, const std::string&, const std::string&), (override));
-    MOCK_METHOD(bool, updateIssueField, (int, const std::string&, const std::string&), (override));
-    MOCK_METHOD(bool, assignUserToIssue, (int, const std::string&), (override));
+    MOCK_METHOD(Issue, createIssue, (const std::string&,
+         const std::string&, const std::string&), (override));
+    MOCK_METHOD(bool, updateIssueField, (int, const std::string&,
+         const std::string&), (override));
+    MOCK_METHOD(bool, assignUserToIssue, (int,
+         const std::string&), (override));
     MOCK_METHOD(bool, unassignUserFromIssue, (int), (override));
     MOCK_METHOD(bool, deleteIssue, (int), (override));
     MOCK_METHOD(std::vector<Issue>, listAllIssues, (), (override));
-    MOCK_METHOD(std::vector<Issue>, listAllUnassignedIssues, (), (override));
-    MOCK_METHOD(std::vector<Issue>, findIssuesByUserId, (const std::string&), (override));
-    MOCK_METHOD(Comment, addCommentToIssue, (int, const std::string&, const std::string&), (override));
-    MOCK_METHOD(bool, updateComment, (int, const std::string&), (override));
+    MOCK_METHOD(std::vector<Issue>, listAllUnassignedIssues,
+         (), (override));
+    MOCK_METHOD(std::vector<Issue>, findIssuesByUserId,
+         (const std::string&), (override));
+    MOCK_METHOD(Comment, addCommentToIssue, (int,
+         const std::string&, const std::string&), (override));
+    MOCK_METHOD(bool, updateComment, (int,
+         const std::string&), (override));
     MOCK_METHOD(bool, deleteComment, (int), (override));
-    MOCK_METHOD(User, createUser, (const std::string&, const std::string&), (override));
+    MOCK_METHOD(User, createUser, (const std::string&,
+         const std::string&), (override));
     MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
     MOCK_METHOD(bool, removeUser, (const std::string&), (override));
 };
