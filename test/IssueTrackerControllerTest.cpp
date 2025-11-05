@@ -26,15 +26,16 @@ class MockIssueRepository : public IssueRepository {
 
 TEST(IssueTrackerControllerTest, CreateIssueValid) {
     MockIssueRepository mockRepo;
-    Issue newIssue(0, "user123", "title", 0);
-    Comment descComment(0, "user123", "desc", 0);
+    Issue persistedIssue(1, "user123", "title", 0);
+    Comment descComment(1, "user123", "desc", 0);
 
+    testing::InSequence seq;
     EXPECT_CALL(mockRepo, saveIssue(testing::_))
-        .WillOnce(testing::Return(newIssue));
+        .WillOnce(testing::Return(persistedIssue));
     EXPECT_CALL(mockRepo, saveComment(testing::_))
         .WillOnce(testing::Return(descComment));
     EXPECT_CALL(mockRepo, saveIssue(testing::_))
-        .WillOnce(testing::Return(newIssue));
+        .WillOnce(testing::Return(persistedIssue));
 
     IssueTrackerController controller(&mockRepo);
     Issue result = controller.createIssue("title", "desc", "user123");
@@ -72,7 +73,7 @@ TEST(IssueTrackerControllerTest, UpdateIssueFieldDescriptionSuccess) {
     EXPECT_CALL(mockRepo, getIssue(1))
         .WillOnce(testing::Return(existingIssue));
     EXPECT_CALL(mockRepo, saveComment(testing::_))
-        .Times(1);
+        .WillOnce(testing::Return(Comment(1, "user", "newDesc", 0)));
     EXPECT_CALL(mockRepo, saveIssue(testing::_))
         .Times(1);
 
@@ -331,7 +332,7 @@ TEST(IssueTrackerControllerTest, UpdateUserSuccess) {
     EXPECT_CALL(mockRepo, getUser("user123"))
         .WillOnce(testing::Return(user));
     EXPECT_CALL(mockRepo, saveUser(testing::_))
-        .Times(1);
+        .WillOnce(testing::Return(User("newName", "role")));
 
     IssueTrackerController controller(&mockRepo);
     bool result = controller.updateUser("user123", "name", "newName");
