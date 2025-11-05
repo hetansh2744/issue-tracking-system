@@ -39,7 +39,7 @@ IssueRepository* repo;
 
     User createUser(const std::string& name, const std::string& roll);
 
-    bool UpdateUser(const std::string user, const std::string& field,
+    bool updateUser(const std::string user, const std::string& field,
     const std::string& value);
 
     bool removeUser(const std::string& user_name);
