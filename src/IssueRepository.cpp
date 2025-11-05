@@ -140,6 +140,6 @@ class InMemoryIssueRepository : public IssueRepository {
   }
 };
 
-std::unique_ptr<IssueRepository> createIssueRepository() {
-  return std::make_unique<InMemoryIssueRepository>();
+IssueRepository* createIssueRepository() {
+  return new InMemoryIssueRepository();
 }

@@ -36,6 +36,6 @@ class IssueRepository {
   virtual ~IssueRepository() = default;
 };
 
-std::unique_ptr<IssueRepository> createIssueRepository();
+IssueRepository* createIssueRepository();
 
 #endif  // ISSUE_REPOSITORY_H_INCLUDED
