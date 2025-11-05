@@ -1,17 +1,17 @@
 #include "User.hpp"
 
-std::string getName(){
+std::string User::getName(){
     return name;
 }
 
-std::string getRole(){
+std::string User::getRole(){
     return role;
 }
 
-void setName(const std::string &newname){
+void User::setName(const std::string &newname){
     name = newname;
 }
 
-void setRoll(const std::string &newroll){
-    roll = newroll;
+void User::setRole(const std::string &newrole){
+    role = newrole;
 }
