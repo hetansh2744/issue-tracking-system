@@ -184,6 +184,10 @@ std::vector<Issue> IssueTrackerController::listAllIssues() {
     return repo->listIssues();
 }
 
+std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
+    return repo->listAllUnassigned();
+}
+
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
     return repo->findIssues(user_name);

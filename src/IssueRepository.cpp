@@ -21,15 +21,27 @@ template <typename T>
 T saveImpl(const T& in, std::unordered_map<int, T>* byId, int* nextId,
            const std::string& errorMessage) {
   T stored = in;
-  if (stored.id == 0) {
-    stored.id = ++(*nextId);                          // create
-  } else if (byId->find(stored.id) == byId->end()) {  // id already exists
+  if (stored.getId() == 0) {
+    // assign a persistent id on first save
+    stored.setIdForPersistence(++(*nextId));            // create
+  } else if (byId->find(stored.getId()) == byId->end()) {  // id already exists
     throw std::invalid_argument(errorMessage);
   }
   (*byId)[stored.getId()] = stored;  // upsert
   return stored;
 }
 }  // namespace
+
+std::vector<Issue> IssueRepository::findIssues(
+    const std::string& userId) const {
+  return findIssues([&](const Issue& issue) {
+    return issue.hasAssignee() && issue.getAssignedTo() == userId;
+  });
+}
+
+std::vector<Issue> IssueRepository::listAllUnassigned() const {
+  return findIssues([](const Issue& issue) { return !issue.hasAssignee(); });
+}
 
 class InMemoryIssueRepository : public IssueRepository {
  private:
@@ -107,7 +119,10 @@ class InMemoryIssueRepository : public IssueRepository {
     if (id.empty()) {
       throw std::invalid_argument("User ID must be non-empty");
     }
-    userById_[id] = stored;
+    auto [it, inserted] = userById_.emplace(id, stored);
+    if (!inserted) {
+      it->second = stored;
+    }
     return stored;
   }
 

@@ -14,6 +14,7 @@ class IssueTrackerView {
     void unassignUser();
     void deleteIssue();
     void listIssues();
+    void listUnassignedIssues();
     void findIssuesByUser();
     void addComment();
     void updateComment();

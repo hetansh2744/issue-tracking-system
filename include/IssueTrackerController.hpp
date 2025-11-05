@@ -46,6 +46,8 @@ IssueRepository* repo;
 
     std::vector<Issue> listAllIssues();
 
+    std::vector<Issue> listAllUnassignedIssues();
+
     std::vector<Issue> findIssuesByUserId(const std::string& user_name);
 
     std::vector<User> listAllUsers();

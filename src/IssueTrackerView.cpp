@@ -19,6 +19,7 @@ void IssueTrackerView::displayMenu() {
     std::cout << "12. List All Users\n";
     std::cout << "13. Remove User\n";
     std::cout << "14. Update User\n";
+    std::cout << "15. List Unassigned Issues\n";
     //implement!
 
     std::cout << "0. Exit\n";
@@ -46,6 +47,8 @@ void IssueTrackerView::run() {
         case 11: createUser(); break;
         case 12: listUsers(); break;
         case 13: removeUser(); break;
+        case 14: updateUser(); break;
+        case 15: listUnassignedIssues(); break;
         case 0: std::cout << "Goodbye!\n"; break;
         default: std::cout << "Invalid choice.\n"; break;
         }
@@ -143,6 +146,28 @@ void IssueTrackerView::listIssues() {
     }
 
     std::cout << "Comments:" << issue.getCommentIds().size() << "\n\n";
+  }
+}
+
+void IssueTrackerView::listUnassignedIssues() {
+  std::vector<Issue> issues = controller->listAllUnassignedIssues();
+  if (issues.empty()) {
+    std::cout << "No unassigned issues.\n";
+    return;
+  }
+
+  std::cout << "\n--- Unassigned Issues ---\n";
+  for (const auto& issue : issues) {
+    std::cout << "ID: " << issue.getId() << "\n";
+    std::cout << "Author: " << issue.getAuthorId() << "\n";
+    std::cout << "Title: " << issue.getTitle() << "\n";
+    std::cout << "Description Comment ID: ";
+    if (issue.hasDescriptionComment()) {
+      std::cout << issue.getDescriptionCommentId() << "\n";
+    } else {
+      std::cout << "(none)\n";
+    }
+    std::cout << "Comments: " << issue.getCommentIds().size() << "\n\n";
   }
 }
 

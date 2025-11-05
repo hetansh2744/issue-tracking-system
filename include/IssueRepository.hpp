@@ -20,6 +20,7 @@ class IssueRepository {
   virtual std::vector<Issue> findIssues(
       std::function<bool(const Issue&)> criteria) const = 0;
   virtual std::vector<Issue> findIssues(const std::string& userId) const;
+  virtual std::vector<Issue> listAllUnassigned() const;
 
   // == Comments ===
   virtual Comment getComment(int commentId) const = 0;
