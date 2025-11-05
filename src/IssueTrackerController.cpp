@@ -159,15 +159,15 @@ User IssueTrackerController::createUser(const std::string& name,
 bool IssueTrackerController::updateUser(const std::string& user,
     const std::string& field, const std::string& value) {
     try {
-        User user = repo->getUser(user);
+        User userObj = repo->getUser(user);
         if (field == "name") {
-            user.setName(value);
+            userObj.setName(value);
         } else if (field == "role") {
-            user.setRole(value);
+            userObj.setRole(value);
         } else {
             return false;
         }
-        repo->saveUser(user);
+        repo->saveUser(userObj);
         return true;
     } catch (...) {
         return false;
