@@ -1,4 +1,4 @@
-#include "IssueTrackerController.h"
+#include "IssueTrackerController.hpp"
 
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
@@ -6,9 +6,9 @@ IssueTrackerController::IssueTrackerController(IssueRepository* repository)
 Issue IssueTrackerController::createIssue(const std::string& title,
     const std::string& desc, const std::string& assignedTo) {
     if (title.empty() || desc.empty()) {
-        return Issue("", "", "");
+        return Issue(0, "", "");
     }
-    Issue newIssue(title, desc, assignedTo);
+    Issue newIssue(0, title, desc);
      return repo->saveIssue(newIssue);
 }
 
@@ -22,7 +22,7 @@ const std::string& value) {
     } else if (field == "description") {
         issue.setDescription(value);
     } else if (field == "assignedTo") {
-        issue.setassignedTo(value);
+        issue.assignTo(value);
     } else {
         return false;
     }
@@ -33,6 +33,7 @@ const std::string& value) {
         return false;
     }
 }
+
 bool IssueTrackerController::assignUserToIssue(int issueId,
     const std::string& user_name) {
     try {
@@ -43,7 +44,7 @@ bool IssueTrackerController::assignUserToIssue(int issueId,
         Issue issue = repo->getIssue(issueId);
 
         // 3. Update field
-        issue.setassignedTo(user_name);
+        issue.assignTo(user_name);
 
         // 4. Save Issue
         repo->saveIssue(issue);
@@ -59,7 +60,7 @@ bool IssueTrackerController::unassignUserFromIssue(int issueId) {
         // 1. Get Issue
         Issue issue = repo->getIssue(issueId);
         // 2. Update field (set to empty)
-        issue.setassignedTo("");
+        issue.unassign();
 
         // 3. Save Issue
         repo->saveIssue(issue);
@@ -74,14 +75,6 @@ bool IssueTrackerController::deleteIssue(int issueId) {
     return repo->deleteIssue(issueId);
 }
 
-std::vector<Issue> IssueTrackerController::listAllIssues() {
-    return repo->listIssues();
-}
-
-std::vector<Issue> IssueTrackerController::findIssuesByUserId(
-    const std::string& user_name) {
-    return repo->findIssues(user_name);
-}
 Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
@@ -95,14 +88,13 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
         repo->getUser(authorId);
 
         // 3. Create Comment
-        Comment newComment(issueId, authorId, text);
-        newComment.id = 0; // Signals to repository that its a new comment
+        Comment newComment(0, authorId, text);
 
         // 4.Save Comment
         Comment savedComment = repo->saveComment(newComment);
 
         // 5. Update Issue
-        issue.addComment(savedComment.id);
+        issue.addComment(savedComment.getId);
         repo->saveIssue(issue);
 
         return savedComment;
@@ -112,22 +104,12 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     }
 }
 
-bool IssueTrackerController::updateComment(int commentId,
+bool IssueTrackerController::updateComment(int issueId, int commentId,
     const std::string& newText) {
     try {
-        // 1. Validate
-        if (newText.empty()) {
-            return false;
-        }
-
-        // 2. Get Comment
-        Comment comment = repo->getComment(commentId);
-
-        // 3. Update
-        comment.text = newText;
-
-        // 4. Save Comment
-        repo->saveComment(comment);
+        Comment comment = repo->getComment(issueId, commentId);
+        comment.setText(newText);
+        repo->saveComment(Icomment);
         return true;
     } catch (const std::out_of_range& e) {
         // Comment not found
@@ -135,7 +117,7 @@ bool IssueTrackerController::updateComment(int commentId,
     }
 }
 
-bool IssueTrackerController::deleteComment(int commentId) {
+bool IssueTrackerController::deleteComment(int issueId, int commentId) {
     try {
         // 1. Get the comment to find its associated issueId
         Comment comment = repo->getComment(commentId);
@@ -164,16 +146,35 @@ User IssueTrackerController::createUser(const std::string& name,
     if (name.empty() || roll.empty()) {
         return User("", "");
     }
-
-    // 2. Create User
-    User newUser(name, roll); // Creates with blank ID so repo can assign
-
-    // 3. Save User
+    User newUser(name, roll);
     return repo->saveUser(newUser);
+}
+
+bool IssueTrackerController::updateUser(const std::string& user_name,
+    const std::string& field, const std::string& value) {
+  try {
+    User user = repo->getUser(user_name);
+    if (field == "name") user.setName(value);
+    else if (field == "role") user.setRole(value);
+    else return false;
+    repo->saveUser(user);
+    return true;
+  } catch (...) {
+    return false;
+  }
 }
 
 bool IssueTrackerController::removeUser(const std::string& user_name) {
     return repo->deleteUser(user_name);
+}
+
+std::vector<Issue> IssueTrackerController::listAllIssues() {
+    return repo->listIssues();
+}
+
+std::vector<Issue> IssueTrackerController::findIssuesByUserId(
+    const std::string& user_name) {
+    return repo->findIssues(user_name);
 }
 
 std::vector<User> IssueTrackerController::listAllUsers() {

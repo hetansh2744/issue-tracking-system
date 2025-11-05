@@ -32,13 +32,14 @@ IssueRepository* repo;
     Comment addCommentToIssue(int issueId, const std::string& text,
     const std::string& authorId);
 
-    bool updateComment(int commentId, const std::string& newText);
+    bool updateComment(int issueId, int commentId,
+        const std::string& newText);
 
-    bool deleteComment(int commentId);
+    bool deleteComment(int issueId, int commentId);
 
     User createUser(const std::string& name, const std::string& roll);
 
-    Bool UpdateUser(std::string user const std::string& field,
+    bool UpdateUser(const std::string user, const std::string& field,
     const std::string& value);
 
     bool removeUser(const std::string& user_name);
