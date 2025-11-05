@@ -1,6 +1,8 @@
 #include "IssueTrackerController.hpp"
+
+#include <algorithm>
+#include <exception>
 #include <stdexcept>
-#include <utility>
 
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
@@ -117,10 +119,10 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     }
 }
 
-bool IssueTrackerController::updateComment(int issueId, int commentId,
+bool IssueTrackerController::updateComment(int commentId,
     const std::string& newText) {
     try {
-        Comment comment = repo->getComment(issueId, commentId);
+        Comment comment = repo->getComment(commentId);
         comment.setText(newText);
         repo->saveComment(comment);
         return true;
@@ -129,7 +131,7 @@ bool IssueTrackerController::updateComment(int issueId, int commentId,
     }
 }
 
-bool IssueTrackerController::deleteComment(int issueId, int commentId) {
+bool IssueTrackerController::deleteComment(int commentId) {
     try {
         Comment comment = repo->getComment(commentId);
         int issueId = comment.getId();
@@ -156,10 +158,10 @@ User IssueTrackerController::createUser(const std::string& name,
     return repo->saveUser(newUser);
 }
 
-bool IssueTrackerController::updateUser(const std::string& user,
+bool IssueTrackerController::updateUser(const std::string& userId,
     const std::string& field, const std::string& value) {
     try {
-        User userObj = repo->getUser(user);
+        User userObj = repo->getUser(userId);
         if (field == "name") {
             userObj.setName(value);
         } else if (field == "role") {

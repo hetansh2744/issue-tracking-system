@@ -19,6 +19,7 @@ class IssueRepository {
   virtual std::vector<Issue> listIssues() const = 0;
   virtual std::vector<Issue> findIssues(
       std::function<bool(const Issue&)> criteria) const = 0;
+  virtual std::vector<Issue> findIssues(const std::string& userId) const;
 
   // == Comments ===
   virtual Comment getComment(int commentId) const = 0;
@@ -26,9 +27,10 @@ class IssueRepository {
   virtual bool deleteComment(int commentId) = 0;
 
   // === Users ===
-  virtual User getUser(int userId) const = 0;
+  virtual User getUser(const std::string& userId) const = 0;
   virtual User saveUser(const User& user) = 0;
-  virtual bool deleteUser(int userId) = 0;
+  virtual bool deleteUser(const std::string& userId) = 0;
+  virtual std::vector<User> listAllUsers() const = 0;
 
   virtual ~IssueRepository() = default;
 };

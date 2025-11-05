@@ -111,15 +111,39 @@ void IssueTrackerView::deleteIssue() {
 }
 
 void IssueTrackerView::listIssues() {
-    std::vector<Issue> issues = controller->listAllIssues();
-    std::cout << "All Issues";
-    for (const auto& i : issues) {
-        std::cout << "ID:" << i.id <<std::endl;
-        std::cout << "Title:" << i.title <<std::endl;
-        std::cout << "Description:" << i.description <<std::endl;
-        std::cout << "Assigned To:" << i.assignedTo <<std::endl;
-        std::cout << "Comments:" << i.commentIds.size() <<std::endl;
+  std::vector<Issue> issues = controller->listAllIssues();
+  if (issues.empty()) {
+    std::cout << "No issues found.\n";
+    return;
+  }
+
+  std::cout << "\n--- All Issues ---\n";
+  for (const auto& issue : issues) {
+    std::cout << "ID: " << issue.getId() << "\n";
+    std::cout << "Author: " << issue.getAuthorId() << "\n";
+    std::cout << "Title: " << issue.getTitle() << "\n";
+
+    if (issue.hasDescriptionComment()) {
+      const Comment* desc =
+          issue.findCommentById(issue.getDescriptionCommentId());
+      if (desc) {
+        std::cout << "Description: " << desc->getText() << "\n";
+      } else {
+        std::cout << "Description comment ID: "
+                  << issue.getDescriptionCommentId() << "\n";
+      }
+    } else {
+      std::cout << "Description: (none)\n";
     }
+
+    if (issue.hasAssignee()) {
+      std::cout << "Assigned To: " << issue.getAssignedTo() << "\n";
+    } else {
+      std::cout << "Assigned To: (unassigned)\n";
+    }
+
+    std::cout << "Comments:" << issue.getCommentIds().size() << "\n\n";
+  }
 }
 
 void IssueTrackerView::findIssuesByUser() {
@@ -129,7 +153,7 @@ void IssueTrackerView::findIssuesByUser() {
 
     std::vector<Issue> issues = controller->findIssuesByUserId(userId);
     for (const auto& i : issues) {
-        std::cout << "ID: " << i.id << " | Title: " << i.title << "\n";
+        std::cout << "ID: " << i.getId() << " | Title: " << i.getTitle() << "\n";
     }
 }
 
@@ -145,7 +169,7 @@ void IssueTrackerView::addComment() {
     std::getline(std::cin, text);
 
     Comment c = controller->addCommentToIssue(issueId, text, authorId);
-    if (c.text.empty())
+    if (c.getText().empty())
         std::cout << "Failed to add comment.\n";
     else
         std::cout << "Comment added successfully.\n";
@@ -177,26 +201,31 @@ void IssueTrackerView::createUser() {
     std::string name;
     std::cout << "Enter username: ";
     std::getline(std::cin, name);
-
-    User u = controller->createUser(name);
-    if (u.name.empty())
+    User u = controller->createUser(name, ""); //! Temp added "" until roles are added
+    if (u.getName().empty())
         std::cout << "Failed to create user.\n";
     else
-        std::cout << "User created: " << u.name << "\n";
+        std::cout << "User created: " << u.getName() << "\n";
 }
 
 void IssueTrackerView::listUsers() {
-    std::vector<User> users = controller->listAllUsers();
-    std::cout << "\n--- All Users ---\n";
-    for (const auto& u : users)
-        std::cout << "User ID: " << u.id << " | Name: " << u.name << "\n";
+  std::vector<User> users = controller->listAllUsers();
+  std::cout << "\n--- All Users ---\n";
+  if (users.empty()) {
+    std::cout << "No users found.\n";
+    return;
+  }
+  for (auto user : users)
+    std::cout << "Name: " << user.getName() << " | Role: " << user.getRole()
+              << "\n";
 }
 
 void IssueTrackerView::removeUser() {
-    std::string userId;
-    std::cout << "Enter User ID to remove: ";
-    std::getline(std::cin, userId);
-    controller->removeUser(userId);
+  std::string userId;
+  std::cout << "Enter User ID to remove: ";
+  std::getline(std::cin, userId);
+  bool success = controller->removeUser(userId);
+  std::cout << (success ? "User removed.\n" : "Failed to remove user.\n");
 }
 
 void IssueTrackerView:: updateUser() {
