@@ -5,20 +5,23 @@
 class MockIssueRepository : public IssueRepository {
  public:
     MOCK_METHOD(Issue, saveIssue, (const Issue& issue), (override));
-    MOCK_METHOD(Issue, getIssue, (int id), (override));
+    MOCK_METHOD(Issue, getIssue, (int id), (const, override));
     MOCK_METHOD(bool, deleteIssue, (int id), (override));
-    MOCK_METHOD(std::vector<Issue>, listIssues, (), (override));
+    MOCK_METHOD(std::vector<Issue>, listIssues, (), (const, override));
     MOCK_METHOD(std::vector<Issue>, findIssues,
-        (std::function<bool(const Issue&)> criteria), (override));
+        (std::function<bool(const Issue&)> criteria), (const, override));
+    MOCK_METHOD(std::vector<Issue>, findIssues,
+        (const std::string& userId), (const, override));
+    MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
     MOCK_METHOD(Comment, saveComment, (const Comment& comment), (override));
-    MOCK_METHOD(Comment, getComment, (int id), (override));
+    MOCK_METHOD(Comment, getComment, (int id), (const, override));
     MOCK_METHOD(bool, deleteComment, (int id), (override));
 
     MOCK_METHOD(User, saveUser, (const User& user), (override));
-    MOCK_METHOD(User, getUser, (const std::string& id), (override));
+    MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
     MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
-    MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
+    MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
 };
 
 TEST(IssueTrackerControllerTest, CreateIssueValid) {
@@ -191,7 +194,7 @@ TEST(IssueTrackerControllerTest, FindIssuesByUserId) {
     MockIssueRepository mockRepo;
     std::vector<Issue> issues = { Issue(1, "u1", "t1", 0) };
 
-    EXPECT_CALL(mockRepo, findIssues(testing::_))
+    EXPECT_CALL(mockRepo, findIssues("u1"))
         .WillOnce(testing::Return(issues));
 
     IssueTrackerController controller(&mockRepo);
@@ -218,7 +221,7 @@ TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
     IssueTrackerController controller(&mockRepo);
     Comment result = controller.addCommentToIssue(1, "text", "author");
 
-    EXPECT_EQ(result.getAuthorId(), "author");
+    EXPECT_EQ(result.getAuthor(), "author");
 }
 
 TEST(IssueTrackerControllerTest, AddCommentToIssueEmptyText) {
@@ -251,7 +254,7 @@ TEST(IssueTrackerControllerTest, UpdateCommentSuccess) {
         .Times(1);
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.updateComment(1, 1, "newText");
+    bool result = controller.updateComment(1, "newText");
 
     EXPECT_TRUE(result);
 }
@@ -263,7 +266,7 @@ TEST(IssueTrackerControllerTest, UpdateCommentThrows) {
         .WillOnce(testing::Throw(std::invalid_argument("Not found")));
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.updateComment(1, 1, "text");
+    bool result = controller.updateComment(1, "text");
 
     EXPECT_FALSE(result);
 }
@@ -277,13 +280,13 @@ TEST(IssueTrackerControllerTest, DeleteCommentSuccess) {
         .WillOnce(testing::Return(comment));
     EXPECT_CALL(mockRepo, deleteComment(5))
         .WillOnce(testing::Return(true));
-    EXPECT_CALL(mockRepo, getIssue(1))
+    EXPECT_CALL(mockRepo, getIssue(5))
         .WillOnce(testing::Return(issue));
     EXPECT_CALL(mockRepo, saveIssue(testing::_))
         .Times(1);
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.deleteComment(1, 5);
+    bool result = controller.deleteComment(5);
 
     EXPECT_TRUE(result);
 }
@@ -295,7 +298,7 @@ TEST(IssueTrackerControllerTest, DeleteCommentThrows) {
         .WillOnce(testing::Throw(std::invalid_argument("Not found")));
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.deleteComment(1, 5);
+    bool result = controller.deleteComment(5);
 
     EXPECT_FALSE(result);
 }
@@ -384,4 +387,17 @@ TEST(IssueTrackerControllerTest, ListAllUsers) {
     std::vector<User> result = controller.listAllUsers();
 
     EXPECT_EQ(result.size(), 2);
+}
+
+TEST(IssueTrackerControllerTest, ListAllUnassignedIssues) {
+    MockIssueRepository mockRepo;
+    std::vector<Issue> issues = { Issue(1, "u1", "t1", 0) };
+
+    EXPECT_CALL(mockRepo, listAllUnassigned())
+        .WillOnce(testing::Return(issues));
+
+    IssueTrackerController controller(&mockRepo);
+    std::vector<Issue> result = controller.listAllUnassignedIssues();
+
+    EXPECT_EQ(result.size(), 1);
 }
