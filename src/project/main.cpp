@@ -4,7 +4,7 @@
 
 int main() {
     auto repo = createIssueRepository();
-    IssueTrackerController controller(repo.get());
+    IssueTrackerController controller(repo);
     IssueTrackerView view(&controller);
     view.run();
     return 0;
