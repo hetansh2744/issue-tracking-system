@@ -1,7 +1,16 @@
 #include "gtest/gtest.h"
+#include <algorithm>
+#include <iterator>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
+#include "Comment.hpp"
+#include "Issue.hpp"
 #include "IssueRepository.hpp"
+#include "User.hpp"
 
 IssueRepository* createIssueRepository();
+class InMemoryIssueRepository;
 
 namespace {
 
@@ -211,12 +220,12 @@ TEST_F(InMemoryIssueRepositoryTest, HydrateIssue_HandlesMissingComment) {
     Comment c = repo->saveComment(
         issue1.getId(), Comment(0, testUser.getName(), "To be orphaned", 0));
 
-    // We assume the type InMemoryIssueRepository is available via linking now.
+    class InMemoryIssueRepository;
+
     InMemoryIssueRepository* impl =
         dynamic_cast<InMemoryIssueRepository*>(repo.get());
     ASSERT_TRUE(impl != nullptr);
 
-    // We access the underlying map directly for this specific test case
     impl->comments_.erase(c.getId());
 
     Issue fetched = repo->getIssue(issue1.getId());
