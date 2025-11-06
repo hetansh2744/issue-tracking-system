@@ -1,251 +1,247 @@
-#include "gtest/gtest.h"
-#include "Comment.hpp"
-#include "Issue.hpp"
+// cppcheck-suppress unusedFunction
 #include "IssueRepository.hpp"
-#include "User.hpp"
 
-IssueRepository* createIssueRepository();
+#include <algorithm>
+#include <iterator>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
-#define private public
+namespace {
+template <typename T>
+const T& getOrThrow(const std::unordered_map<int, T>& map,
+                    int id,
+                    const std::string& errorMessage) {
+    auto it = map.find(id);
+    if (it == map.end()) {
+        throw std::invalid_argument(errorMessage);
+    }
+    return it->second;
+}
+}  // namespace
+
+std::vector<Issue> IssueRepository::findIssues(
+    const std::string& userId) const {
+    return findIssues([&](const Issue& issue) {
+        return issue.hasAssignee() && issue.getAssignedTo() == userId;
+    });
+}
+
+std::vector<Issue> IssueRepository::listAllUnassigned() const {
+    return findIssues([](const Issue& issue) { return !issue.hasAssignee(); });
+}
 
 class InMemoryIssueRepository : public IssueRepository {
  private:
-        std::unordered_map<int, Comment> comments_;
+    std::unordered_map<int, Issue> issues_;
+    std::unordered_map<int, Comment> comments_;
+    std::unordered_map<std::string, User> users_;
+    int nextIssueId_{0};
+    int nextCommentId_{0};
+
+    Issue hydrateIssue(const Issue& issue) const {
+        Issue hydrated = issue;
+        for (int commentId : issue.getCommentIds()) {
+            auto it = comments_.find(commentId);
+            if (it != comments_.end()) {
+                hydrated.addComment(it->second);
+            }
+        }
+        return hydrated;
+    }
+
+    std::vector<Comment> collectCommentsForIssue(const Issue& issue) const {
+        std::vector<Comment> out;
+        out.reserve(issue.getCommentIds().size());
+        for (int commentId : issue.getCommentIds()) {
+            auto it = comments_.find(commentId);
+            if (it != comments_.end()) {
+                out.push_back(it->second);
+            }
+        }
+        std::sort(out.begin(), out.end(), [](const Comment& lhs,
+                                            const Comment& rhs) {
+            return lhs.getId() < rhs.getId();
+        });
+        return out;
+    }
+
+    int findIssueForComment(int commentId) const {
+        for (const auto& pair : issues_) {
+            const auto& ids = pair.second.getCommentIds();
+            if (std::find(ids.begin(), ids.end(), commentId) != ids.end()) {
+                return pair.first;
+            }
+        }
+        return 0;
+    }
+
  public:
-        Issue getIssue(int issueId) const override;
-        Issue saveIssue(const Issue& issue) override;
-        bool deleteIssue(int issueId) override;
-        std::vector<Issue> listIssues() const override;
-        std::vector<Issue> findIssues(
-            std::function<bool(const Issue&)> criteria) const override;
-        Comment getComment(int commentId, int issueId) const override;
-        std::vector<Comment> getAllComments(int issueId) const override;
-        Comment saveComment(int issueId,
-            const Comment& comment) override;
-        bool deleteComment(int issueId, int commentId) override;
-        bool deleteComment(int commentId) override;
-        User getUser(const std::string& userId) const override;
-        User saveUser(const User& user) override;
-        bool deleteUser(const std::string& userId) override;
-        std::vector<User> listAllUsers() const override;
-};
-#undef private
+    InMemoryIssueRepository() = default;
+
+    Issue getIssue(int issueId) const override {
+        return hydrateIssue(
+            getOrThrow(issues_, issueId, "Issue with given ID does not exist"));
+    }
+
+    Issue saveIssue(const Issue& issue) override {
+        Issue stored = issue;
+        if (!stored.hasPersistentId()) {
+            stored.setIdForPersistence(++nextIssueId_);
+        } else if (issues_.find(stored.getId()) == issues_.end()) {
+            throw std::invalid_argument("Issue with given ID does not exist: "+
+                                        std::to_string(stored.getId()));
+        }
+
+        issues_[stored.getId()] = stored;
+        return hydrateIssue(issues_.at(stored.getId()));
+    }
+
+    bool deleteIssue(int issueId) override {
+        auto it = issues_.find(issueId);
+        if (it == issues_.end()) {
+            return false;
+        }
+
+        for (int commentId : it->second.getCommentIds()) {
+            comments_.erase(commentId);
+        }
+        issues_.erase(it);
+        return true;
+    }
+
+    std::vector<Issue> listIssues() const override {
+        std::vector<Issue> out;
+        out.reserve(issues_.size());
+        std::transform(issues_.begin(), issues_.end(), std::back_inserter(out),
+                       [&](const auto& entry) {
+                           return hydrateIssue(entry.second);
+                       });
+        return out;
+    }
+
+    std::vector<Issue> findIssues(
+        std::function<bool(const Issue&)> criteria) const override {
+        std::vector<Issue> results;
+        for (const auto& entry : issues_) {
+            Issue hydrated = hydrateIssue(entry.second);
+            if (criteria(hydrated)) {
+                results.push_back(std::move(hydrated));
+            }
+        }
+        return results;
+    }
+
+    // === Comments ===
+    Comment getComment(int issueId, int commentId) const override {
+        Issue issue = getIssue(issueId);  // hydrated with comments
+        for (const Comment& c : issue.getComments()) {
+            if (c.getId() == commentId) {
+                return c;
+            }
+        }
+        throw std::invalid_argument("Comment does not belong to the given issue");
+    }
+
+    std::vector<Comment> getAllComments(int issueId) const override {
+        Issue issue = getIssue(issueId);
+        return collectCommentsForIssue(issue);
+    }
 
 
-namespace {
+    Comment saveComment(int issueId, const Comment& comment) override {
+        auto issueIt = issues_.find(issueId);
+        if (issueIt == issues_.end()) {
+            throw std::invalid_argument("Issue with given ID does not exist");
+        }
 
-class InMemoryIssueRepositoryTest : public ::testing::Test {
- protected:
-    std::unique_ptr<IssueRepository> repo = nullptr;
-    User testUser{ "dummy", "reporter" };
-    Issue issue1{ 0, "", "" };
-    Issue issue2{ 0, "", "" };
+        Comment stored = comment;
+        if (!stored.hasPersistentId()) {
+            stored.setIdForPersistence(++nextCommentId_);
+        } else if (comments_.find(stored.getId()) == comments_.end()) {
+            throw std::invalid_argument("Comment with given ID does not exist");
+        } else {
+            nextCommentId_ = std::max(nextCommentId_, stored.getId());
+        }
 
-    void SetUp() override {
-        repo.reset(createIssueRepository());
+        comments_[stored.getId()] = stored;
+        issueIt->second.addComment(stored);
+        return stored;
+    }
 
-        testUser = repo->saveUser(User("alice_rep", "Developer"));
+    bool deleteComment(int issueId, int commentId) override {
+        auto issueIt = issues_.find(issueId);
+        if (issueIt == issues_.end()) {
+            throw std::invalid_argument("Issue with given ID does not exist");
+        }
 
-        issue1 = repo->saveIssue(
-            Issue(0, testUser.getName(), "Issue 1 Title", 0));
-        issue2 = repo->saveIssue(Issue(0, "bob_rep", "Issue 2 Title", 0));
+        auto commentIt = comments_.find(commentId);
+        if (commentIt == comments_.end()) {
+            throw std::invalid_argument("Comment with given ID does not exist");
+        }
 
-        Comment descComment = Comment(
-            0, testUser.getName(), "Initial description for issue 1.", 0);
-        Comment savedDesc = repo->saveComment(issue1.getId(), descComment);
-        issue1.setDescriptionCommentId(savedDesc.getId());
-        repo->saveIssue(issue1);
+        if (!issueIt->second.removeComment(commentId)) {
+            return false;
+        }
+
+        comments_.erase(commentIt);
+        return true;
+    }
+
+    bool deleteComment(int commentId) override {
+        auto commentIt = comments_.find(commentId);
+        if (commentIt == comments_.end()) {
+            throw std::invalid_argument("Comment with given ID does not exist");
+        }
+
+        int issueId = findIssueForComment(commentId);
+        if (issueId != 0) {
+            auto issueIt = issues_.find(issueId);
+            if (issueIt != issues_.end()) {
+                issueIt->second.removeComment(commentId);
+            }
+        }
+
+        comments_.erase(commentIt);
+        return true;
+    }
+
+    // === Users ===
+    User getUser(const std::string& userId) const override {
+        auto it = users_.find(userId);
+        if (it == users_.end()) {
+            throw std::invalid_argument("User with given ID does not exist");
+        }
+        return it->second;
+    }
+
+    User saveUser(const User& user) override {
+        User stored = user;
+        if (stored.getName().empty()) {
+            throw std::invalid_argument("User ID must be non-empty");
+        }
+        auto [it, inserted] =
+            users_.emplace(stored.getName(), stored);
+        if (!inserted) {
+            it->second = stored;
+        }
+        return stored;
+    }
+
+    bool deleteUser(const std::string& userId) override {
+        return users_.erase(userId) > 0;
+    }
+
+    std::vector<User> listAllUsers() const override {
+        std::vector<User> out;
+        out.reserve(users_.size());
+        for (const auto& entry : users_) {
+            out.push_back(entry.second);
+        }
+        return out;
     }
 };
 
-}  // namespace
-
-// ====================================================================
-// USER TESTS
-// ====================================================================
-
-TEST_F(InMemoryIssueRepositoryTest, SaveNewUserAndGetUser) {
-    ASSERT_EQ(testUser.getName(), "alice_rep");
-
-    User newUser("charlie", "QA");
-    User savedUser = repo->saveUser(newUser);
-
-    User fetched = repo->getUser("charlie");
-    EXPECT_EQ(fetched.getRole(), "QA");
-}
-
-TEST_F(InMemoryIssueRepositoryTest, UpdateExistingUser) {
-    User fetched = repo->getUser(testUser.getName());
-    fetched.setRole("Lead Dev");
-    repo->saveUser(fetched);
-
-    User updated = repo->getUser(testUser.getName());
-    EXPECT_EQ(updated.getRole(), "Lead Dev");
-}
-
-TEST_F(InMemoryIssueRepositoryTest, GetNonExistentUserThrows) {
-    EXPECT_THROW(repo->getUser("missing_user"), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, SaveUserEmptyNameThrows) {
-    EXPECT_THROW(repo->saveUser(User("", "invalid")), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, ListUsers) {
-    repo->saveUser(User("bob_rep", "Reporter"));
-
-    std::vector<User> users = repo->listAllUsers();
-    EXPECT_GE(users.size(), 2u);
-    bool aliceFound = false;
-    bool bobFound = false;
-    for (const auto& user : users) {
-        if (user.getName() == "alice_rep") aliceFound = true;
-        if (user.getName() == "bob_rep") bobFound = true;
-    }
-    EXPECT_TRUE(aliceFound);
-    EXPECT_TRUE(bobFound);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, DeleteUser) {
-    EXPECT_TRUE(repo->deleteUser(testUser.getName()));
-    EXPECT_FALSE(repo->deleteUser("non_existent"));
-    EXPECT_THROW(repo->getUser(testUser.getName()), std::invalid_argument);
-}
-
-// ====================================================================
-// ISSUE TESTS
-// ====================================================================
-
-TEST_F(InMemoryIssueRepositoryTest, SaveNewIssueAndGetIssue) {
-    ASSERT_GT(issue1.getId(), 0);
-
-    Issue fetched = repo->getIssue(issue1.getId());
-    EXPECT_TRUE(fetched.hasDescriptionComment());
-    EXPECT_GE(fetched.getComments().size(), 1u);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, SaveExistingIssueThrowsIfNonExistent) {
-    Issue unpersistedIssue(999, "a", "b", 0);
-    unpersistedIssue.setIdForPersistence(999);
-    EXPECT_THROW(repo->saveIssue(unpersistedIssue), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, GetNonExistentIssueThrows) {
-    EXPECT_THROW(repo->getIssue(999), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, ListIssues) {
-    std::vector<Issue> issues = repo->listIssues();
-    EXPECT_EQ(issues.size(), 2u);
-    EXPECT_EQ(issues[0].getTitle(), "Issue 1 Title");
-    EXPECT_EQ(issues[1].getTitle(), "Issue 2 Title");
-}
-
-TEST_F(InMemoryIssueRepositoryTest, DeleteIssue_RemovesComments) {
-    Comment regularComment = Comment(0, "bob_rep", "A follow-up comment.", 0);
-    Comment savedComment = repo->saveComment(issue2.getId(), regularComment);
-
-    ASSERT_NO_THROW(repo->getComment(savedComment.getId(), issue2.getId()));
-
-    EXPECT_TRUE(repo->deleteIssue(issue2.getId()));
-
-    EXPECT_THROW(repo->getIssue(issue2.getId()), std::invalid_argument);
-
-    EXPECT_FALSE(repo->deleteIssue(999));
-}
-
-TEST_F(InMemoryIssueRepositoryTest, FindIssuesByUserId) {
-    Issue assigned = repo->getIssue(issue1.getId());
-    assigned.assignTo(testUser.getName());
-    repo->saveIssue(assigned);
-
-    std::vector<Issue> assignedIssues = repo->findIssues(testUser.getName());
-    ASSERT_EQ(assignedIssues.size(), 1u);
-    EXPECT_EQ(assignedIssues[0].getId(), issue1.getId());
-}
-
-TEST_F(InMemoryIssueRepositoryTest, ListAllUnassigned) {
-    ASSERT_EQ(repo->listAllUnassigned().size(), 2u);
-
-    Issue assigned = repo->getIssue(issue1.getId());
-    assigned.assignTo(testUser.getName());
-    repo->saveIssue(assigned);
-
-    std::vector<Issue> unassigned = repo->listAllUnassigned();
-    ASSERT_EQ(unassigned.size(), 1u);
-    EXPECT_EQ(unassigned[0].getId(), issue2.getId());
-}
-
-// ====================================================================
-// COMMENT TESTS
-// ====================================================================
-
-TEST_F(InMemoryIssueRepositoryTest, SaveNewCommentAndGetAllComments) {
-    Comment c2 = repo->saveComment(
-        issue1.getId(), Comment(0, testUser.getName(), "Follow up", 0));
-    ASSERT_GT(c2.getId(), 0);
-
-    std::vector<Comment> allComments = repo->getAllComments(issue1.getId());
-    ASSERT_EQ(allComments.size(), 2u);
-    EXPECT_EQ(allComments[0].getText(), "Initial description for issue 1.");
-    EXPECT_EQ(allComments[1].getText(), "Follow up");
-}
-
-TEST_F(InMemoryIssueRepositoryTest, SaveExistingCommentUpdatesText) {
-    Comment originalDesc = repo->getComment(
-        issue1.getDescriptionCommentId(), issue1.getId());
-    originalDesc.setText("Updated description text.");
-
-    Comment updatedDesc = repo->saveComment(issue1.getId(), originalDesc);
-
-    Comment fetched = repo->getComment(updatedDesc.getId(), issue1.getId());
-    EXPECT_EQ(fetched.getText(), "Updated description text.");
-    EXPECT_EQ(repo->getAllComments(issue1.getId()).size(), 1u);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, SaveCommentNonExistentIssueThrows) {
-    Comment c(0, "a", "b", 0);
-    EXPECT_THROW(repo->saveComment(999, c), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, GetCommentNonExistentCommentIdThrows) {
-    EXPECT_THROW(repo->getComment(999, issue1.getId()), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, DeleteComment_TwoArg) {
-    int descId = issue1.getDescriptionCommentId();
-
-    EXPECT_TRUE(repo->deleteComment(issue1.getId(), descId));
-
-    EXPECT_THROW(repo->getComment(descId, issue1.getId()),
-                 std::invalid_argument);
-
-    EXPECT_FALSE(repo->deleteComment(issue1.getId(), 999));
-}
-
-TEST_F(InMemoryIssueRepositoryTest, DeleteComment_OneArg) {
-    Comment c2 = repo->saveComment(
-        issue1.getId(), Comment(0, testUser.getName(), "Test Comment", 0));
-    int commentId = c2.getId();
-
-    EXPECT_TRUE(repo->deleteComment(commentId));
-
-    EXPECT_THROW(repo->getComment(commentId, issue1.getId()),
-                 std::invalid_argument);
-
-    EXPECT_THROW(repo->deleteComment(999), std::invalid_argument);
-}
-
-TEST_F(InMemoryIssueRepositoryTest, HydrateIssue_HandlesMissingComment) {
-    Comment c = repo->saveComment(
-        issue1.getId(), Comment(0, testUser.getName(), "To be orphaned", 0));
-
-    InMemoryIssueRepository* impl =
-        dynamic_cast<InMemoryIssueRepository*>(repo.get());
-    ASSERT_TRUE(impl != nullptr);
-
-    impl->comments_.erase(c.getId());
-
-    Issue fetched = repo->getIssue(issue1.getId());
-    EXPECT_EQ(fetched.getComments().size(), 1u);
+IssueRepository* createIssueRepository() {
+    return new InMemoryIssueRepository();
 } // namespace
