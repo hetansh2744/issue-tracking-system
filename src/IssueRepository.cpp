@@ -104,14 +104,6 @@ class InMemoryIssueRepository : public IssueRepository {
   }
 
   // === Comments ===
-  Comment getComment(int commentId) const override {
-    auto it = comments_.find(commentId);
-    if (it == comments_.end()) {
-      throw std::invalid_argument("Comment with given ID does not exist");
-    }
-    return it->second;
-  }
-
   // All comments for an issue
   std::vector<Comment> getAllComments(int issueId) const override {
     // validate issue existence
@@ -131,7 +123,7 @@ class InMemoryIssueRepository : public IssueRepository {
   }
 
   // Specific comment scoped by issue
-  std::vector<Comment> getComments(int issueId, int commentId) const override {
+  std::vector<Comment> getComment(int issueId, int commentId) const override {
     // validate issue existence
     (void)getIssue(issueId);
     auto mapIt = commentToIssue_.find(commentId);
