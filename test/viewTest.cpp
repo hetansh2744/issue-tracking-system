@@ -5,7 +5,7 @@
 #include "IssueTrackerController.hpp"
 #include "User.hpp"
 
-IssueRepository* createIssueRepository(); 
+IssueRepository* createIssueRepository();
 
 namespace {
 
