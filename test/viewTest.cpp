@@ -5,9 +5,9 @@
 #include "IssueTrackerController.hpp"
 #include "User.hpp"
 
-namespace {
+IssueRepository* createIssueRepository(); 
 
-IssueRepository* createIssueRepository();
+namespace {
 
 class ControllerWithRepoTest : public ::testing::Test {
  protected:
