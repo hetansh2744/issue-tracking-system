@@ -353,7 +353,9 @@ void IssueTrackerView:: displayIssue(int id){
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n"; 
     for(auto it : comments){
-      std::cout << it.getText();
+      int i = 2;
+      std::cout << i <<it.getText() << std::endl;
+      i++;
     }
 }
 
@@ -378,6 +380,7 @@ void IssueTrackerView::addComment() {
     std::cout << "Enter Issue ID: ";
     std::cin >> issueId;
     std::cin.ignore();
+    displayIssue(issueId);
     std::cout << "Enter Author ID: ";
     std::getline(std::cin, authorId);
     std::cout << "Enter comment text: ";
@@ -396,6 +399,7 @@ void IssueTrackerView::updateComment() {
     int issueid;
     std::cout << "Enter Issue ID: ";
     std::cin >> issueid;
+    displayIssue(issueid);
     std::cout << "Enter Comment ID: ";
     std::cin >> id;
     std::cin.ignore();
@@ -412,6 +416,7 @@ void IssueTrackerView::deleteComment() {
     listIssues();
     std::cout << "Enter Issue ID: ";
     std::cin >> id;
+    displayIssue(id);
     controller->getIssue(id);
     displayIssue(id);
     std::cout << "Enter Comment ID: ";
