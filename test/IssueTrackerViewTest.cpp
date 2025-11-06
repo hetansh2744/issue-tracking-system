@@ -1,0 +1,414 @@
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <sstream>
+#include <iostream>
+
+#include "IssueTrackerView.hpp"
+
+using ::testing::_;
+using ::testing::Return;
+using ::testing::NiceMock;
+
+class MockIssueTrackerController : public IssueTrackerController {
+ public:
+  MOCK_METHOD(Issue, createIssue,
+              (const std::string& title, const std::string& description,
+               const std::string& authorId),
+              (override));
+  MOCK_METHOD(bool, updateIssueField,
+              (int issueId, const std::string& field,
+               const std::string& value),
+              (override));
+  MOCK_METHOD(bool, assignUserToIssue, (int issueId, const std::string& userId),
+              (override));
+  MOCK_METHOD(bool, unassignUserFromIssue, (int issueId), (override));
+  MOCK_METHOD(bool, deleteIssue, (int issueId), (override));
+  MOCK_METHOD(std::vector<Issue>, listAllIssues, (), (override));
+  MOCK_METHOD(std::vector<Issue>, listAllUnassignedIssues, (), (override));
+  MOCK_METHOD(std::vector<Issue>, findIssuesByUserId,
+              (const std::string& userId), (override));
+  MOCK_METHOD(Comment, addCommentToIssue,
+              (int issueId, const std::string& text,
+               const std::string& authorId),
+              (override));
+  MOCK_METHOD(bool, updateComment,
+              (int issueId, int commentId, const std::string& text),
+              (override));
+  MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override));
+  MOCK_METHOD(User, createUser,
+              (const std::string& name, const std::string& role), (override));
+  MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
+  MOCK_METHOD(bool, removeUser, (const std::string& userId), (override));
+  MOCK_METHOD(bool, updateUser,
+              (const std::string& userId, const std::string& field,
+               const std::string& value),
+              (override));
+  MOCK_METHOD(Issue, getIssue, (int issueId), (override));
+  MOCK_METHOD(std::vector<Comment>, getallComments, (int issueId), (override));
+};
+
+class IssueTrackerViewTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    mockController = std::make_unique<NiceMock<MockIssueTrackerController>>();
+    view = std::make_unique<IssueTrackerView>(mockController.get());
+
+    originalCoutBuffer = std::cout.rdbuf();
+    std::cout.rdbuf(outputStream.rdbuf());
+  }
+
+  void TearDown() override {
+    std::cout.rdbuf(originalCoutBuffer);
+  }
+
+  void simulateUserInput(const std::string& input) {
+    std::istringstream inputStream(input);
+    std::cin.rdbuf(inputStream.rdbuf());
+  }
+
+  void clearOutputStream() {
+    outputStream.str("");
+    outputStream.clear();
+  }
+
+  std::string getOutput() {
+    return outputStream.str();
+  }
+
+  std::unique_ptr<NiceMock<MockIssueTrackerController>> mockController;
+  std::unique_ptr<IssueTrackerView> view;
+  std::stringstream outputStream;
+  std::streambuf* originalCoutBuffer;
+};
+
+TEST_F(IssueTrackerViewTest, DisplayMenuShowsAllOptions) {
+  view->displayMenu();
+  std::string output = getOutput();
+
+  EXPECT_THAT(output, testing::HasSubstr("Create Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Update Issue Field"));
+  EXPECT_THAT(output, testing::HasSubstr("Assign User to Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Unassign User from Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Delete Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("List All Issues"));
+  EXPECT_THAT(output, testing::HasSubstr("Find Issues by User ID"));
+  EXPECT_THAT(output, testing::HasSubstr("Add Comment to Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Update Comment"));
+  EXPECT_THAT(output, testing::HasSubstr("Delete Comment"));
+  EXPECT_THAT(output, testing::HasSubstr("Create User"));
+  EXPECT_THAT(output, testing::HasSubstr("List All Users"));
+  EXPECT_THAT(output, testing::HasSubstr("Remove User"));
+  EXPECT_THAT(output, testing::HasSubstr("Update User"));
+  EXPECT_THAT(output, testing::HasSubstr("List Unassigned Issues"));
+  EXPECT_THAT(output, testing::HasSubstr("Exit"));
+}
+
+TEST_F(IssueTrackerViewTest, GetValidIntValidInput) {
+  simulateUserInput("3\n");
+  int result = view->getvalidInt(5);
+  EXPECT_EQ(result, 3);
+}
+
+TEST_F(IssueTrackerViewTest, GetValidIntInvalidThenValidInput) {
+  simulateUserInput("10\n3\n");
+  int result = view->getvalidInt(5);
+  EXPECT_EQ(result, 3);
+}
+
+TEST_F(IssueTrackerViewTest, GetValidIntNonNumericThenValidInput) {
+  simulateUserInput("abc\n2\n");
+  int result = view->getvalidInt(5);
+  EXPECT_EQ(result, 2);
+}
+
+TEST_F(IssueTrackerViewTest, GetUserIdWithExistingUsers) {
+  std::vector<User> users = {User("user1", "Developer"),
+                             User("user2", "Owner")};
+  EXPECT_CALL(*mockController, listAllUsers())
+      .WillOnce(Return(users));
+
+  simulateUserInput("1\n");
+  std::string result = view->getuserId();
+  EXPECT_EQ(result, "user1");
+}
+
+TEST_F(IssueTrackerViewTest, GetIssueIdWithExistingIssues) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Issue 1"),
+                               Issue(2, "author2", "Issue 2")};
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+
+  simulateUserInput("1\n");
+  int result = view->getissueId();
+  EXPECT_EQ(result, 1);
+}
+
+TEST_F(IssueTrackerViewTest, GetIssueIdWithNoIssues) {
+  std::vector<Issue> issues;
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+
+  int result = view->getissueId();
+  EXPECT_EQ(result, -1);
+}
+
+TEST_F(IssueTrackerViewTest, CreateIssueSuccess) {
+  EXPECT_CALL(*mockController, listAllUsers())
+      .WillOnce(Return(std::vector<User>{User("testuser", "Developer")}));
+
+  Issue expectedIssue(1, "testuser", "Test Title");
+  EXPECT_CALL(*mockController, createIssue("Test Title", "Test Description",
+                                           "testuser"))
+      .WillOnce(Return(expectedIssue));
+
+  simulateUserInput("Test Title\nTest Description\n1\n");
+  view->createIssue();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Issue assigned to user: testuser"));
+}
+
+TEST_F(IssueTrackerViewTest, CreateIssueEmptyTitleRetries) {
+  EXPECT_CALL(*mockController, listAllUsers())
+      .WillOnce(Return(std::vector<User>{User("testuser", "Developer")}));
+
+  Issue expectedIssue(1, "testuser", "Valid Title");
+  EXPECT_CALL(*mockController, createIssue("Valid Title", "Test Description",
+                                           "testuser"))
+      .WillOnce(Return(expectedIssue));
+
+  simulateUserInput("\nValid Title\nTest Description\n1\n");
+  view->createIssue();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Title cannot be empty"));
+}
+
+TEST_F(IssueTrackerViewTest, UpdateIssueTitleSuccess) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Old Title")};
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+  EXPECT_CALL(*mockController, updateIssueField(1, "title", "New Title"))
+      .WillOnce(Return(true));
+
+  simulateUserInput("1\n1\nNew Title\n");
+  view->updateIssue();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Updated successfully"));
+}
+
+TEST_F(IssueTrackerViewTest, UpdateIssueDescriptionSuccess) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+  EXPECT_CALL(*mockController, updateIssueField(1, "description", "New Desc"))
+      .WillOnce(Return(true));
+
+  simulateUserInput("1\n2\nNew Desc\n");
+  view->updateIssue();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Updated successfully"));
+}
+
+TEST_F(IssueTrackerViewTest, AssignUserSuccess) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
+  std::vector<User> users = {User("user1", "Developer")};
+
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+  EXPECT_CALL(*mockController, listAllUsers())
+      .WillOnce(Return(users));
+  EXPECT_CALL(*mockController, assignUserToIssue(1, "user1"))
+      .WillOnce(Return(true));
+
+  simulateUserInput("1\n1\n");
+  view->assignUser();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("User assigned"));
+}
+
+TEST_F(IssueTrackerViewTest, UnassignUserSuccess) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+  EXPECT_CALL(*mockController, unassignUserFromIssue(1))
+      .WillOnce(Return(true));
+
+  simulateUserInput("1\n");
+  view->unassignUser();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("User unassigned"));
+}
+
+TEST_F(IssueTrackerViewTest, DeleteIssueSuccess) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+  EXPECT_CALL(*mockController, deleteIssue(1))
+      .WillOnce(Return(true));
+
+  simulateUserInput("1\n");
+  view->deleteIssue();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Deleted successfully"));
+}
+
+TEST_F(IssueTrackerViewTest, ListIssuesWithResults) {
+  std::vector<Issue> issues = {
+      Issue(1, "author1", "Issue 1"),
+      Issue(2, "author2", "Issue 2")};
+
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+
+  view->listIssues();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("All Issues"));
+  EXPECT_THAT(output, testing::HasSubstr("Issue 1"));
+  EXPECT_THAT(output, testing::HasSubstr("Issue 2"));
+}
+
+TEST_F(IssueTrackerViewTest, ListIssuesEmpty) {
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(std::vector<Issue>{}));
+
+  view->listIssues();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("No issues found"));
+}
+
+TEST_F(IssueTrackerViewTest, ListUnassignedIssuesWithResults) {
+  Issue unassignedIssue(1, "author1", "Unassigned");
+  std::vector<Issue> issues = {unassignedIssue};
+
+  EXPECT_CALL(*mockController, listAllUnassignedIssues())
+      .WillOnce(Return(issues));
+
+  view->listUnassignedIssues();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Unassigned Issues"));
+  EXPECT_THAT(output, testing::HasSubstr("Unassigned"));
+}
+
+TEST_F(IssueTrackerViewTest, FindIssuesByUser) {
+  std::vector<Issue> issues = {Issue(1, "user1", "User1 Issue")};
+  EXPECT_CALL(*mockController, findIssuesByUserId("user1"))
+      .WillOnce(Return(issues));
+
+  simulateUserInput("user1\n");
+  view->findIssuesByUser();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("User1 Issue"));
+}
+
+TEST_F(IssueTrackerViewTest, CreateUserSuccess) {
+  User expectedUser("newuser", "Developer");
+  EXPECT_CALL(*mockController, createUser("newuser", "Developer"))
+      .WillOnce(Return(expectedUser));
+
+  simulateUserInput("newuser\n2\n");
+  view->createUser();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("User created: newuser"));
+}
+
+TEST_F(IssueTrackerViewTest, CreateUserEmptyNameRetries) {
+  User expectedUser("validuser", "Developer");
+  EXPECT_CALL(*mockController, createUser("validuser", "Developer"))
+      .WillOnce(Return(expectedUser));
+
+  simulateUserInput("\nvaliduser\n2\n");
+  view->createUser();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Username cannot be empty"));
+}
+
+TEST_F(IssueTrackerViewTest, ListUsersWithResults) {
+  std::vector<User> users = {
+      User("user1", "Developer"),
+      User("user2", "Owner")};
+
+  EXPECT_CALL(*mockController, listAllUsers())
+      .WillOnce(Return(users));
+
+  view->listUsers();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("All Users"));
+  EXPECT_THAT(output, testing::HasSubstr("user1"));
+  EXPECT_THAT(output, testing::HasSubstr("user2"));
+}
+
+TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
+  EXPECT_CALL(*mockController, removeUser("olduser"))
+      .WillOnce(Return(true));
+
+  simulateUserInput("olduser\n");
+  view->removeUser();
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("User removed"));
+}
+
+TEST_F(IssueTrackerViewTest, UpdateUserNameSuccess) {
+  EXPECT_CALL(*mockController, updateUser("olduser", "name", "newuser"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mockController, removeUser("olduser"))
+      .WillOnce(Return(true));
+
+  simulateUserInput("1\nolduser\nnewuser\n");
+  view->updateUser();
+}
+
+TEST_F(IssueTrackerViewTest, AddCommentToIssueSuccess) {
+  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
+  std::vector<User> users = {User("user1", "Developer")};
+  Comment expectedComment(1, "user1", "Test comment");
+
+  EXPECT_CALL(*mockController, listAllIssues())
+      .WillOnce(Return(issues));
+  EXPECT_CALL(*mockController, getIssue(1))
+      .WillOnce(Return(issues[0]));
+  EXPECT_CALL(*mockController, getallComments(1))
+      .WillOnce(Return(std::vector<Comment>{}));
+  EXPECT_CALL(*mockController, listAllUsers())
+      .WillOnce(Return(users));
+  EXPECT_CALL(*mockController, addCommentToIssue(1, "Test comment", "user1"))
+      .WillOnce(Return(expectedComment));
+
+  simulateUserInput("1\nTest comment\n1\n");
+  view->addComIssue();
+
+  SUCCEED();
+}
+
+TEST_F(IssueTrackerViewTest, DisplayIssueShowsDetails) {
+  Issue testIssue(1, "author1", "Test Title");
+  testIssue.setDescriptionCommentId(2);
+  testIssue.assignTo("user1");
+
+  std::vector<Comment> comments = {Comment(2, "author1", "Description text")};
+
+  EXPECT_CALL(*mockController, getIssue(1))
+      .WillOnce(Return(testIssue));
+  EXPECT_CALL(*mockController, getallComments(1))
+      .WillOnce(Return(comments));
+
+  view->displayIssue(1);
+
+  std::string output = getOutput();
+  EXPECT_THAT(output, testing::HasSubstr("Test Title"));
+  EXPECT_THAT(output, testing::HasSubstr("author1"));
+  EXPECT_THAT(output, testing::HasSubstr("Description text"));
+}
