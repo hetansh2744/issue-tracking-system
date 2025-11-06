@@ -35,7 +35,7 @@ IssueRepository* repo;
     
     virtual std::vector<Comment> getallComments(int issueId);
 
-    virtual std::vector<Comment> getComment(int issueId, int commentId);
+    virtual Comment getComment(int issueId, int commentId);
 
     virtual Comment addCommentToIssue(int issueId, const std::string& text,
         const std::string& authorId);
