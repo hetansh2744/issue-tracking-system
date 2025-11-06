@@ -5,7 +5,32 @@
 #include "User.hpp"
 
 IssueRepository* createIssueRepository();
-class InMemoryIssueRepository;
+
+#define private public
+
+class InMemoryIssueRepository : public IssueRepository {
+    private:
+        std::unordered_map<int, Comment> comments_;
+    public:
+        virtual Issue getIssue(int issueId) const override;
+        virtual Issue saveIssue(const Issue& issue) override;
+        virtual bool deleteIssue(int issueId) override;
+        virtual std::vector<Issue> listIssues() const override;
+        virtual std::vector<Issue> findIssues(
+            std::function<bool(const Issue&)> criteria) const override;
+        virtual Comment getComment(int commentId, int issueId) const override;
+        virtual std::vector<Comment> getAllComments(int issueId) const override;
+        virtual Comment saveComment(int issueId,
+            const Comment& comment) override;
+        virtual bool deleteComment(int issueId, int commentId) override;
+        virtual bool deleteComment(int commentId) override;
+        virtual User getUser(const std::string& userId) const override;
+        virtual User saveUser(const User& user) override;
+        virtual bool deleteUser(const std::string& userId) override;
+        virtual std::vector<User> listAllUsers() const override;
+};
+#undef private
+
 
 namespace {
 
