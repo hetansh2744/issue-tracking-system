@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <limits>
 
 #include "IssueTrackerController.hpp"
 
@@ -24,6 +25,10 @@ class IssueTrackerView {
     void listUsers();
     void removeUser();
     void updateUser();
+    std::string getuserId();
+    int getissueId();
+    int getvalidInt(int bound);
+
  public:
     // Constructor: takes a pointer to the controller
     explicit IssueTrackerView(IssueTrackerController* controller);

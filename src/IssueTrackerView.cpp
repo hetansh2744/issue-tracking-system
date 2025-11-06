@@ -228,8 +228,17 @@ void IssueTrackerView::createUser() {
     std::string role;
     std::cout << "Enter username: ";
     std::getline(std::cin, name);
-    std::cout << "Enter role: ";
-    std::getline(std::cin, role);
+    int num_of_roles = 3;
+    std::cout << "1)Owner\n 2)\n Developer\n 3)Maintainer\n" <<
+    "Enter role: ";
+
+    int userinput = getvalidInt(num_of_roles)
+    switch (userinput) {
+        case 1: role = "Owner"; break;
+        case 2: role = "Developer"; break;
+        case 3: role = "Maintainer"; break;
+    }
+    
     User u = controller->createUser(name, role);
     if (u.getName().empty())
         std::cout << "Failed to create user.\n";
@@ -264,4 +273,77 @@ void IssueTrackerView:: updateUser() {
     std::cout <<"3: " << std::endl;
     std::cout <<"4: " << std::endl;
     std::cin >> choice;
+}
+
+std::string IssueTrackerView::getuserId() {
+  std::vector<User> users = controller->listAllUsers();
+  std::cout << "\n--- All Users ---\n";
+  if (users.empty()) {
+    std::cout << "No users found, Please add a User to Continue\n";
+    return;
+  }
+
+  int num_of_users= 1;
+  std::vector<std::string> usernames;
+  for (auto user : users) {
+    std::cout << num_of_users << "). " << user.getName() << "\n";
+    num_of_users++;
+    usernames.push_back(user.getName());
+  }
+    num_of_users - 1;
+  int userinput = getvalidInt(num_of_users);
+  return usernames[userinput - 1];
+}
+
+int IssueTrackerView::getissueId() {
+  std::vector<Issue> issues = controller->listAllIssues();
+  if (issues.empty()) {
+    std::cout << "No issues found.\n";
+    return;
+  }
+
+  int num_of_issues = 1;
+  std::vector<int> issueids;
+
+  std::cout << "\n--- All Issues ---\n";
+  for (const auto& issue : issues) {
+    std::cout << num_of_issues << "). ID: " << issue.getId() << " -- " <<
+    "Title: " << issue.getTitle() << "\n";
+    num_of_issues++;
+    issueids.push_back(issue.getId());
+  }
+
+  num_of_issues -1;
+  int userinput = getvalidInt(num_of_issues);
+  return issueids[userinput -1];
+}
+
+int IssueTrackerView::getvalidInt(int bound) {
+    if (bound < 1) {
+        std::cerr << "Error: The validation bound " <<
+        "must be 1 or greater." << std::endl;
+        return -1;
+    }
+
+    int selection;
+
+    while (true) {
+        std::cout << "Please enter an integer between 1 and " << bound << ": ";
+
+        if (std::cin >> selection) {
+            if (selection >= 1 && selection <= bound) {
+                std::cout << "Input accepted: " << selection << "\n";
+                return selection;
+            } else {
+                std::cout << "Input error: " << selection <<
+                " is outside the valid range (1 to " << bound <<
+                "). Please try again." << "\n";
+            }
+
+        } else {
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::cout << "Input error: Invalid input. Please enter a whole number." << std::endl;
+        }
+    }
 }
