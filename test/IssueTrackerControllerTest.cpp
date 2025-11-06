@@ -14,10 +14,13 @@ class MockIssueRepository : public IssueRepository {
         (const std::string& userId), (const, override));
     MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
-    MOCK_METHOD(Comment, saveComment, (int issueId, const Comment& comment), (override));
-    MOCK_METHOD(Comment, getComment, (int issueId, int commentId), (const, override));
+    MOCK_METHOD(Comment, saveComment, (int issueId,
+        const Comment& comment), (override));
+    MOCK_METHOD(Comment, getComment, (int issueId,
+        int commentId), (const, override));
     MOCK_METHOD(bool, deleteComment, (int commentId), (override));
-    MOCK_METHOD(std::vector<Comment>, getAllComments, (int issueId), (const, override));
+    MOCK_METHOD(std::vector<Comment>,
+        getAllComments, (int issueId), (const, override));
 
     MOCK_METHOD(User, saveUser, (const User& user), (override));
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
