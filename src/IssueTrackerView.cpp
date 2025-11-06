@@ -145,6 +145,7 @@ void IssueTrackerView::listIssues() {
     char time_buffer[80];
     std::strftime(time_buffer, sizeof(time_buffer),
     "%Y-%m-%d %H:%M:%S", std::localtime(&time_t_value));
+    std::cout << "Created: " << time_buffer << "\n";
 
     if (issue.hasDescriptionComment()) {
       const Comment* desc =
