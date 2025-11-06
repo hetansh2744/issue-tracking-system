@@ -1,14 +1,6 @@
-#include "IssueTrackerView.hpp"
-
-#include <iostream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
-
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "IssueTrackerController.hpp"
+#include "IssueTrackerView.hpp"
 
 #define private public
 #undef private
