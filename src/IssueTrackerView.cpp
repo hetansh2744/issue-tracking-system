@@ -20,6 +20,8 @@ void IssueTrackerView::displayMenu() {
     std::cout << "13. Remove User\n";
     std::cout << "14. Update User\n";
     std::cout << "15. List Unassigned Issues\n";
+    std::cout << "16. Add Comments to Issues\n";
+
     //implement!
 
     std::cout << "0. Exit\n";
@@ -49,6 +51,7 @@ void IssueTrackerView::run() {
         case 13: removeUser(); break;
         case 14: updateUser(); break;
         case 15: listUnassignedIssues(); break;
+        case 16: addComIssue(); break;
         case 0: std::cout << "Goodbye!\n"; break;
         default: std::cout << "Invalid choice.\n"; break;
         }
@@ -215,51 +218,6 @@ void IssueTrackerView::findIssuesByUser() {
     }
 }
 
-void IssueTrackerView::addComment() {
-    int issueId;
-    std::string text, authorId;
-    std::cout << "Enter Issue ID: ";
-    std::cin >> issueId;
-    std::cin.ignore();
-    std::cout << "Enter Author ID: ";
-    std::getline(std::cin, authorId);
-    std::cout << "Enter comment text: ";
-    std::getline(std::cin, text);
-
-    Comment c = controller->addCommentToIssue(issueId, text, authorId);
-    if (c.getText().empty())
-        std::cout << "Failed to add comment.\n";
-    else
-        std::cout << "Comment added successfully.\n";
-}
-
-void IssueTrackerView::updateComment() {
-    int id;
-    std::string text;
-    std::cout << "Enter Comment ID: ";
-    std::cin >> id;
-    std::cin.ignore();
-    std::cout << "Enter new text: ";
-    std::getline(std::cin, text);
-
-    bool success = controller->updateComment(id, text);
-    std::cout << (success ? "Updated.\n" : "Failed to update.\n");
-}
-
-void IssueTrackerView::deleteComment() {
-    int id;
-    int comid;
-    listIssues();
-    std::cout << "Enter Issue ID: ";
-    std::cin >> id;
-    controller->getIssue(id);
-    displayIssue(id);
-    std::cout << "Enter Comment ID: ";
-    std::cin >> comid;
-    bool success = controller->deleteComment(comid);
-    std::cout << (success ? "Deleted.\n" : "Failed to delete.\n");
-}
-
 void IssueTrackerView::createUser() {
     std::string name;
     std::string role;
@@ -391,9 +349,69 @@ void IssueTrackerView:: displayIssue(int id){
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
-    std::cout << "Amount of Comments: " << iss.getCommentIds().size() << "\n"; 
+    std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n"; 
 
       for (const auto it : comments){
         std::cout << "Comment ID's:" << it.getId() << "\n";
       }
+}
+
+void IssueTrackerView:: addComIssue(){
+  int issueId;
+  std::string text;
+  std::string authorID;
+  listIssues();
+  std::cout << "What Issue Needs a Comment" << std::endl;
+  std::cin >> issueId;
+  displayIssue(issueId);
+  std::cout << "Comment text add here" << std::endl;
+  std::cin >> text;
+  std::cout << "Name of Author" << std::endl;
+  std::cin >> authorID;
+  controller->addCommentToIssue(issueId, text, authorID);
+}
+
+void IssueTrackerView::addComment() {
+    int issueId;
+    std::string text, authorId;
+    std::cout << "Enter Issue ID: ";
+    std::cin >> issueId;
+    std::cin.ignore();
+    std::cout << "Enter Author ID: ";
+    std::getline(std::cin, authorId);
+    std::cout << "Enter comment text: ";
+    std::getline(std::cin, text);
+
+    Comment c = controller->addCommentToIssue(issueId, text, authorId);
+    if (c.getText().empty())
+        std::cout << "Failed to add comment.\n";
+    else
+        std::cout << "Comment added successfully.\n";
+}
+
+void IssueTrackerView::updateComment() {
+    int id;
+    std::string text;
+    std::cout << "Enter Comment ID: ";
+    std::cin >> id;
+    std::cin.ignore();
+    std::cout << "Enter new text: ";
+    std::getline(std::cin, text);
+
+    bool success = controller->updateComment(id, text);
+    std::cout << (success ? "Updated.\n" : "Failed to update.\n");
+}
+
+void IssueTrackerView::deleteComment() {
+    int id;
+    int comid;
+    listIssues();
+    std::cout << "Enter Issue ID: ";
+    std::cin >> id;
+    controller->getIssue(id);
+    displayIssue(id);
+    std::cout << "Enter Comment ID: ";
+    std::cin >> comid;
+    bool success = controller->deleteComment(comid);
+    std::cout << (success ? "Deleted.\n" : "Failed to delete.\n");
 }

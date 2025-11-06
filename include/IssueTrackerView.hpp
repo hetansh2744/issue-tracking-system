@@ -27,10 +27,10 @@ class IssueTrackerView {
     void listUsers();
     void removeUser();
     void updateUser();
+    void addComIssue();
     std::string getuserId();
     int getissueId();
     int getvalidInt(int bound);
-
  public:
     void displayIssue(int id);
     // Constructor: takes a pointer to the controller
