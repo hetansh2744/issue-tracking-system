@@ -1,5 +1,6 @@
 #include "IssueTrackerView.hpp"
-
+#include <ctime>
+#include <iomanip> // For std::put_time
 IssueTrackerView::IssueTrackerView(IssueTrackerController* controller)
     : controller(controller) {}
 
@@ -391,14 +392,21 @@ int IssueTrackerView::getvalidInt(int bound) {
 
 //displays a certian issue by id
 void IssueTrackerView:: displayIssue(int id) {
+    time_t now = time(0);
+
+    // Convert to local time structure
+    tm* local_time = localtime(&now);
   Issue iss = controller->getIssue(id);
   std::vector <Comment> comments = controller->getallComments(id);
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n";
+    std::cout <<"Time: " << ctime(&now);
     for (auto it : comments) {
-      std::cout << it.getText();
+      int i = 1;
+      std::cout << i << it.getText() <<std::endl;
+      i++;
     }
 }
 
@@ -410,6 +418,7 @@ void IssueTrackerView:: addComIssue() {
   listIssues();
   issueId = getissueId();
   displayIssue(issueId);
+  std::cout << std::endl;
   std::cout << "Comment text add here" << std::endl;
   std::getline(std::cin, text);
   authorID = getuserId();
