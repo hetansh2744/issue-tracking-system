@@ -425,13 +425,16 @@ void IssueTrackerView::addComment() {
 void IssueTrackerView::updateComment() {
     int id;
     std::string text;
+    int issueid;
+    std::cout << "Enter Issue ID: ";
+    std::cin >> issueid;
     std::cout << "Enter Comment ID: ";
     std::cin >> id;
     std::cin.ignore();
     std::cout << "Enter new text: ";
     std::getline(std::cin, text);
 
-    bool success = controller->updateComment(id, text);
+    bool success = controller->updateComment(issueid,id, text);
     std::cout << (success ? "Updated.\n" : "Failed to update.\n");
 }
 
@@ -445,6 +448,6 @@ void IssueTrackerView::deleteComment() {
     displayIssue(id);
     std::cout << "Enter Comment ID: ";
     std::cin >> comid;
-    bool success = controller->deleteComment(comid);
+    bool success = controller->deleteComment(id,comid);
     std::cout << (success ? "Deleted.\n" : "Failed to delete.\n");
 }
