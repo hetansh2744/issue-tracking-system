@@ -339,8 +339,3 @@ TEST_F(InMemoryIssueRepositoryTest, UserRoleManagement) {
   retrieved = repository->getUser("testuser");
   EXPECT_EQ(retrieved.getRole(), "developer");
 }
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
