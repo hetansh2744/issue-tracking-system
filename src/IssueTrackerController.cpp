@@ -9,8 +9,8 @@ IssueTrackerController::IssueTrackerController(IssueRepository* repository)
 
 Issue IssueTrackerController::createIssue(const std::string& title,
     const std::string& desc, const std::string& author_id) {
-    if (title.empty() || desc.empty() || author_id.empty()) {
-        return Issue(0, "", "");
+    if (title.empty() || author_id.empty()) {
+        return Issue();
     }
 
     // 1. Create the Issue (no description yet)
@@ -18,12 +18,14 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     Issue savedIssue = repo->saveIssue(newIssue);
 
     // 2. Create the first Comment = Description
-    Comment descComment(0, author_id, desc, 0);
-    Comment savedComment = repo->saveComment(savedIssue.getId(), descComment);
+    if (!desc.empty()) {
+        Comment descComment(0, author_id, desc, 0);
+        Comment savedComment = repo->saveComment(savedIssue.getId(), descComment);
 
-    // 3. Link comment #1 as description
-    savedIssue.setDescriptionCommentId(savedComment.getId());
-    repo->saveIssue(savedIssue);
+        // 3. Link comment #1 as description
+        savedIssue.setDescriptionCommentId(savedComment.getId());
+        repo->saveIssue(savedIssue);
+    }
 
     return savedIssue;
 }
