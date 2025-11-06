@@ -341,7 +341,8 @@ int IssueTrackerView::getvalidInt(int bound) {
         } else {
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Input error: Invalid input. Please enter a whole number."
+            std::cout << "Input error: Invalid input.
+                          Please enter a whole number."
                       << std::endl;
         }
     }
