@@ -1,5 +1,4 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "IssueTrackerView.hpp"
 
 #include <iostream>
 #include <memory>
@@ -7,7 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "IssueTrackerController.hpp"
+
 #define private public
 #include "IssueTrackerView.hpp"
 #undef private
