@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdexcept>
 #include <unordered_map>
+#include <vector>
 
 namespace {
 template <typename T>
@@ -45,10 +46,15 @@ std::vector<Issue> IssueRepository::listAllUnassigned() const {
 
 class InMemoryIssueRepository : public IssueRepository {
  private:
+  // === Issues/Users ===
   std::unordered_map<int, Issue> issuesById_;
-  std::unordered_map<int, Comment> commentsById_;
   std::unordered_map<std::string, User> userById_;
   int nextIssueId_ = 0;
+
+  // === Comments ===
+  // Global comment store and mapping commentId -> issueId
+  std::unordered_map<int, Comment> comments_;
+  std::unordered_map<int, int> commentToIssue_;
   int nextCommentId_ = 0;
 
  public:
@@ -66,6 +72,14 @@ class InMemoryIssueRepository : public IssueRepository {
   }
 
   bool deleteIssue(int issueId) override {
+    for (auto it = commentToIssue_.begin(); it != commentToIssue_.end();) {
+      if (it->second == issueId) {
+        comments_.erase(it->first);
+        it = commentToIssue_.erase(it);
+      } else {
+        ++it;
+      }
+    }
     return issuesById_.erase(issueId) > 0;
   }
 
@@ -91,17 +105,92 @@ class InMemoryIssueRepository : public IssueRepository {
 
   // === Comments ===
   Comment getComment(int commentId) const override {
-    return getOrThrowImpl(commentsById_, commentId,
-                          "Comment with given ID does not exist");
+    auto it = comments_.find(commentId);
+    if (it == comments_.end()) {
+      throw std::invalid_argument("Comment with given ID does not exist");
+    }
+    return it->second;
+  }
+
+  // All comments for an issue
+  std::vector<Comment> getAllComments(int issueId) const override {
+    // validate issue existence
+    (void)getIssue(issueId);
+    std::vector<Comment> out;
+    for (const auto& kv : commentToIssue_) {
+      if (kv.second == issueId) {
+        auto cit = comments_.find(kv.first);
+        if (cit != comments_.end()) out.push_back(cit->second);
+      }
+    }
+    std::sort(out.begin(), out.end(),
+              [](const Comment& a, const Comment& b) {
+                return a.getId() < b.getId();
+              });
+    return out;
+  }
+
+  // Specific comment scoped by issue
+  std::vector<Comment> getComments(int issueId, int commentId) const override {
+    // validate issue existence
+    (void)getIssue(issueId);
+    auto mapIt = commentToIssue_.find(commentId);
+    if (mapIt == commentToIssue_.end() || mapIt->second != issueId) {
+      return {};
+    }
+    return {getComment(commentId)};
   }
 
   Comment saveComment(const Comment& comment) override {
-    return saveImpl(comment, &commentsById_, &nextCommentId_,
-                    "Comment with given ID does not exist");
+    const int issueId = comment.getId();
+    if (issueId <= 0) {
+      throw std::invalid_argument("Comment must reference a valid issueId");
+    }
+    // ensure issue exists
+    (void)getIssue(issueId);
+
+    Comment stored = comment;
+    if (!stored.hasPersistentId() || stored.getId() == 0) {
+      stored.setIdForPersistence(++nextCommentId_);
+    } else if (comments_.find(stored.getId()) == comments_.end()) {
+      // if caller sets a non-existent id, treat as invalid
+      throw std::invalid_argument("Comment with given ID does not exist");
+    } else {
+      // keep nextCommentId_ monotonic
+      nextCommentId_ = std::max(nextCommentId_, stored.getId());
+    }
+
+    comments_[stored.getId()] = stored;
+    commentToIssue_[stored.getId()] = issueId;
+    return stored;
   }
 
+  // Delete by (issueId, commentId); comment #1 cannot be deleted
+  bool deleteComment(int issueId, int commentId) override {
+    if (issuesById_.find(issueId) == issuesById_.end()) return false;
+
+    if (commentId == 1) {
+      // #1 is the description; cannot delete
+      return false;
+    }
+
+    auto mapIt = commentToIssue_.find(commentId);
+    if (mapIt == commentToIssue_.end() || mapIt->second != issueId) {
+      return false;
+    }
+
+    commentToIssue_.erase(mapIt);
+    return comments_.erase(commentId) > 0;
+  }
+
+  // Retain the single-id delete (compat). Disallows removing #1 as well.
   bool deleteComment(int commentId) override {
-    return commentsById_.erase(commentId) > 0;
+    if (commentId == 1) return false;
+    auto mapIt = commentToIssue_.find(commentId);
+    if (mapIt != commentToIssue_.end()) {
+      commentToIssue_.erase(mapIt);
+    }
+    return comments_.erase(commentId) > 0;
   }
 
   // === Users ===

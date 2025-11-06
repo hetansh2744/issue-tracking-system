@@ -24,7 +24,10 @@ class IssueRepository {
 
   // == Comments ===
   virtual Comment getComment(int commentId) const = 0;
+  virtual std::vector<Comment> getAllComments(int issueId) const = 0;
+  virtual std::vector<Comment> getComments(int issueId, int commentId) const = 0;
   virtual Comment saveComment(const Comment& comment) = 0;
+  virtual bool deleteComment(int issueId, int commentId) = 0;
   virtual bool deleteComment(int commentId) = 0;
 
   // === Users ===
