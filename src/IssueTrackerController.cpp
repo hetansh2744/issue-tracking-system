@@ -119,11 +119,9 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
         Issue issue = repo->getIssue(issueId);
         repo->getUser(authorId);
 
-        // create comment (timestamp 0 for simplicity)
         Comment newComment(0, authorId, text, 0);
         Comment savedComment = repo->saveComment(issueId, newComment);
 
-        // add comment id to Issue
         issue.addComment(savedComment.getId());
         repo->saveIssue(issue);
 

@@ -94,9 +94,8 @@ void IssueTrackerView::createIssue() {
     if (selection == 'Y') {
         assignedTo = getuserId(); 
         std::cout << "Issue assigned to user: " << assignedTo << std::endl;
-    } else {
+    } elseif(selection == 'N') {
         assignedTo = "";
-        std::cout << "Issue is not assigned to a user." << std::endl;
     }
     
     Issue issue = controller->createIssue(title, desc, assignedTo);
