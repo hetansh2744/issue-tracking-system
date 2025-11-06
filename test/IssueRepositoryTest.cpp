@@ -1,12 +1,6 @@
 // cppcheck-suppress unusedFunction
 #include "IssueRepository.hpp"
 
-#include <algorithm>
-#include <iterator>
-#include <stdexcept>
-#include <unordered_map>
-#include <vector>
-
 namespace {
 template <typename T>
 const T& getOrThrow(const std::unordered_map<int, T>& map,
@@ -140,7 +134,8 @@ class InMemoryIssueRepository : public IssueRepository {
                 return c;
             }
         }
-        throw std::invalid_argument("Comment does not belong to the given issue");
+        throw std::invalid_argument(
+            "Comment does not belong to the given issue");
     }
 
     std::vector<Comment> getAllComments(int issueId) const override {
