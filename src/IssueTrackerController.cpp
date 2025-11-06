@@ -219,12 +219,12 @@ std::vector<Issue> IssueTrackerController::listAllIssues() {
     return repo->listIssues();
 }
 
-//returns a list of issues to view that dont have a user id 
+//returns a list of issues to view that dont have a user id
 std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
     return repo->listAllUnassigned();
 }
 
-//reuturns issues by username inputted 
+//reuturns issues by username inputted
 //allows view to access issues by userid
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
