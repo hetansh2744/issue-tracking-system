@@ -3,6 +3,8 @@
 IssueTrackerView::IssueTrackerView(IssueTrackerController* controller)
     : controller(controller) {}
 
+    //Displays all current functions of program pro
+    //-mpting user for input
 void IssueTrackerView::displayMenu() {
     std::cout << "\n=== Issue Tracker Menu ===\n";
     std::cout << "1. Create Issue\n";
@@ -20,13 +22,12 @@ void IssueTrackerView::displayMenu() {
     std::cout << "13. Remove User\n";
     std::cout << "14. Update User\n";
     std::cout << "15. List Unassigned Issues\n";
-
-    //implement!
-
     std::cout << "16. Exit\n";
     std::cout << "Select an option: ";
 }
 
+//Prompts user for input and keeps program
+//running after user inputs
 void IssueTrackerView::run() {
     int choice = -1;
     while (choice != 16) {
@@ -55,6 +56,9 @@ void IssueTrackerView::run() {
     }
 }
 
+//prompts user to create an issue
+//assigning title description and who
+// it is assigned to
 void IssueTrackerView::createIssue() {
     std::string title, desc, assignedTo;
 
@@ -76,6 +80,8 @@ void IssueTrackerView::createIssue() {
     Issue issue = controller->createIssue(title, desc, assignedTo);
 }
 
+//Allows User to change certain aspects of
+//a given issue of their choice
 void IssueTrackerView::updateIssue() {
     int id;
     std::string field, value;
@@ -99,6 +105,8 @@ void IssueTrackerView::updateIssue() {
     std::cout << (success ? "Updated successfully.\n" : "Update failed.\n");
 }
 
+//prompts user to assign an issue to a spec
+//-ific user
 void IssueTrackerView::assignUser() {
     int issueId;
     std::string userName;
@@ -110,6 +118,8 @@ void IssueTrackerView::assignUser() {
     std::cout << (success ? "User assigned.\n" : "Failed to assign.\n");
 }
 
+//prompts user to unassign a issue
+//from a specific user
 void IssueTrackerView::unassignUser() {
     int issueId;
     issueId = getissueId();
@@ -118,6 +128,8 @@ void IssueTrackerView::unassignUser() {
     std::cout << (success ? "User unassigned.\n" : "Failed to unassign.\n");
 }
 
+//prompts user to delete an issue from
+// user id
 void IssueTrackerView::deleteIssue() {
     int issueid;
     issueid = getissueId();
@@ -126,6 +138,7 @@ void IssueTrackerView::deleteIssue() {
     std::cout << (success ? "Deleted successfully.\n" : "Delete failed.\n");
 }
 
+//prints a list of all issues in the system
 void IssueTrackerView::listIssues() {
   std::vector<Issue> issues = controller->listAllIssues();
   if (issues.empty()) {
@@ -162,6 +175,8 @@ void IssueTrackerView::listIssues() {
   }
 }
 
+//prints a list of all the issues that dont
+//have users assigned
 void IssueTrackerView::listUnassignedIssues() {
   std::vector<Issue> issues = controller->listAllUnassignedIssues();
   if (issues.empty()) {
@@ -184,6 +199,8 @@ void IssueTrackerView::listUnassignedIssues() {
   }
 }
 
+//prompts user to find an issue connected to
+// a specific user id
 void IssueTrackerView::findIssuesByUser() {
     std::string userId;
     std::cout << "Enter User ID: ";
@@ -196,6 +213,8 @@ void IssueTrackerView::findIssuesByUser() {
     }
 }
 
+//prompts the creation of user with name
+// and role of user
 void IssueTrackerView::createUser() {
     std::string name;
     std::string role;
@@ -227,6 +246,7 @@ void IssueTrackerView::createUser() {
         std::cout << "User created: " << u.getName() << "\n";
 }
 
+//prints a list of all users created
 void IssueTrackerView::listUsers() {
   std::vector<User> users = controller->listAllUsers();
   std::cout << "\n--- All Users ---\n";
@@ -239,6 +259,7 @@ void IssueTrackerView::listUsers() {
               << "\n";
 }
 
+//prompts a user to be remove
 void IssueTrackerView::removeUser() {
   std::string userId;
   std::cout << "Enter User ID to remove: ";
@@ -247,6 +268,8 @@ void IssueTrackerView::removeUser() {
   std::cout << (success ? "User removed.\n" : "Failed to remove user.\n");
 }
 
+//update new user with new name or role
+// from user input
 void IssueTrackerView:: updateUser() {
   int choice;
   std::string newname;
@@ -281,6 +304,7 @@ void IssueTrackerView:: updateUser() {
   }
 }
 
+//User id issue handling
 std::string IssueTrackerView::getuserId() {
   while (true) {
     std::vector<User> users = controller->listAllUsers();
@@ -306,6 +330,7 @@ std::string IssueTrackerView::getuserId() {
   }
 }
 
+//Issue ID user handling
 int IssueTrackerView::getissueId() {
   std::vector<Issue> issues = controller->listAllIssues();
   if (issues.empty()) {
@@ -329,6 +354,7 @@ int IssueTrackerView::getissueId() {
   return issueids[userinput -1];
 }
 
+//error handling so user cant input unused ints
 int IssueTrackerView::getvalidInt(int bound) {
     if (bound < 1) {
         std::cerr << "Error: The validation bound " <<
@@ -362,6 +388,8 @@ int IssueTrackerView::getvalidInt(int bound) {
         }
     }
 }
+
+//displays a certian issue by id
 void IssueTrackerView:: displayIssue(int id) {
   Issue iss = controller->getIssue(id);
   std::vector <Comment> comments = controller->getallComments(id);
@@ -374,6 +402,7 @@ void IssueTrackerView:: displayIssue(int id) {
     }
 }
 
+//add comments to an issue
 void IssueTrackerView:: addComIssue() {
   int issueId;
   std::string text;
@@ -405,6 +434,8 @@ void IssueTrackerView::addComment() {
         std::cout << "Comment added successfully.\n";
 }
 
+//updates a certian comment from comment id
+// and issue id
 void IssueTrackerView::updateComment() {
     int id;
     std::string text;
@@ -428,6 +459,8 @@ void IssueTrackerView::updateComment() {
     std::cout << (success ? "Updated.\n" : "Failed to update.\n");
 }
 
+//deletes a specific comment by comment id
+//also displays all comments in the issue
 void IssueTrackerView::deleteComment() {
     int issueid;
     int comid;
