@@ -132,5 +132,5 @@ doxygen
 
 * **Hetansh** — Issue & Comments
 * **Fletcher** — TextUI & User
-* **Colby** — Issue Tracker Controller
+* **Colby** — Issue Tracker Controller & User Input Error Handling in TextUI
 * **Miller** — Issue Repository
