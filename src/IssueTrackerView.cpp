@@ -364,4 +364,3 @@ void IssueTrackerView:: displayIssue(int id){
         std::cout << "Comment ID's:" << it.getId() << "\n";
       }
 }
-
