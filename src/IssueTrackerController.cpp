@@ -145,16 +145,16 @@ bool IssueTrackerController::updateComment(int issueId,
     }
 }
 
-bool IssueTrackerController::deleteComment(int issueId,
-    int commentId) {
+bool IssueTrackerController::deleteComment(int issueId, int commentId) {
     try {
-        Comment comment = repo->getComment(issueId,
-            commentId);
-        int issueId = comment.getId();
 
-        bool deleted = repo->deleteComment(commentId);
+        repo->getComment(issueId, commentId); 
+
+        bool deleted = repo->deleteComment(issueId, commentId); 
+
         if (deleted) {
-            Issue issue = repo->getIssue(issueId);
+
+            Issue issue = repo->getIssue(issueId); 
             issue.removeComment(commentId);
             repo->saveIssue(issue);
             return true;

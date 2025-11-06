@@ -18,6 +18,9 @@ class MockIssueRepository : public IssueRepository {
         const Comment& comment), (override));
     MOCK_METHOD(Comment, getComment, (int issueId,
         int commentId), (const, override));
+    MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override)); 
+    MOCK_METHOD(std::vector<Comment>,
+        getAllComments, (int issueId), (const, override));
     MOCK_METHOD(bool, deleteComment, (int commentId), (override));
     MOCK_METHOD(std::vector<Comment>,
         getAllComments, (int issueId), (const, override));
@@ -283,7 +286,7 @@ TEST(IssueTrackerControllerTest, DeleteCommentSuccess) {
 
     EXPECT_CALL(mockRepo, getComment(1, 5))
         .WillOnce(testing::Return(comment));
-    EXPECT_CALL(mockRepo, deleteComment(5))
+    EXPECT_CALL(mockRepo, deleteComment(1,5))
         .WillOnce(testing::Return(true));
     EXPECT_CALL(mockRepo, getIssue(1))
         .WillOnce(testing::Return(issue));
