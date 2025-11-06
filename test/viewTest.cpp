@@ -7,7 +7,7 @@
 
 namespace {
 
-IssueRepository* createIssueRepository(); 
+IssueRepository* createIssueRepository();
 
 class ControllerWithRepoTest : public ::testing::Test {
  protected:
