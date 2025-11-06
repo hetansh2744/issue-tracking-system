@@ -1,25 +1,136 @@
-# Template for CPSC2720 Assignments, Labs, and Projects
+**Last Updated:** 2025-11-05 by shah3720
 
-Last Updated: 2022-12-15 by Nicole Wilson &lt;n.wilson@uleth.ca&gt;
+## Tools Used
 
-Notes:
+* **Compiler:** g++ (C++14)
+* **Style Check:** cpplint
+* **Static Check:** cppcheck
+* **Unit Test:** GoogleTest (gtest)/ mocktest (gmock)
+* **Documentation:** doxygen
 
-* The Makefile and .gitlab-ci.yml files are set up to run on Ubuntu.
-* The .gitlab-ci.yml file uses the targets in the Makefile.
-* These are the tools/commands/apps used:
-  * Compiler: g++
-  * Style Check: cpplint
-  * Static Check: cppcheck
-  * Coverage Check: gcov/lcov
-  * Memory Check: valgrind
-  * Unit Test: gtest 
-  * Documentation: doxygen
-* See the version report on the pipeline.
+---
 
-Certain assumptions have been made:
-* One repo contains the files for one project.
-* All unit testing files are found in <code>test/</code> including <code>main.cpp</code>.
-* All header files for the project are found in <code>include/</code> and named <code>*.h</code>, every class must have a header file.
-* All project source files for the project are named <code>*.cpp</code>.
-  * Any needed source files that correspond to header files are found in <code>src/</code>.
-  * There is a <code>main.cpp</code> found in <code>src/project/</code>.
+## Assumptions
+
+* One repo = one project.
+* All **unit tests** are in `test/` (including the test `main.cpp`).
+* All **headers** are in `include/`, named `*.hpp` (each class has a header).
+* All **source** files are in `src/`, named `*.cpp`.
+
+---
+
+## Project Structure (this repo)
+
+```
+include/
+  Comment.hpp
+  Issue.hpp
+  IssueRepository.hpp
+  IssueTrackerController.hpp
+  IssueTrackerView.hpp
+  User.hpp
+src/
+  Comment.cpp
+  Issue.cpp
+  IssueRepository.cpp
+  IssueTrackerController.cpp
+  IssueTrackerView.cpp
+  User.cpp
+  project/
+    main.cpp
+test/
+  CommentTest.cpp
+  IssueTest.cpp
+Makefile
+.gitlab-ci.yml
+README.md
+```
+
+---
+
+## Build & Run (Local)
+
+```bash
+# Build and run unit tests (GoogleTest)
+make test_project
+./test_project
+```
+
+## Quality, Style, and Static Analysis
+
+```bash
+# Style check (cpplint)
+make style
+
+# Static analysis (cppcheck)
+make static
+```
+
+---
+
+## Code Coverage
+
+```bash
+# Run tests with coverage + generate HTML report (lcov/genhtml)
+make coverage
+
+# Open report:
+#   ./coverage/index.html
+```
+
+*Notes:*
+
+* New objects in models start with **id == 0** (not persisted).
+* Repository assigns positive IDs once (persistence).
+* Tests cover both **Issue** and **Comment** rules; aim for **>90%** total.
+
+---
+
+## Memory Check
+
+```bash
+# Run tests under valgrind (target may vary by Makefile)
+make memcheck
+```
+
+---
+
+## Documentation (Doxygen)
+
+We use **Doxygen** comments (`@brief`, `@param`, `@return`, `@throws`) on **all
+public methods/ctors**.
+
+```bash
+# Generate docs (if Doxyfile is present)
+doxygen -g  # first time only, to create Doxyfile
+doxygen
+
+# Open:
+#   ./html/index.html
+```
+
+---
+
+## Architecture (MVC + DI)
+
+* **Models:** `Issue`, `Comment`, `User`
+
+  * Validate inputs; `Issue` stores **comment IDs** and full **Comment objects**.
+* **Controller:** `IssueTrackerController`
+
+  * Orchestrates create/assign/update; injected with a repository.
+* **View:** `IssueTrackerView` (text UI)
+
+  * Reads user input; calls controller.
+* **Repository (DI):** `IssueRepository` (+ in-memory impl)
+
+  * Assigns IDs, stores Issues/Comments/Users.
+
+---
+
+## Team
+
+* **Hetansh** — Issue & Comments
+* **Fletcher** — TextUI & User
+* **Colby** — Issue Tracker Controller
+* **Miller** — Issue Repository
