@@ -170,6 +170,13 @@ void IssueTrackerView::listIssues() {
     std::cout << "Title: " << issue.getTitle() << "\n";
     std::cout << "Created: " << fmtEpochMs(issue.getTimestamp()) << "\n";
 
+    std::int64_t timestamp = issue.getCreatedAt();
+    std::time_t time_t_value = static_cast<std::time_t>(timestamp / 1000);
+
+    char time_buffer[80];
+    std::strftime(time_buffer, sizeof(time_buffer),
+    "%Y-%m-%d %H:%M:%S", std::localtime(&time_t_value));
+
     if (issue.hasDescriptionComment()) {
       const Comment* desc =
           issue.findCommentById(issue.getDescriptionCommentId());

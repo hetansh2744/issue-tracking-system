@@ -224,6 +224,12 @@ class Issue {
    * @return true if removed from either store; false if not found
    */
   bool removeCommentById(int id);
+
+  /**
+   * @brief Getter method for time of creation sets it to a string
+   * @return String of Time Stamp
+   */
+    const TimePoint& getCreatedAt() const { return created_at_; }
 };
 
 #endif  // ISSUE_HPP_
