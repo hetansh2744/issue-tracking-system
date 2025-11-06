@@ -2,6 +2,7 @@
 #include "IssueTrackerController.hpp"
 #include "IssueTrackerView.hpp"
 
+/
 class MockIssueTrackerController : public IssueTrackerController {
  public:
     MOCK_METHOD(Issue, createIssue, (const std::string&,

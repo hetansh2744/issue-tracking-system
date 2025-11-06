@@ -84,14 +84,14 @@ void IssueTrackerView::updateIssue() {
 
 void IssueTrackerView::assignUser() {
     int issueId;
-    std::string userId;
+    std::string userName;
     std::cout << "Enter Issue ID: ";
     std::cin >> issueId;
     std::cin.ignore();
-    std::cout << "Enter User ID: ";
-    std::getline(std::cin, userId);
+    std::cout << "Enter User NAME: ";
+    std::getline(std::cin, userName);
 
-    bool success = controller->assignUserToIssue(issueId, userId);
+    bool success = controller->assignUserToIssue(issueId, userName);
     std::cout << (success ? "User assigned.\n" : "Failed to assign.\n");
 }
 
@@ -216,10 +216,15 @@ void IssueTrackerView::updateComment() {
 
 void IssueTrackerView::deleteComment() {
     int id;
-    std::cout << "Enter Comment ID: ";
+    int comid;
+    listIssues();
+    std::cout << "Enter Issue ID: ";
     std::cin >> id;
-
-    bool success = controller->deleteComment(id);
+    controller->getIssue(id);
+    displayIssue(id);
+    std::cout << "Enter Comment ID: ";
+    std::cin >> comid;
+    bool success = controller->deleteComment(comid);
     std::cout << (success ? "Deleted.\n" : "Failed to delete.\n");
 }
 
@@ -265,3 +270,17 @@ void IssueTrackerView:: updateUser() {
     std::cout <<"4: " << std::endl;
     std::cin >> choice;
 }
+
+void IssueTrackerView:: displayIssue(int id){
+  Issue iss = controller->getIssue(id);
+  std::vector <Comment> comments;
+    std::cout << "ID: " << iss.getId() << "\n";
+    std::cout << "Author: " << iss.getAuthorId() << "\n";
+    std::cout << "Title: " << iss.getTitle() << "\n";
+    std::cout << "Amount of Comments: " << iss.getCommentIds().size() << "\n"; 
+
+      for (const auto it : comments){
+        std::cout << "Comment ID's:" << it.getId() << "\n";
+      }
+}
+

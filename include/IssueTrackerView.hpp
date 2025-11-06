@@ -7,6 +7,7 @@
 class IssueTrackerView {
  private:
     IssueTrackerController* controller;
+ public:
     // Helper functions for menu options
     void displayMenu();
     void createIssue();
@@ -24,7 +25,7 @@ class IssueTrackerView {
     void listUsers();
     void removeUser();
     void updateUser();
- public:
+    void displayIssue(int id);
     // Constructor: takes a pointer to the controller
     explicit IssueTrackerView(IssueTrackerController* controller);
     void run();
