@@ -7,9 +7,9 @@
 #include "IssueTrackerController.hpp"
 
 class IssueTrackerView {
-  private:
+ private:
     IssueTrackerController* controller;
-  public:
+ public:
     // Helper functions for menu options
     void displayMenu();
     void createIssue();

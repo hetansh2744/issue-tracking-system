@@ -88,7 +88,7 @@ class InMemoryIssueRepository : public IssueRepository {
     if (!stored.hasPersistentId()) {
       stored.setIdForPersistence(++nextIssueId_);
     } else if (issues_.find(stored.getId()) == issues_.end()) {
-      throw std::invalid_argument("Issue with given ID does not exist: "+ 
+      throw std::invalid_argument("Issue with given ID does not exist: "+
                                   std::to_string(stored.getId()));
     }
 

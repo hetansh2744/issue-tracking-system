@@ -64,12 +64,13 @@ void IssueTrackerView::createIssue() {
     std::cout << "Enter description:\n";
     std::getline(std::cin, desc);
 
-    std::cout << "Select author of Issue\n";
-    assignedTo = getuserId(); 
-    std::cout << "Issue assigned to user: " << assignedTo << std::endl;
+    while (true) {
+        std::cout << "Select author of Issue";
+        assignedTo = getuserId();
+        std::cout << "Issue assigned to user: " << assignedTo << std::endl;
 
     Issue issue = controller->createIssue(title, desc, assignedTo);
-    std::cout << "Issue created successfully.\n";
+    }
 }
 
 void IssueTrackerView::updateIssue() {
@@ -207,7 +208,7 @@ void IssueTrackerView::createUser() {
         case 2: role = "Developer"; break;
         case 3: role = "Maintainer"; break;
     }
-    
+
     User u = controller->createUser(name, role);
     if (u.getName().empty())
         std::cout << "Failed to create user.\n";
@@ -244,12 +245,12 @@ void IssueTrackerView:: updateUser() {
   std::cout << "1: User name" << std::endl;
   std::cout << "2: User Role" << std::endl;
   std::cin >> choice;
-  if(choice == 1){
+  if (choice == 1) {
     std::cout << "Enter old Username: " << std::endl;
     std::cin >> oldname;
     std::cout << "Enter new username: " << std::endl;
     std:: cin >> newname;
-    controller ->updateUser(oldname,"name", newname);
+    controller ->updateUser(oldname, "name", newname);
     controller ->removeUser(oldname);
   } else {
     std::string name;
@@ -321,6 +322,7 @@ int IssueTrackerView::getvalidInt(int bound) {
     }
 
     int selection;
+
     while (true) {
         std::cout << "Please enter an integer between 1 and " << bound << ": ";
 
@@ -349,7 +351,7 @@ void IssueTrackerView:: displayIssue(int id) {
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n";
-    for(auto it : comments) {
+    for (auto it : comments) {
       std::cout << it.getText();
     }
 }
