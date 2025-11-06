@@ -378,15 +378,14 @@ int IssueTrackerView::getvalidInt(int bound) {
 }
 void IssueTrackerView:: displayIssue(int id){
   Issue iss = controller->getIssue(id);
-  std::vector <Comment> comments;
+  std::vector <Comment> comments = controller->getallComments(id);
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n"; 
-
-      for (const auto it : comments){
-        std::cout << "Comment ID's:" << it.getId() << "\n";
-      }
+    for(auto it : comments){
+      std::cout << it.getText();
+    }
 }
 
 void IssueTrackerView:: addComIssue(){
