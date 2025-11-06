@@ -174,8 +174,8 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIssueAndId) {
   bool deleted = repository->deleteComment(savedIssue.getId(), saved.getId());
   EXPECT_TRUE(deleted);
 
-  EXPECT_THROW(repository->getComment(savedIssue.getId(), saved.getId()),
-               std::invalid_argument);
+  auto comments = repository->getAllComments(savedIssue.getId());
+  EXPECT_THAT(comments, IsEmpty());
 }
 
 TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIdOnly) {
@@ -188,9 +188,8 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIdOnly) {
   bool deleted = repository->deleteComment(saved.getId());
   EXPECT_TRUE(deleted);
 
-  // Should throw when trying to get the deleted comment
-  EXPECT_THROW(repository->getComment(savedIssue.getId(), saved.getId()),
-               std::invalid_argument);
+  auto comments = repository->getAllComments(savedIssue.getId());
+  EXPECT_THAT(comments, IsEmpty());
 }
 
 TEST_F(InMemoryIssueRepositoryTest, SaveAndGetUser) {
@@ -309,7 +308,6 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteIssueAlsoDeletesComments) {
 
   repository->deleteIssue(savedIssue.getId());
 
-  // Should throw when trying to get the comment after issue deletion
   EXPECT_THROW(repository->getComment(savedIssue.getId(), savedComment.getId()),
                std::invalid_argument);
 }
