@@ -138,19 +138,17 @@ void IssueTrackerView::assignUser() {
 
 void IssueTrackerView::unassignUser() {
     int issueId;
-    std::cout << "Enter Issue ID: ";
-    std::cin >> issueId;
+    issueId = getissueId();
 
     bool success = controller->unassignUserFromIssue(issueId);
     std::cout << (success ? "User unassigned.\n" : "Failed to unassign.\n");
 }
 
 void IssueTrackerView::deleteIssue() {
-    int id;
-    std::cout << "Enter Issue ID to delete: ";
-    std::cin >> id;
+    int issueid;
+    issueid = getissueId();
 
-    bool success = controller->deleteIssue(id);
+    bool success = controller->deleteIssue(issueid);
     std::cout << (success ? "Deleted successfully.\n" : "Delete failed.\n");
 }
 
