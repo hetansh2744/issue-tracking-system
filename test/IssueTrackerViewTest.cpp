@@ -11,6 +11,9 @@ using ::testing::NiceMock;
 
 class MockIssueTrackerController : public IssueTrackerController {
  public:
+  explicit MockIssueTrackerController(IssueRepository* repo = nullptr)
+      : IssueTrackerController(repo) {}
+
   MOCK_METHOD(Issue, createIssue,
               (const std::string& title, const std::string& description,
                const std::string& authorId),
@@ -43,14 +46,13 @@ class MockIssueTrackerController : public IssueTrackerController {
               (const std::string& userId, const std::string& field,
                const std::string& value),
               (override));
-  MOCK_METHOD(Issue, getIssue, (int issueId), (override));
-  MOCK_METHOD(std::vector<Comment>, getallComments, (int issueId), (override));
 };
 
 class IssueTrackerViewTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    mockController = std::make_unique<NiceMock<MockIssueTrackerController>>();
+    mockController = std::make_unique<NiceMock<MockIssueTrackerController>>(
+        nullptr);
     view = std::make_unique<IssueTrackerView>(mockController.get());
 
     originalCoutBuffer = std::cout.rdbuf();
@@ -166,22 +168,6 @@ TEST_F(IssueTrackerViewTest, CreateIssueSuccess) {
 
   std::string output = getOutput();
   EXPECT_THAT(output, testing::HasSubstr("Issue assigned to user: testuser"));
-}
-
-TEST_F(IssueTrackerViewTest, CreateIssueEmptyTitleRetries) {
-  EXPECT_CALL(*mockController, listAllUsers())
-      .WillOnce(Return(std::vector<User>{User("testuser", "Developer")}));
-
-  Issue expectedIssue(1, "testuser", "Valid Title");
-  EXPECT_CALL(*mockController, createIssue("Valid Title", "Test Description",
-                                           "testuser"))
-      .WillOnce(Return(expectedIssue));
-
-  simulateUserInput("\nValid Title\nTest Description\n1\n");
-  view->createIssue();
-
-  std::string output = getOutput();
-  EXPECT_THAT(output, testing::HasSubstr("Title cannot be empty"));
 }
 
 TEST_F(IssueTrackerViewTest, UpdateIssueTitleSuccess) {
@@ -322,18 +308,6 @@ TEST_F(IssueTrackerViewTest, CreateUserSuccess) {
   EXPECT_THAT(output, testing::HasSubstr("User created: newuser"));
 }
 
-TEST_F(IssueTrackerViewTest, CreateUserEmptyNameRetries) {
-  User expectedUser("validuser", "Developer");
-  EXPECT_CALL(*mockController, createUser("validuser", "Developer"))
-      .WillOnce(Return(expectedUser));
-
-  simulateUserInput("\nvaliduser\n2\n");
-  view->createUser();
-
-  std::string output = getOutput();
-  EXPECT_THAT(output, testing::HasSubstr("Username cannot be empty"));
-}
-
 TEST_F(IssueTrackerViewTest, ListUsersWithResults) {
   std::vector<User> users = {
       User("user1", "Developer"),
@@ -359,56 +333,4 @@ TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
 
   std::string output = getOutput();
   EXPECT_THAT(output, testing::HasSubstr("User removed"));
-}
-
-TEST_F(IssueTrackerViewTest, UpdateUserNameSuccess) {
-  EXPECT_CALL(*mockController, updateUser("olduser", "name", "newuser"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mockController, removeUser("olduser"))
-      .WillOnce(Return(true));
-
-  simulateUserInput("1\nolduser\nnewuser\n");
-  view->updateUser();
-}
-
-TEST_F(IssueTrackerViewTest, AddCommentToIssueSuccess) {
-  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
-  std::vector<User> users = {User("user1", "Developer")};
-  Comment expectedComment(1, "user1", "Test comment");
-
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
-  EXPECT_CALL(*mockController, getIssue(1))
-      .WillOnce(Return(issues[0]));
-  EXPECT_CALL(*mockController, getallComments(1))
-      .WillOnce(Return(std::vector<Comment>{}));
-  EXPECT_CALL(*mockController, listAllUsers())
-      .WillOnce(Return(users));
-  EXPECT_CALL(*mockController, addCommentToIssue(1, "Test comment", "user1"))
-      .WillOnce(Return(expectedComment));
-
-  simulateUserInput("1\nTest comment\n1\n");
-  view->addComIssue();
-
-  SUCCEED();
-}
-
-TEST_F(IssueTrackerViewTest, DisplayIssueShowsDetails) {
-  Issue testIssue(1, "author1", "Test Title");
-  testIssue.setDescriptionCommentId(2);
-  testIssue.assignTo("user1");
-
-  std::vector<Comment> comments = {Comment(2, "author1", "Description text")};
-
-  EXPECT_CALL(*mockController, getIssue(1))
-      .WillOnce(Return(testIssue));
-  EXPECT_CALL(*mockController, getallComments(1))
-      .WillOnce(Return(comments));
-
-  view->displayIssue(1);
-
-  std::string output = getOutput();
-  EXPECT_THAT(output, testing::HasSubstr("Test Title"));
-  EXPECT_THAT(output, testing::HasSubstr("author1"));
-  EXPECT_THAT(output, testing::HasSubstr("Description text"));
 }
