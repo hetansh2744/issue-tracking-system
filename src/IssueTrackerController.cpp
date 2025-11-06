@@ -1,7 +1,6 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "IssueTrackerController.hpp"
-#include <stdexcept>
 
 using ::testing::Throw;
 
@@ -24,7 +23,7 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override));
     MOCK_METHOD(std::vector<Comment>,
         getAllComments, (int issueId), (const, override));
-    MOCK_METHOD(bool, deleteComment, (int commentId), (override)); 
+    MOCK_METHOD(bool, deleteComment, (int commentId), (override));
 
     MOCK_METHOD(User, saveUser, (const User& user), (override));
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
