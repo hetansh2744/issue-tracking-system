@@ -24,16 +24,16 @@ void IssueTrackerView::displayMenu() {
 
     //implement!
 
-    std::cout << "0. Exit\n";
+    std::cout << "17. Exit\n";
     std::cout << "Select an option: ";
 }
 
 void IssueTrackerView::run() {
     int choice = -1;
-    while (choice != 0) {
+    while (choice != 17) {
         displayMenu();
-        std::cin >> choice;
-        std::cin.ignore();
+        int length_display = 17;
+        choice = getvalidInt(length_display);
 
         switch (choice) {
         case 1: createIssue(); break;
@@ -52,8 +52,7 @@ void IssueTrackerView::run() {
         case 14: updateUser(); break;
         case 15: listUnassignedIssues(); break;
         case 16: addComIssue(); break;
-        case 0: std::cout << "Goodbye!\n"; break;
-        default: std::cout << "Invalid choice.\n"; break;
+        case 17: std::cout << "Goodbye!\n"; break;
         }
     }
 }
@@ -65,15 +64,15 @@ void IssueTrackerView::createIssue() {
     std::getline(std::cin, title);
     std::cout << "Enter description: ";
     std::getline(std::cin, desc);
-    
-    while (true) {
-        std::cout << "Select author of Issue";
-        assignedTo = getuserId(); 
-        std::cout << "Issue assigned to user: " << assignedTo << std::endl;
-    
+
+    std::cout << "Select author of Issue\n";
+    assignedTo = getuserId(); 
+    std::cout << "Issue assigned to user: " << assignedTo << std::endl;
+
     Issue issue = controller->createIssue(title, desc, assignedTo);
-    }
+    std::cout << "Issue created successfully.\n";
 }
+
 
 void IssueTrackerView::updateIssue() {
     int id;
@@ -324,7 +323,6 @@ int IssueTrackerView::getvalidInt(int bound) {
     }
 
     int selection;
-
     while (true) {
         std::cout << "Please enter an integer between 1 and " << bound << ": ";
 
