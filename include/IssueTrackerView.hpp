@@ -8,6 +8,7 @@
 class IssueTrackerView {
  private:
     IssueTrackerController* controller;
+ public:
     // Helper functions for menu options
     void displayMenu();
     void createIssue();
@@ -30,6 +31,7 @@ class IssueTrackerView {
     int getvalidInt(int bound);
 
  public:
+    void displayIssue(int id);
     // Constructor: takes a pointer to the controller
     explicit IssueTrackerView(IssueTrackerController* controller);
     void run();
