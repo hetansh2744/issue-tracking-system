@@ -7,6 +7,8 @@
 
 namespace {
 
+IssueRepository* createIssueRepository(); 
+
 class ControllerWithRepoTest : public ::testing::Test {
  protected:
   std::unique_ptr<IssueRepository> repo;
@@ -54,7 +56,7 @@ TEST_F(ControllerWithRepoTest, FullWorkflowCoversControllerBranches) {
       afterFirstDescriptionUpdate.getDescriptionCommentId();
   EXPECT_NE(firstDescId, secondDescId);
 
-  Comment cachedDesc = repo->getComment(secondDescId);
+  Comment cachedDesc = repo->getComment(secondDescId, created.getId());
   afterFirstDescriptionUpdate.addComment(cachedDesc);
   repo->saveIssue(afterFirstDescriptionUpdate);
   EXPECT_TRUE(controller->updateIssueField(
@@ -93,17 +95,19 @@ TEST_F(ControllerWithRepoTest, FullWorkflowCoversControllerBranches) {
       controller->addCommentToIssue(created.getId(), "Unknown user", "ghost"),
       std::invalid_argument);
 
-  EXPECT_TRUE(controller->updateComment(added.getId(), "Edited follow up"));
-  EXPECT_EQ(repo->getComment(added.getId()).getText(), "Edited follow up");
-  EXPECT_THROW(controller->updateComment(added.getId(), ""),
+  EXPECT_TRUE(controller->updateComment(created.getId(), added.getId(),
+  "Edited follow up"));
+  EXPECT_EQ(repo->getComment(added.getId(), created.getId()).getText(),
+  "Edited follow up");
+  EXPECT_THROW(controller->updateComment(created.getId(), added.getId(), ""),
       std::invalid_argument);
-  EXPECT_THROW(controller->updateComment(999, "No comment"),
+  EXPECT_THROW(controller->updateComment(created.getId(), 999, "No comment"),
       std::invalid_argument);
 
-  EXPECT_TRUE(controller->deleteComment(firstDescId));
-  EXPECT_THROW(controller->deleteComment(firstDescId),
+  EXPECT_TRUE(controller->deleteComment(created.getId(), firstDescId));
+  EXPECT_THROW(controller->deleteComment(created.getId(), firstDescId),
       std::invalid_argument);
-  EXPECT_THROW(controller->deleteComment(999),
+  EXPECT_THROW(controller->deleteComment(created.getId(), 999),
       std::invalid_argument);
 
   auto allIssues = controller->listAllIssues();
