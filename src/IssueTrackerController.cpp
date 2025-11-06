@@ -19,7 +19,7 @@ Issue IssueTrackerController::createIssue(const std::string& title,
 
     // 2. Create the first Comment = Description
     Comment descComment(0, author_id, desc, 0);
-    Comment savedComment = repo->saveComment(0, descComment);
+    Comment savedComment = repo->saveComment(savedIssue.getId(), descComment);
 
     // 3. Link comment #1 as description
     savedIssue.setDescriptionCommentId(savedComment.getId());
@@ -50,14 +50,15 @@ bool IssueTrackerController::updateIssueField(int id, const std::string& field,
             if (!descComment) {
                 // No description comment yet, so create one
                 Comment newDesc(0, issue.getAuthorId(), value, 0);
-                Comment savedDesc = repo->saveComment(0, newDesc);
+                Comment savedDesc =
+                    repo->saveComment(issue.getId(), newDesc);
                 issue.setDescriptionCommentId(savedDesc.getId());
                 repo->saveIssue(issue);
             } else {
                 // Update existing description comment
                 Comment editable = *descComment;
                 editable.setText(value);
-                repo->saveComment(0, editable);
+                repo->saveComment(issue.getId(), editable);
             }
             return true;
 
