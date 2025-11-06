@@ -226,7 +226,6 @@ TEST_F(IssueTrackerViewTest, UnassignUser_PrintsSuccessMessage) {
 }
 
 TEST_F(IssueTrackerViewTest, Run_ShowsMenuAndExits) {
-    
     const std::string output = runWithInput("16\n", &IssueTrackerView::run);
 
     EXPECT_THAT(output, HasSubstr("Issue Tracker Menu"));
