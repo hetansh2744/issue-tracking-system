@@ -32,7 +32,7 @@ IssueRepository* repo;
     virtual bool unassignUserFromIssue(int issueId);
 
     virtual bool deleteIssue(int id);
-    
+
     virtual std::vector<Comment> getallComments(int issueId);
 
     virtual Comment getComment(int issueId, int commentId);
