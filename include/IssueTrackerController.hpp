@@ -32,13 +32,18 @@ IssueRepository* repo;
     virtual bool unassignUserFromIssue(int issueId);
 
     virtual bool deleteIssue(int id);
+    
+    virtual std::vector<Comment> getallComments(int issueId);
+
+    virtual std::vector<Comment> getComment(int issueId, int commentId);
 
     virtual Comment addCommentToIssue(int issueId, const std::string& text,
         const std::string& authorId);
 
-    virtual bool updateComment(int commentId, const std::string& newText);
+    virtual bool updateComment(int issueId, int commentId,
+        const std::string& newText);
 
-    virtual bool deleteComment(int commentId);
+    virtual bool deleteComment(int issueId, int commentId);
 
     virtual User createUser(const std::string& name, const std::string& roll);
 

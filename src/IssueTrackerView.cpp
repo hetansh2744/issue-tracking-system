@@ -105,13 +105,21 @@ void IssueTrackerView::createIssue() {
 void IssueTrackerView::updateIssue() {
     int id;
     std::string field, value;
-    std::cout << "Enter Issue ID: ";
-    std::cin >> id;
-    std::cin.ignore();
-    std::cout << "Enter field to update (title/description/assignedTo): ";
-    std::getline(std::cin, field);
-    std::cout << "Enter new value: ";
-    std::getline(std::cin, value);
+
+    id = getissueId();
+    int num_of_options = 2;
+
+    std::cout << "Select a field to change\n1) Title\n" <<
+    "2) Description\n";
+    int userinput = getvalidInt(num_of_options);
+    switch (userinput) {
+        case 1: field = "title";
+            std::cout << "Enter new value: ";
+            std::getline(std::cin, value); break;
+        case 2: field = "description"; 
+            std::cout << "Enter new value: ";
+            std::getline(std::cin, value); break;
+    }
 
     bool success = controller->updateIssueField(id, field, value);
     std::cout << (success ? "Updated successfully.\n" : "Update failed.\n");
@@ -120,11 +128,9 @@ void IssueTrackerView::updateIssue() {
 void IssueTrackerView::assignUser() {
     int issueId;
     std::string userName;
-    std::cout << "Enter Issue ID: ";
-    std::cin >> issueId;
-    std::cin.ignore();
-    std::cout << "Enter User NAME: ";
-    std::getline(std::cin, userName);
+
+    issueId = getissueId();
+    userName = getuserId();
 
     bool success = controller->assignUserToIssue(issueId, userName);
     std::cout << (success ? "User assigned.\n" : "Failed to assign.\n");
@@ -132,19 +138,17 @@ void IssueTrackerView::assignUser() {
 
 void IssueTrackerView::unassignUser() {
     int issueId;
-    std::cout << "Enter Issue ID: ";
-    std::cin >> issueId;
+    issueId = getissueId();
 
     bool success = controller->unassignUserFromIssue(issueId);
     std::cout << (success ? "User unassigned.\n" : "Failed to unassign.\n");
 }
 
 void IssueTrackerView::deleteIssue() {
-    int id;
-    std::cout << "Enter Issue ID to delete: ";
-    std::cin >> id;
+    int issueid;
+    issueid = getissueId();
 
-    bool success = controller->deleteIssue(id);
+    bool success = controller->deleteIssue(issueid);
     std::cout << (success ? "Deleted successfully.\n" : "Delete failed.\n");
 }
 
@@ -339,7 +343,7 @@ int IssueTrackerView::getissueId() {
   }
 
   num_of_issues -1;
-  int userinput = getvalidInt(num_of_issues);
+  int userinput = getvalidInt(num_of_issues - 1);
   return issueids[userinput -1];
 }
 

@@ -19,7 +19,7 @@ Issue IssueTrackerController::createIssue(const std::string& title,
 
     // 2. Create the first Comment = Description
     Comment descComment(0, author_id, desc, 0);
-    Comment savedComment = repo->saveComment(descComment);
+    Comment savedComment = repo->saveComment(0, descComment);
 
     // 3. Link comment #1 as description
     savedIssue.setDescriptionCommentId(savedComment.getId());
@@ -50,14 +50,14 @@ bool IssueTrackerController::updateIssueField(int id, const std::string& field,
             if (!descComment) {
                 // No description comment yet, so create one
                 Comment newDesc(0, issue.getAuthorId(), value, 0);
-                Comment savedDesc = repo->saveComment(newDesc);
+                Comment savedDesc = repo->saveComment(issueId, newDesc);
                 issue.setDescriptionCommentId(savedDesc.getId());
                 repo->saveIssue(issue);
             } else {
                 // Update existing description comment
                 Comment editable = *descComment;
                 editable.setText(value);
-                repo->saveComment(editable);
+                repo->saveComment(issueId, editable);
             }
             return true;
 
@@ -99,6 +99,16 @@ bool IssueTrackerController::deleteIssue(int issueId) {
     return repo->deleteIssue(issueId);
 }
 
+std::vector<Comment> IssueTrackerController::getallComments(
+    int issueId) {
+    return repo->getallcomments(issueId);
+}
+
+Comment IssueTrackerController::getComment(
+    int issueId, commentId) {
+    return repo->getComment(issueId, commentId);
+}
+
 Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
@@ -111,7 +121,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
 
         // create comment (timestamp 0 for simplicity)
         Comment newComment(0, authorId, text, 0);
-        Comment savedComment = repo->saveComment(newComment);
+        Comment savedComment = repo->saveComment(issueId, newComment);
 
         // add comment id to Issue
         issue.addComment(savedComment.getId());
@@ -123,21 +133,24 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     }
 }
 
-bool IssueTrackerController::updateComment(int commentId,
-    const std::string& newText) {
+bool IssueTrackerController::updateComment(int issudeId,
+     int commentId, const std::string& newText) {
     try {
-        Comment comment = repo->getComment(commentId);
+        Comment comment = repo->getComment(issueId,
+            commentId);
         comment.setText(newText);
-        repo->saveComment(comment);
+        repo->saveComment(issueId, comment);
         return true;
     } catch (const std::out_of_range&) {
         return false;
     }
 }
 
-bool IssueTrackerController::deleteComment(int commentId) {
+bool IssueTrackerController::deleteComment(int issueId,
+    int commentId) {
     try {
-        Comment comment = repo->getComment(commentId);
+        Comment comment = repo->getComment(issueId,
+            commentId);
         int issueId = comment.getId();
 
         bool deleted = repo->deleteComment(commentId);
