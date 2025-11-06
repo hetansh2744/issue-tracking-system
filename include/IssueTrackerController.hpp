@@ -17,42 +17,44 @@ IssueRepository* repo;
  public:
     IssueTrackerController(IssueRepository* repository);
 
-    Issue createIssue(const std::string& title, const std::string& desc,
-    const std::string& assignedTo);
+    virtual ~IssueTrackerController() = default;
+
+    virtual Issue createIssue(const std::string& title,
+        const std::string& desc, const std::string& assignedTo);
 
     Issue getIssue(const int issueId);
 
-    bool updateIssueField(int id, const std::string& field,
-    const std::string& value);
+    virtual bool updateIssueField(int id, const std::string& field,
+        const std::string& value);
 
-    bool assignUserToIssue(int issueId, const std::string& user);
+    virtual bool assignUserToIssue(int issueId, const std::string& user);
 
-    bool unassignUserFromIssue(int issueId);
+    virtual bool unassignUserFromIssue(int issueId);
 
-    bool deleteIssue(int id);
+    virtual bool deleteIssue(int id);
 
-    Comment addCommentToIssue(int issueId, const std::string& text,
-    const std::string& authorId);
+    virtual Comment addCommentToIssue(int issueId, const std::string& text,
+        const std::string& authorId);
 
-    bool updateComment(int commentId,
-        const std::string& newText);
+    virtual bool updateComment(int commentId, const std::string& newText);
 
-    bool deleteComment(int commentId);
+    virtual bool deleteComment(int commentId);
 
-    User createUser(const std::string& name, const std::string& roll);
+    virtual User createUser(const std::string& name, const std::string& roll);
 
-    bool updateUser(const std::string& user, const std::string& field,
-    const std::string& value);
+    virtual bool updateUser(const std::string& user, const std::string& field,
+        const std::string& value);
 
-    bool removeUser(const std::string& user_name);
+    virtual bool removeUser(const std::string& user_name);
 
-    std::vector<Issue> listAllIssues();
+    virtual std::vector<Issue> listAllIssues();
 
-    std::vector<Issue> listAllUnassignedIssues();
+    virtual std::vector<Issue> listAllUnassignedIssues();
 
-    std::vector<Issue> findIssuesByUserId(const std::string& user_name);
+    virtual std::vector<Issue> findIssuesByUserId(
+        const std::string& user_name);
 
-    std::vector<User> listAllUsers();
+    virtual std::vector<User> listAllUsers();
 };
 
 #endif // ISSUE_TRACKER_CONTROLLER_H.0

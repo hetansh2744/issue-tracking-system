@@ -1,9 +1,14 @@
 #include "gmock/gmock.h"
 #include "IssueTrackerController.hpp"
+#define private public
 #include "IssueTrackerView.hpp"
+#undef private
 
 class MockIssueTrackerController : public IssueTrackerController {
  public:
+    MockIssueTrackerController()
+        : IssueTrackerController(nullptr) {}
+
     MOCK_METHOD(Issue, createIssue, (const std::string&,
          const std::string&, const std::string&), (override));
     MOCK_METHOD(bool, updateIssueField, (int, const std::string&,
@@ -53,16 +58,16 @@ TEST_F(IssueTrackerViewTest, CreateIssue_CallsControllerWithCorrectArgs) {
     view->createIssue();
 }
 
-TEST_F(IssueTrackerViewTest, CreateIssue_CallsControllerWithCorrectArgs) {
-    std::istringstream input("Title\nDescription\nUser123\n");
-    std::cin.rdbuf(input.rdbuf());
+// TEST_F(IssueTrackerViewTest, CreateIssue_CallsControllerWithCorrectArgs) {
+//     std::istringstream input("Title\nDescription\nUser123\n");
+//     std::cin.rdbuf(input.rdbuf());
 
-    Issue dummyIssue;
-    EXPECT_CALL(mockController, createIssue("Title", "Description", "User123"))
-        .WillOnce(Return(dummyIssue));
+//     Issue dummyIssue;
+//     EXPECT_CALL(mockController, createIssue("Title", "Description", "User123"))
+//         .WillOnce(Return(dummyIssue));
 
-    view->createIssue();
-}
+//     view->createIssue();
+// }
 
 TEST_F(IssueTrackerViewTest, AssignUser_CallsController) {
     std::istringstream input("1\nuser42\n");
