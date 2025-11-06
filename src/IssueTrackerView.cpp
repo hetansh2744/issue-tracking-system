@@ -69,36 +69,12 @@ void IssueTrackerView::createIssue() {
     char selection;
     
     while (true) {
-        std::cout << "Assign to a user? Y/N: ";
-
-        char temp_selection;
-        if (std::cin >> temp_selection) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            
-            char upperSelection = std::toupper(temp_selection);
-
-            if (upperSelection == 'Y' || upperSelection == 'N') {
-                selection = upperSelection;
-                std::cout << "Input accepted: " << selection << std::endl;
-                break;
-            } else {
-                std::cout << "Input error: Invalid choice. Please enter Y or N." << std::endl;
-            }
-        } else {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Input error: Invalid input. Please enter a single character (Y or N)." << std::endl;
-        }
-    }
-
-    if (selection == 'Y') {
+        std::cout << "Select author of Issue";
         assignedTo = getuserId(); 
         std::cout << "Issue assigned to user: " << assignedTo << std::endl;
-    } elseif(selection == 'N') {
-        assignedTo = "";
-    }
     
     Issue issue = controller->createIssue(title, desc, assignedTo);
+    }
 }
 
 void IssueTrackerView::updateIssue() {
@@ -271,7 +247,6 @@ void IssueTrackerView:: updateUser() {
   std::string oldname;
   std::string role;
   std::string newrole;
-  std::string getuserID();
   std::cout << "What would you like to update?" << std::endl;
   std::cout << "1: User name" << std::endl;
   std::cout << "2: User Role" << std::endl;
