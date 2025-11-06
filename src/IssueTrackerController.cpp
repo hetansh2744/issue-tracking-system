@@ -28,7 +28,7 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     return savedIssue;
 }
 
-Issue IssueTrackerController::getIssue(const int issueId){
+Issue IssueTrackerController::getIssue(const int issueId) {
     return repo->getIssue(issueId);
 }
 

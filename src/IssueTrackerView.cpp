@@ -24,16 +24,16 @@ void IssueTrackerView::displayMenu() {
 
     //implement!
 
-    std::cout << "17. Exit\n";
+    std::cout << "0. Exit\n";
     std::cout << "Select an option: ";
 }
 
 void IssueTrackerView::run() {
     int choice = -1;
-    while (choice != 17) {
+    while (choice != 0) {
         displayMenu();
-        int length_display = 17;
-        choice = getvalidInt(length_display);
+        std::cin >> choice;
+        std::cin.ignore();
 
         switch (choice) {
         case 1: createIssue(); break;
@@ -52,27 +52,28 @@ void IssueTrackerView::run() {
         case 14: updateUser(); break;
         case 15: listUnassignedIssues(); break;
         case 16: addComIssue(); break;
-        case 17: std::cout << "Goodbye!\n"; break;
+        case 0: std::cout << "Goodbye!\n"; break;
+        default: std::cout << "Invalid choice.\n"; break;
         }
     }
 }
 
 void IssueTrackerView::createIssue() {
     std::string title, desc, assignedTo;
-  
+
     std::cout << "Enter title: ";
     std::getline(std::cin, title);
     std::cout << "Enter description: ";
     std::getline(std::cin, desc);
 
-    std::cout << "Select author of Issue\n";
-    assignedTo = getuserId(); 
-    std::cout << "Issue assigned to user: " << assignedTo << std::endl;
+    while (true) {
+        std::cout << "Select author of Issue";
+        assignedTo = getuserId();
+        std::cout << "Issue assigned to user: " << assignedTo << std::endl;
 
     Issue issue = controller->createIssue(title, desc, assignedTo);
-    std::cout << "Issue created successfully.\n";
+    }
 }
-
 
 void IssueTrackerView::updateIssue() {
     int id;
@@ -209,7 +210,7 @@ void IssueTrackerView::createUser() {
         case 2: role = "Developer"; break;
         case 3: role = "Maintainer"; break;
     }
-    
+
     User u = controller->createUser(name, role);
     if (u.getName().empty())
         std::cout << "Failed to create user.\n";
@@ -246,12 +247,12 @@ void IssueTrackerView:: updateUser() {
   std::cout << "1: User name" << std::endl;
   std::cout << "2: User Role" << std::endl;
   std::cin >> choice;
-  if(choice == 1){
+  if (choice == 1) {
     std::cout << "Enter old Username: " << std::endl;
     std::cin >> oldname;
     std::cout << "Enter new username: " << std::endl;
     std:: cin >> newname;
-    controller ->updateUser(oldname,"name", newname);
+    controller ->updateUser(oldname, "name", newname);
     controller ->removeUser(oldname);
   } else {
     std::string name;
@@ -323,6 +324,7 @@ int IssueTrackerView::getvalidInt(int bound) {
     }
 
     int selection;
+
     while (true) {
         std::cout << "Please enter an integer between 1 and " << bound << ": ";
 
@@ -351,7 +353,7 @@ void IssueTrackerView:: displayIssue(int id) {
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n";
-    for(auto it : comments) {
+    for (auto it : comments) {
       std::cout << it.getText();
     }
 }
@@ -364,7 +366,6 @@ void IssueTrackerView:: addComIssue() {
   std::cout << "What Issue Needs a Comment" << std::endl;
   std::cin >> issueId;
   displayIssue(issueId);
-  std::cout << std::endl;
   std::cout << "Comment text add here" << std::endl;
   std::cin >> text;
   std::cout << "Name of Author" << std::endl;

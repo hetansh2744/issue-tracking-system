@@ -69,7 +69,8 @@ TEST_F(ControllerWithRepoTest, FullWorkflowCoversControllerBranches) {
 
   EXPECT_TRUE(
       controller->assignUserToIssue(created.getId(), assignee.getName()));
-  EXPECT_EQ(repo->getIssue(created.getId()).getAssignedTo(), assignee.getName());
+  EXPECT_EQ(repo->getIssue(created.getId()).
+            getAssignedTo(), assignee.getName());
   EXPECT_THROW(controller->assignUserToIssue(created.getId(), "ghost"),
       std::invalid_argument);
   EXPECT_THROW(
