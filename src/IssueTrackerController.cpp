@@ -31,10 +31,12 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     return savedIssue;
 }
 
+//returns the issue from IR
 Issue IssueTrackerController::getIssue(const int issueId) {
     return repo->getIssue(issueId);
 }
 
+//Updates the a certian issue and sends updated value to view
 bool IssueTrackerController::updateIssueField(int id, const std::string& field,
     const std::string& value) {
     try {
@@ -75,6 +77,7 @@ bool IssueTrackerController::updateIssueField(int id, const std::string& field,
     }
 }
 
+//Assigns a created user to a specific username
 bool IssueTrackerController::assignUserToIssue(int issueId,
     const std::string& user_name) {
     try {
@@ -88,6 +91,7 @@ bool IssueTrackerController::assignUserToIssue(int issueId,
     }
 }
 
+//unassigns issue from a user and returns to view
 bool IssueTrackerController::unassignUserFromIssue(int issueId) {
     try {
         Issue issue = repo->getIssue(issueId);
@@ -99,20 +103,26 @@ bool IssueTrackerController::unassignUserFromIssue(int issueId) {
     }
 }
 
+//deletes a certain issue and returns true if success-
+//-fully deleted
 bool IssueTrackerController::deleteIssue(int issueId) {
     return repo->deleteIssue(issueId);
 }
 
+//returns all comments from a issue id
 std::vector<Comment> IssueTrackerController::getallComments(
     int issueId) {
     return repo->getAllComments(issueId);
 }
 
+//allows the view to display the comments
 Comment IssueTrackerController::getComment(
     int issueId, int commentId) {
     return repo->getComment(issueId, commentId);
 }
 
+//adds comments to certain issues and makes user inut the au-
+//-thor of comments
 Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
@@ -135,6 +145,8 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     }
 }
 
+//Updates existing comments through view and changes
+// their value in repository
 bool IssueTrackerController::updateComment(int issueId,
      int commentId, const std::string& newText) {
     try {
@@ -148,6 +160,8 @@ bool IssueTrackerController::updateComment(int issueId,
     }
 }
 
+//deletes comments by issue id and what comment ids
+//are in the issue
 bool IssueTrackerController::deleteComment(int issueId, int commentId) {
     try {
         repo->getComment(issueId, commentId);
@@ -166,6 +180,7 @@ bool IssueTrackerController::deleteComment(int issueId, int commentId) {
     }
 }
 
+//takes input from view and creates a new user
 User IssueTrackerController::createUser(const std::string& name,
     const std::string& role) {
     if (name.empty() || role.empty()) {
@@ -175,6 +190,8 @@ User IssueTrackerController::createUser(const std::string& name,
     return repo->saveUser(newUser);
 }
 
+//allows the view to use cin to access what/how needs to be -
+//-changed and what new value is
 bool IssueTrackerController::updateUser(const std::string& userId,
     const std::string& field, const std::string& value) {
     try {
@@ -197,19 +214,24 @@ bool IssueTrackerController::removeUser(const std::string& user_name) {
     return repo->deleteUser(user_name);
 }
 
+//returns a list of all issues
 std::vector<Issue> IssueTrackerController::listAllIssues() {
     return repo->listIssues();
 }
 
+//returns a list of issues to view that dont have a user id 
 std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
     return repo->listAllUnassigned();
 }
 
+//reuturns issues by username inputted 
+//allows view to access issues by userid
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
     return repo->findIssues(user_name);
 }
 
+//lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {
     return repo->listAllUsers();
 }
