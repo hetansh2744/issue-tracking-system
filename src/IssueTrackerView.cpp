@@ -395,16 +395,15 @@ void IssueTrackerView:: displayIssue(int id) {
     time_t now = time(0);
 
     // Convert to local time structure
-    tm* local_time = localtime(&now);
   Issue iss = controller->getIssue(id);
   std::vector <Comment> comments = controller->getallComments(id);
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n";
-    std::cout <<"Time: " << ctime(&now);
+    std::cout << "Time: " << ctime(&now);    
+    int i = 1;
     for (auto it : comments) {
-      int i = 1;
       std::cout << i << it.getText() <<std::endl;
       i++;
     }
