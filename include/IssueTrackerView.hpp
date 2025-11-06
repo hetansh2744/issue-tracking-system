@@ -9,7 +9,8 @@
 class IssueTrackerView {
  private:
     IssueTrackerController* controller;
-public:
+
+ public:
     // Helper functions for menu options
     void displayMenu();
     void createIssue();
@@ -31,7 +32,8 @@ public:
     std::string getuserId();
     int getissueId();
     int getvalidInt(int bound);
-public:
+
+ public:
     void displayIssue(int id);
     // Constructor: takes a pointer to the controller
     explicit IssueTrackerView(IssueTrackerController* controller);
