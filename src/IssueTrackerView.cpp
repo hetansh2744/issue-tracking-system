@@ -217,7 +217,7 @@ void IssueTrackerView::listUsers() {
     return;
   }
   for (auto user : users)
-    std::cout << "Name: " << user.getName() << " | Role: " << user.getRole()
+    std::cout << "Name: " << user.getName() << " | Role: " << user.getRole() 
               << "\n";
 }
 
@@ -230,12 +230,41 @@ void IssueTrackerView::removeUser() {
 }
 
 void IssueTrackerView:: updateUser() {
-    int choice;
-    std::cout <<"1: Assigned Issues " << std::endl;
-    std::cout <<"2: " << std::endl;
-    std::cout <<"3: " << std::endl;
-    std::cout <<"4: " << std::endl;
-    std::cin >> choice;
+  int choice;
+  int rolechoice;
+  std::string newname;
+  std::string oldname;
+  std::string role;
+  std::string newrole;
+  std::string getuserID();
+  std::cout << "What would you like to update?" << std::endl;
+  std::cout << "1: User name" << std::endl;
+  std::cout << "2: User Role" << std::endl;
+  std::cin >> choice;
+  if(choice == 1){
+    std::cout << "Enter old Username: " << std::endl;
+    std::cin >> oldname;
+    std::cout << "Enter new username: " << std::endl;
+    std:: cin >> newname;
+    controller ->updateUser( oldname,"name", newname);
+    controller ->removeUser(oldname);
+  } else {
+    std::string name;
+    std::cout << "what is username" <<std::endl;
+    std::cin >> name;
+    int num_of_roles = 3;
+    std::cout << "1) Owner\n2) Developer\n3) Maintainer\n" <<
+    "Enter role: ";
+
+    int userinput = getvalidInt(num_of_roles);
+    switch (userinput) {
+        case 1: newrole = "Owner"; break;
+        case 2: newrole = "Developer"; break;
+        case 3: newrole = "Maintainer"; break;
+    }
+    controller ->updateUser( name,"role", newrole);
+
+  }
 }
 
 std::string IssueTrackerView::getuserId() {
