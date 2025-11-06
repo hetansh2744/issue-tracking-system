@@ -22,8 +22,6 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(std::vector<Comment>,
         getAllComments, (int issueId), (const, override));
     MOCK_METHOD(bool, deleteComment, (int commentId), (override));
-    MOCK_METHOD(std::vector<Comment>,
-        getAllComments, (int issueId), (const, override));
 
     MOCK_METHOD(User, saveUser, (const User& user), (override));
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));

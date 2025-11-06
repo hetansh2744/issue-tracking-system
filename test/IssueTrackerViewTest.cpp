@@ -1,6 +1,11 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "IssueTrackerView.hpp"
+#include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #define private public
 #undef private
@@ -27,8 +32,13 @@ class MockIssueTrackerController : public IssueTrackerController {
       (const std::string&), (override));
   MOCK_METHOD(Comment, addCommentToIssue,
       (int, const std::string&, const std::string&), (override));
-  MOCK_METHOD(bool, updateComment, (int, const std::string&), (override));
-  MOCK_METHOD(bool, deleteComment, (int), (override));
+
+  MOCK_METHOD(bool, updateComment, 
+      (int, int, const std::string&), (override)); 
+
+  MOCK_METHOD(bool, deleteComment, 
+      (int, int), (override)); 
+      
   MOCK_METHOD(User, createUser,
       (const std::string&, const std::string&), (override));
   MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
@@ -208,6 +218,27 @@ TEST_F(IssueTrackerViewTest, UnassignUser_PrintsSuccessMessage) {
 
   EXPECT_THAT(output, HasSubstr("User unassigned"));
 }
+
+TEST_F(IssueTrackerViewTest, UpdateComment_PrintsSuccessMessage) {
+  EXPECT_CALL(mockController, updateComment(1, 5, "Updated text"))
+      .WillOnce(Return(true));
+
+  const std::string output = runWithInput("1\n5\nUpdated text\n",
+                                          &IssueTrackerView::updateComment);
+
+  EXPECT_THAT(output, HasSubstr("Updated."));
+}
+
+TEST_F(IssueTrackerViewTest, DeleteComment_PrintsSuccessMessage) {
+  EXPECT_CALL(mockController, deleteComment(1, 5))
+      .WillOnce(Return(true));
+
+  const std::string output = runWithInput("1\n5\n",
+                                          &IssueTrackerView::deleteComment);
+
+  EXPECT_THAT(output, HasSubstr("Deleted."));
+}
+
 
 TEST_F(IssueTrackerViewTest, UpdateUser_PrintsMenuOptions) {
   const std::string output = runWithInput("3\n",
