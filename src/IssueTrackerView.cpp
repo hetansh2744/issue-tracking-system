@@ -344,7 +344,8 @@ int IssueTrackerView::getvalidInt(int bound) {
         if (std::cin >> selection) {
             if (selection >= 1 && selection <= bound) {
                 std::cout << "Input accepted: " << selection << "\n";
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cin.ignore(
+                std::numeric_limits<std::streamsize>::max(), '\n');
                 return selection;
             } else {
                 std::cout << "Input error: " << selection <<

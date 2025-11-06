@@ -20,7 +20,8 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     // 2. Create the first Comment = Description
     if (!desc.empty()) {
         Comment descComment(0, author_id, desc, 0);
-        Comment savedComment = repo->saveComment(savedIssue.getId(), descComment);
+        Comment savedComment = repo->saveComment(savedIssue.getId(),
+        descComment);
 
         // 3. Link comment #1 as description
         savedIssue.setDescriptionCommentId(savedComment.getId());
