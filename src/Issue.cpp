@@ -94,6 +94,7 @@ void Issue::addComment(const Comment& comment) {
     throw std::invalid_argument("comment.id must be > 0");
   }
 
+  // upsert by id (copy)
   auto it = std::find_if(
       comments_.begin(),
       comments_.end(),
@@ -107,6 +108,7 @@ void Issue::addComment(const Comment& comment) {
     *it = comment;
   }
 
+  // keep id list in sync
   addComment(commentId);
 }
 
@@ -116,6 +118,7 @@ void Issue::addComment(Comment&& comment) {
     throw std::invalid_argument("comment.id must be > 0");
   }
 
+  // upsert by id (move)
   auto it = std::find_if(
       comments_.begin(),
       comments_.end(),
@@ -129,6 +132,7 @@ void Issue::addComment(Comment&& comment) {
     *it = std::move(comment);
   }
 
+  // keep id list in sync
   addComment(commentId);
 }
 
@@ -163,6 +167,6 @@ bool Issue::removeCommentById(int id) {
     comments_.erase(it);
   }
 
-  // also clears description if it was that id
+  // also removes id and clears description if needed
   return removeComment(id);
 }
