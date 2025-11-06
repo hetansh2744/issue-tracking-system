@@ -140,8 +140,7 @@ class InMemoryIssueRepository : public IssueRepository {
                 return c;
             }
         }
-        throw std::invalid_argument(
-          "Comment does not belong to the given issue");
+        throw std::invalid_argument("Comment does not belong to the given issue");
     }
 
     std::vector<Comment> getAllComments(int issueId) const override {
