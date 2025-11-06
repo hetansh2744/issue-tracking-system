@@ -74,7 +74,7 @@ bool IssueTrackerController::updateIssueField(int id, const std::string& field,
         return false;
     }
 }
-
+// assigns a user to a specific issue by id
 bool IssueTrackerController::assignUserToIssue(int issueId,
     const std::string& user_name) {
     try {
@@ -88,6 +88,7 @@ bool IssueTrackerController::assignUserToIssue(int issueId,
     }
 }
 
+// removes a user assignment from a specific issue
 bool IssueTrackerController::unassignUserFromIssue(int issueId) {
     try {
         Issue issue = repo->getIssue(issueId);
@@ -99,20 +100,24 @@ bool IssueTrackerController::unassignUserFromIssue(int issueId) {
     }
 }
 
+// deletes an issue by id
 bool IssueTrackerController::deleteIssue(int issueId) {
     return repo->deleteIssue(issueId);
 }
 
+// retrieves all comments for a given issue
 std::vector<Comment> IssueTrackerController::getallComments(
     int issueId) {
     return repo->getAllComments(issueId);
 }
 
+// retrieves a specific comment from an issue
 Comment IssueTrackerController::getComment(
     int issueId, int commentId) {
     return repo->getComment(issueId, commentId);
 }
 
+// adds a comment to an issue, returns the saved comment
 Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
@@ -135,6 +140,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     }
 }
 
+// updates the text of an existing comment
 bool IssueTrackerController::updateComment(int issueId,
      int commentId, const std::string& newText) {
     try {
@@ -148,6 +154,7 @@ bool IssueTrackerController::updateComment(int issueId,
     }
 }
 
+// deletes a comment from an issue and removes its reference
 bool IssueTrackerController::deleteComment(int issueId, int commentId) {
     try {
         repo->getComment(issueId, commentId);
@@ -166,6 +173,7 @@ bool IssueTrackerController::deleteComment(int issueId, int commentId) {
     }
 }
 
+// creates a new user with a name and role
 User IssueTrackerController::createUser(const std::string& name,
     const std::string& role) {
     if (name.empty() || role.empty()) {
@@ -175,6 +183,7 @@ User IssueTrackerController::createUser(const std::string& name,
     return repo->saveUser(newUser);
 }
 
+// updates a user’s name or role based on a specified field
 bool IssueTrackerController::updateUser(const std::string& userId,
     const std::string& field, const std::string& value) {
     try {
@@ -193,23 +202,28 @@ bool IssueTrackerController::updateUser(const std::string& userId,
     }
 }
 
+// removes a user from the repository
 bool IssueTrackerController::removeUser(const std::string& user_name) {
     return repo->deleteUser(user_name);
 }
 
+// returns a list of all issues
 std::vector<Issue> IssueTrackerController::listAllIssues() {
     return repo->listIssues();
 }
 
+// returns all issues that do not have an assigned user
 std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
     return repo->listAllUnassigned();
 }
 
+// finds all issues assigned to a specific user
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
     return repo->findIssues(user_name);
 }
 
+// returns a list of all users
 std::vector<User> IssueTrackerController::listAllUsers() {
     return repo->listAllUsers();
 }
