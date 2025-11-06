@@ -53,9 +53,3 @@ TEST(UserTest, VillainToHeroTransition) {
     ASSERT_EQ(user.getName(), newName);
     ASSERT_EQ(user.getRole(), newRole);
 }
-
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
