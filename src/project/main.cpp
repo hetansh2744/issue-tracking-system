@@ -1,9 +1,11 @@
-// Minimal source file that allows the pipeline to pass.
-#include "IssueTrackerView.h"
-#include "IssueRepository.h"
-#include "IssueTrackerController.h"
+#include "IssueTrackerView.hpp"
+#include "IssueTrackerController.hpp"
+#include "IssueRepository.hpp"
 
 int main() {
-    //IssueRepository repo;
+    auto repo = createIssueRepository();
+    IssueTrackerController controller(repo);
+    IssueTrackerView view(&controller);
+    view.run();
     return 0;
 }
