@@ -20,6 +20,8 @@ IssueRepository* repo;
     Issue createIssue(const std::string& title, const std::string& desc,
     const std::string& assignedTo);
 
+    Issue getIssue(const int issueId);
+
     bool updateIssueField(int id, const std::string& field,
     const std::string& value);
 

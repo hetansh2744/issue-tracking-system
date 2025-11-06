@@ -28,6 +28,10 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     return savedIssue;
 }
 
+Issue IssueTrackerController::getIssue(const int issueId){
+    return repo->getIssue(issueId);
+}
+
 bool IssueTrackerController::updateIssueField(int id, const std::string& field,
     const std::string& value) {
     try {
