@@ -11,7 +11,6 @@
 #include "IssueTrackerController.hpp"
 
 #define private public
-#include "IssueTrackerView.hpp"
 #undef private
 
 using ::testing::_;
