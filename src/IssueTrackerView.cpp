@@ -20,19 +20,18 @@ void IssueTrackerView::displayMenu() {
     std::cout << "13. Remove User\n";
     std::cout << "14. Update User\n";
     std::cout << "15. List Unassigned Issues\n";
-    std::cout << "16. Add Comments to Issues\n";
 
     //implement!
 
-    std::cout << "17. Exit\n";
+    std::cout << "16. Exit\n";
     std::cout << "Select an option: ";
 }
 
 void IssueTrackerView::run() {
     int choice = -1;
-    while (choice != 17) {
+    while (choice != 16) {
         displayMenu();
-        int length_display = 17;
+        int length_display = 16;
         choice = getvalidInt(length_display);
 
         switch (choice) {
@@ -43,7 +42,7 @@ void IssueTrackerView::run() {
         case 5: deleteIssue(); break;
         case 6: listIssues(); break;
         case 7: findIssuesByUser(); break;
-        case 8: addComment(); break;
+        case 8: addComIssue(); break;
         case 9: updateComment(); break;
         case 10: deleteComment(); break;
         case 11: createUser(); break;
@@ -51,18 +50,18 @@ void IssueTrackerView::run() {
         case 13: removeUser(); break;
         case 14: updateUser(); break;
         case 15: listUnassignedIssues(); break;
-        case 16: addComIssue(); break;
-        case 17: std::cout << "Goodbye!\n"; break;
+        case 16: std::cout << "Goodbye!\n"; break;
         }
     }
 }
 
 void IssueTrackerView::createIssue() {
     std::string title, desc, assignedTo;
-  
-    std::cout << "Enter title: ";
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    
+    std::cout << "Enter title:\n";
     std::getline(std::cin, title);
-    std::cout << "Enter description: ";
+    std::cout << "Enter description:\n";
     std::getline(std::cin, desc);
 
     std::cout << "Select author of Issue\n";
@@ -72,7 +71,6 @@ void IssueTrackerView::createIssue() {
     Issue issue = controller->createIssue(title, desc, assignedTo);
     std::cout << "Issue created successfully.\n";
 }
-
 
 void IssueTrackerView::updateIssue() {
     int id;
@@ -361,13 +359,11 @@ void IssueTrackerView:: addComIssue() {
   std::string text;
   std::string authorID;
   listIssues();
-  std::cout << "What Issue Needs a Comment" << std::endl;
-  std::cin >> issueId;
+  issueId = getissueId();
   displayIssue(issueId);
   std::cout << "Comment text add here" << std::endl;
   std::cin >> text;
-  std::cout << "Name of Author" << std::endl;
-  std::cin >> authorID;
+  authorID = getuserId();
   controller->addCommentToIssue(issueId, text, authorID);
 }
 
@@ -393,8 +389,8 @@ void IssueTrackerView::updateComment() {
     int id;
     std::string text;
     int issueid;
-    std::cout << "Enter Issue ID: ";
-    std::cin >> issueid;
+    issueid = getissueId();
+    displayIssue(issueid);
     std::cout << "Enter Comment ID: ";
     std::cin >> id;
     std::cin.ignore();
@@ -406,15 +402,14 @@ void IssueTrackerView::updateComment() {
 }
 
 void IssueTrackerView::deleteComment() {
-    int id;
+    int issueid;
     int comid;
     listIssues();
-    std::cout << "Enter Issue ID: ";
-    std::cin >> id;
-    controller->getIssue(id);
-    displayIssue(id);
+    issueid = getissueId();
+    controller->getIssue(issueid);
+    displayIssue(issueid);
     std::cout << "Enter Comment ID: ";
     std::cin >> comid;
-    bool success = controller->deleteComment(id, comid);
+    bool success = controller->deleteComment(issueid, comid);
     std::cout << (success ? "Deleted.\n" : "Failed to delete.\n");
 }
