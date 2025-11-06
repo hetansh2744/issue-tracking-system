@@ -1,8 +1,4 @@
 #include "gtest/gtest.h"
-
-#include <memory>
-#include <string>
-
 #include "Comment.hpp"
 #include "Issue.hpp"
 #include "IssueRepository.hpp"
