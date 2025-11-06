@@ -65,8 +65,6 @@ void IssueTrackerView::createIssue() {
     std::getline(std::cin, title);
     std::cout << "Enter description: ";
     std::getline(std::cin, desc);
-
-    char selection;
     
     while (true) {
         std::cout << "Select author of Issue";
@@ -242,10 +240,8 @@ void IssueTrackerView::removeUser() {
 
 void IssueTrackerView:: updateUser() {
   int choice;
-  int rolechoice;
   std::string newname;
   std::string oldname;
-  std::string role;
   std::string newrole;
   std::cout << "What would you like to update?" << std::endl;
   std::cout << "1: User name" << std::endl;
@@ -273,7 +269,6 @@ void IssueTrackerView:: updateUser() {
         case 3: newrole = "Maintainer"; break;
     }
     controller ->updateUser( name,"role", newrole);
-
   }
 }
 
