@@ -155,7 +155,6 @@ TEST_F(InMemoryIssueRepositoryTest, SaveNewCommentAndGetAllComments) {
     Comment c2 = repo->saveComment(issue1.getId(),
     Comment(0, testUser.getName(), "Follow up", 0));
     ASSERT_GT(c2.getId(), 0);
- 
     std::vector<Comment> allComments = repo->getAllComments(issue1.getId());
     ASSERT_EQ(allComments.size(), 2u);
     EXPECT_EQ(allComments[0].getText(), "Initial description for issue 1.");
@@ -220,4 +219,4 @@ TEST_F(InMemoryIssueRepositoryTest, HydrateIssue_HandlesMissingComment) {
     Issue fetched = repo->getIssue(issue1.getId());
     EXPECT_EQ(fetched.getComments().size(), 1u);
 }
-}
+}  // namespace
