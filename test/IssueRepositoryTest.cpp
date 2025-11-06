@@ -1,9 +1,4 @@
 #include "gtest/gtest.h"
-#include <algorithm>
-#include <iterator>
-#include <stdexcept>
-#include <unordered_map>
-#include <vector>
 #include "Comment.hpp"
 #include "Issue.hpp"
 #include "IssueRepository.hpp"
