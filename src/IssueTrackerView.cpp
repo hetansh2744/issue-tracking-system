@@ -234,10 +234,10 @@ void IssueTrackerView::createUser() {
     std::cout << "Enter username: ";
     std::getline(std::cin, name);
     int num_of_roles = 3;
-    std::cout << "1)Owner\n 2)\n Developer\n 3)Maintainer\n" <<
+    std::cout << "1) Owner\n2) Developer\n3) Maintainer\n" <<
     "Enter role: ";
 
-    int userinput = getvalidInt(num_of_roles)
+    int userinput = getvalidInt(num_of_roles);
     switch (userinput) {
         case 1: role = "Owner"; break;
         case 2: role = "Developer"; break;
@@ -285,7 +285,7 @@ std::string IssueTrackerView::getuserId() {
   std::cout << "\n--- All Users ---\n";
   if (users.empty()) {
     std::cout << "No users found, Please add a User to Continue\n";
-    return;
+    return "";
   }
 
   int num_of_users= 1;
@@ -304,7 +304,7 @@ int IssueTrackerView::getissueId() {
   std::vector<Issue> issues = controller->listAllIssues();
   if (issues.empty()) {
     std::cout << "No issues found.\n";
-    return;
+    return -1;
   }
 
   int num_of_issues = 1;
