@@ -10,9 +10,9 @@
 #include "Comment.hpp"
 
 /**
- * @brief Domain model for an issue/ticket.
+ * @brief Domain model for an issue.
  *
- * Contracts:
+ * functions as aggregate root for Comments:
  *  - New Issue starts with id == 0; repository assigns > 0 via
  *    setIdForPersistence() once.
  *  - author_id_ and title_ are non-empty (validated).
