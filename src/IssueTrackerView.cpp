@@ -57,20 +57,23 @@ void IssueTrackerView::run() {
 
 void IssueTrackerView::createIssue() {
     std::string title, desc, assignedTo;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-    std::cout << "Enter title:\n";
-    std::getline(std::cin, title);
+    do {
+        std::cout << "Enter title:\n";
+        std::getline(std::cin, title);
+        if (title.empty()) {
+            std::cout << "Input error: Title cannot be empty. "
+                      << "Please try again.\n";
+        }
+    } while (title.empty());
     std::cout << "Enter description:\n";
     std::getline(std::cin, desc);
 
-    while (true) {
-        std::cout << "Select author of Issue";
-        assignedTo = getuserId();
-        std::cout << "Issue assigned to user: " << assignedTo << std::endl;
+    std::cout << "Select author of Issue";
+    assignedTo = getuserId();
+    std::cout << "Issue assigned to user: " << assignedTo << std::endl;
 
     Issue issue = controller->createIssue(title, desc, assignedTo);
-    }
 }
 
 void IssueTrackerView::updateIssue() {
@@ -196,8 +199,16 @@ void IssueTrackerView::findIssuesByUser() {
 void IssueTrackerView::createUser() {
     std::string name;
     std::string role;
-    std::cout << "Enter username: ";
-    std::getline(std::cin, name);
+
+    do {
+        std::cout << "Enter username: ";
+        std::getline(std::cin, name);
+        if (name.empty()) {
+            std::cout << "Input error: Username cannot be empty. "
+                      << "Please try again.\n";
+        }
+    } while (name.empty());
+
     int num_of_roles = 3;
     std::cout << "1) Owner\n2) Developer\n3) Maintainer\n" <<
     "Enter role: ";
@@ -271,24 +282,28 @@ void IssueTrackerView:: updateUser() {
 }
 
 std::string IssueTrackerView::getuserId() {
-  std::vector<User> users = controller->listAllUsers();
-  std::cout << "\n--- All Users ---\n";
-  if (users.empty()) {
-    std::cout << "No users found, please create a user\n";
-    createUser();
-  }
-  users = controller->listAllUsers();
+  while (true) {
+    std::vector<User> users = controller->listAllUsers();
+    if (users.empty()) {
+      std::cout << "\n--- All Users ---\n";
+      std::cout << "No users found, please create a user\n";
+      createUser();
+      continue;
+    }
 
-  int num_of_users = 1;
-  std::vector<std::string> usernames;
-  for (auto user : users) {
-    std::cout << num_of_users << ") " << user.getName() << "\n";
-    num_of_users++;
-    usernames.push_back(user.getName());
+    std::cout << "\n--- All Users ---\n";
+    for (size_t i = 0; i < users.size(); ++i) {
+      std::cout << (i + 1) << ") " << users[i].getName() << "\n";
+    }
+
+    int selection = getvalidInt(static_cast<int>(users.size()));
+    if (selection == -1) {
+      std::cout << "Unable to select a user. Please try again.\n";
+      continue;
+    }
+
+    return users[selection - 1].getName();
   }
-    num_of_users - 1;
-  int userinput = getvalidInt(num_of_users -1);
-  return usernames[userinput - 1];
 }
 
 int IssueTrackerView::getissueId() {
@@ -329,6 +344,7 @@ int IssueTrackerView::getvalidInt(int bound) {
         if (std::cin >> selection) {
             if (selection >= 1 && selection <= bound) {
                 std::cout << "Input accepted: " << selection << "\n";
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 return selection;
             } else {
                 std::cout << "Input error: " << selection <<
@@ -365,7 +381,7 @@ void IssueTrackerView:: addComIssue() {
   issueId = getissueId();
   displayIssue(issueId);
   std::cout << "Comment text add here" << std::endl;
-  std::cin >> text;
+  std::getline(std::cin, text);
   authorID = getuserId();
   controller->addCommentToIssue(issueId, text, authorID);
 }
@@ -396,9 +412,16 @@ void IssueTrackerView::updateComment() {
     displayIssue(issueid);
     std::cout << "Enter Comment ID: ";
     std::cin >> id;
-    std::cin.ignore();
-    std::cout << "Enter new text: ";
-    std::getline(std::cin, text);
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    do {
+        std::cout << "Enter new text: ";
+        std::getline(std::cin, text);
+        if (text.empty()) {
+            std::cout << "Input error: Comment text cannot be empty. "
+                      << "Please try again.\n";
+        }
+    } while (text.empty());
 
     bool success = controller->updateComment(issueid, id, text);
     std::cout << (success ? "Updated.\n" : "Failed to update.\n");
