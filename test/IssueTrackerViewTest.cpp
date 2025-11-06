@@ -1,11 +1,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "IssueTrackerView.hpp"
-#include <iostream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #define private public
 #undef private
@@ -33,12 +28,12 @@ class MockIssueTrackerController : public IssueTrackerController {
   MOCK_METHOD(Comment, addCommentToIssue,
       (int, const std::string&, const std::string&), (override));
 
-  MOCK_METHOD(bool, updateComment, 
-      (int, int, const std::string&), (override)); 
+  MOCK_METHOD(bool, updateComment,
+      (int, int, const std::string&), (override));
 
-  MOCK_METHOD(bool, deleteComment, 
-      (int, int), (override)); 
-      
+  MOCK_METHOD(bool, deleteComment,
+      (int, int), (override));
+
   MOCK_METHOD(User, createUser,
       (const std::string&, const std::string&), (override));
   MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
