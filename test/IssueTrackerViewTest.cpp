@@ -1,15 +1,16 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "IssueTrackerController.hpp"
-#define private public
-#include "IssueTrackerView.hpp"
-#undef private
 
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "IssueTrackerController.hpp"
+#define private public
+#include "IssueTrackerView.hpp"
+#undef private
 
 using ::testing::_;
 using ::testing::HasSubstr;
