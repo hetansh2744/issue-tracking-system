@@ -210,6 +210,7 @@ bool IssueTrackerController::updateUser(const std::string& userId,
     }
 }
 
+// removes a user from the repository
 bool IssueTrackerController::removeUser(const std::string& user_name) {
     return repo->deleteUser(user_name);
 }

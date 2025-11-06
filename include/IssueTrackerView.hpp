@@ -6,6 +6,7 @@
 #include <vector>
 #include <limits>
 #include <cctype>
+#include <ctime>
 
 #include "IssueTrackerController.hpp"
 

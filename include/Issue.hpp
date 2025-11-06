@@ -10,9 +10,9 @@
 #include "Comment.hpp"
 
 /**
- * @brief Domain model for an issue/ticket.
+ * @brief Domain model for an issue.
  *
- * Contracts:
+ * functions as aggregate root for Comments:
  *  - New Issue starts with id == 0; repository assigns > 0 via
  *    setIdForPersistence() once.
  *  - author_id_ and title_ are non-empty (validated).
@@ -224,6 +224,12 @@ class Issue {
    * @return true if removed from either store; false if not found
    */
   bool removeCommentById(int id);
+
+  /**
+   * @brief Getter method for time of creation sets it to a string
+   * @return String of Time Stamp
+   */
+    const TimePoint& getCreatedAt() const { return created_at_; }
 };
 
 #endif  // ISSUE_HPP_
