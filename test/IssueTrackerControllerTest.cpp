@@ -23,7 +23,7 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override));
     MOCK_METHOD(std::vector<Comment>,
         getAllComments, (int issueId), (const, override));
-    MOCK_METHOD(bool, deleteComment, (int commentId), (override)); 
+    MOCK_METHOD(bool, deleteComment, (int commentId), (override));
 
     MOCK_METHOD(User, saveUser, (const User& user), (override));
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
@@ -138,7 +138,7 @@ TEST(IssueTrackerControllerTest, AssignUserToIssueThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getUser("user123"))
-        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
     IssueTrackerController controller(&mockRepo);
     EXPECT_NO_THROW({
@@ -166,7 +166,7 @@ TEST(IssueTrackerControllerTest, UnassignUserFromIssueThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getIssue(1))
-        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
     IssueTrackerController controller(&mockRepo);
     EXPECT_NO_THROW({
@@ -248,7 +248,7 @@ TEST(IssueTrackerControllerTest, AddCommentToIssueThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getIssue(1))
-        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
     IssueTrackerController controller(&mockRepo);
     EXPECT_NO_THROW({
@@ -276,7 +276,7 @@ TEST(IssueTrackerControllerTest, UpdateCommentThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getComment(1, 1))
-        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
     IssueTrackerController controller(&mockRepo);
     EXPECT_NO_THROW({
@@ -309,7 +309,7 @@ TEST(IssueTrackerControllerTest, DeleteCommentThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getComment(1, 5))
-        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
     IssueTrackerController controller(&mockRepo);
     EXPECT_NO_THROW({
