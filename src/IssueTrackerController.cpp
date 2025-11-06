@@ -99,6 +99,16 @@ bool IssueTrackerController::deleteIssue(int issueId) {
     return repo->deleteIssue(issueId);
 }
 
+std::vector<Comment> IssueTrackerController::getallComments(
+    int issueId) {
+    return repo->getallcomments(issueId);
+}
+
+Comment IssueTrackerController::getComment(
+    int issueId, commentId) {
+    return repo->getComment(issueId, commentId);
+}
+
 Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
@@ -123,10 +133,11 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     }
 }
 
-bool IssueTrackerController::updateComment(int commentId,
-    const std::string& newText) {
+bool IssueTrackerController::updateComment(int issudeId,
+     int commentId, const std::string& newText) {
     try {
-        Comment comment = repo->getComment(commentId);
+        Comment comment = repo->getComment(issueId,
+            commentId);
         comment.setText(newText);
         repo->saveComment(comment);
         return true;
@@ -135,9 +146,11 @@ bool IssueTrackerController::updateComment(int commentId,
     }
 }
 
-bool IssueTrackerController::deleteComment(int commentId) {
+bool IssueTrackerController::deleteComment(int issueId,
+    int commentId) {
     try {
-        Comment comment = repo->getComment(commentId);
+        Comment comment = repo->getComment(issueId,
+            commentId);
         int issueId = comment.getId();
 
         bool deleted = repo->deleteComment(commentId);
