@@ -1,242 +1,346 @@
-// cppcheck-suppress unusedFunction
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "Comment.hpp"
+#include "Issue.hpp"
 #include "IssueRepository.hpp"
+#include "User.hpp"
 
-namespace {
-template <typename T>
-const T& getOrThrow(const std::unordered_map<int, T>& map,
-                    int id,
-                    const std::string& errorMessage) {
-    auto it = map.find(id);
-    if (it == map.end()) {
-        throw std::invalid_argument(errorMessage);
-    }
-    return it->second;
-}
-}  // namespace
+using ::testing::Contains;
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+using ::testing::SizeIs;
 
-std::vector<Issue> IssueRepository::findIssues(
-    const std::string& userId) const {
-    return findIssues([&](const Issue& issue) {
-        return issue.hasAssignee() && issue.getAssignedTo() == userId;
-    });
-}
+class InMemoryIssueRepositoryTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    repository = std::unique_ptr<IssueRepository>(createIssueRepository());
+  }
 
-std::vector<Issue> IssueRepository::listAllUnassigned() const {
-    return findIssues([](const Issue& issue) { return !issue.hasAssignee(); });
-}
-
-class InMemoryIssueRepository : public IssueRepository {
- private:
-    std::unordered_map<int, Issue> issues_;
-    std::unordered_map<int, Comment> comments_;
-    std::unordered_map<std::string, User> users_;
-    int nextIssueId_{0};
-    int nextCommentId_{0};
-
-    Issue hydrateIssue(const Issue& issue) const {
-        Issue hydrated = issue;
-        for (int commentId : issue.getCommentIds()) {
-            auto it = comments_.find(commentId);
-            if (it != comments_.end()) {
-                hydrated.addComment(it->second);
-            }
-        }
-        return hydrated;
-    }
-
-    std::vector<Comment> collectCommentsForIssue(const Issue& issue) const {
-        std::vector<Comment> out;
-        out.reserve(issue.getCommentIds().size());
-        for (int commentId : issue.getCommentIds()) {
-            auto it = comments_.find(commentId);
-            if (it != comments_.end()) {
-                out.push_back(it->second);
-            }
-        }
-        std::sort(out.begin(), out.end(), [](const Comment& lhs,
-                                            const Comment& rhs) {
-            return lhs.getId() < rhs.getId();
-        });
-        return out;
-    }
-
-    int findIssueForComment(int commentId) const {
-        for (const auto& pair : issues_) {
-            const auto& ids = pair.second.getCommentIds();
-            if (std::find(ids.begin(), ids.end(), commentId) != ids.end()) {
-                return pair.first;
-            }
-        }
-        return 0;
-    }
-
- public:
-    InMemoryIssueRepository() = default;
-
-    Issue getIssue(int issueId) const override {
-        return hydrateIssue(
-            getOrThrow(issues_, issueId, "Issue with given ID does not exist"));
-    }
-
-    Issue saveIssue(const Issue& issue) override {
-        Issue stored = issue;
-        if (!stored.hasPersistentId()) {
-            stored.setIdForPersistence(++nextIssueId_);
-        } else if (issues_.find(stored.getId()) == issues_.end()) {
-            throw std::invalid_argument("Issue with given ID does not exist: "+
-                                        std::to_string(stored.getId()));
-        }
-
-        issues_[stored.getId()] = stored;
-        return hydrateIssue(issues_.at(stored.getId()));
-    }
-
-    bool deleteIssue(int issueId) override {
-        auto it = issues_.find(issueId);
-        if (it == issues_.end()) {
-            return false;
-        }
-
-        for (int commentId : it->second.getCommentIds()) {
-            comments_.erase(commentId);
-        }
-        issues_.erase(it);
-        return true;
-    }
-
-    std::vector<Issue> listIssues() const override {
-        std::vector<Issue> out;
-        out.reserve(issues_.size());
-        std::transform(issues_.begin(), issues_.end(), std::back_inserter(out),
-                       [&](const auto& entry) {
-                           return hydrateIssue(entry.second);
-                       });
-        return out;
-    }
-
-    std::vector<Issue> findIssues(
-        std::function<bool(const Issue&)> criteria) const override {
-        std::vector<Issue> results;
-        for (const auto& entry : issues_) {
-            Issue hydrated = hydrateIssue(entry.second);
-            if (criteria(hydrated)) {
-                results.push_back(std::move(hydrated));
-            }
-        }
-        return results;
-    }
-
-    // === Comments ===
-    Comment getComment(int issueId, int commentId) const override {
-        Issue issue = getIssue(issueId);  // hydrated with comments
-        for (const Comment& c : issue.getComments()) {
-            if (c.getId() == commentId) {
-                return c;
-            }
-        }
-        throw std::invalid_argument(
-            "Comment does not belong to the given issue");
-    }
-
-    std::vector<Comment> getAllComments(int issueId) const override {
-        Issue issue = getIssue(issueId);
-        return collectCommentsForIssue(issue);
-    }
-
-
-    Comment saveComment(int issueId, const Comment& comment) override {
-        auto issueIt = issues_.find(issueId);
-        if (issueIt == issues_.end()) {
-            throw std::invalid_argument("Issue with given ID does not exist");
-        }
-
-        Comment stored = comment;
-        if (!stored.hasPersistentId()) {
-            stored.setIdForPersistence(++nextCommentId_);
-        } else if (comments_.find(stored.getId()) == comments_.end()) {
-            throw std::invalid_argument("Comment with given ID does not exist");
-        } else {
-            nextCommentId_ = std::max(nextCommentId_, stored.getId());
-        }
-
-        comments_[stored.getId()] = stored;
-        issueIt->second.addComment(stored);
-        return stored;
-    }
-
-    bool deleteComment(int issueId, int commentId) override {
-        auto issueIt = issues_.find(issueId);
-        if (issueIt == issues_.end()) {
-            throw std::invalid_argument("Issue with given ID does not exist");
-        }
-
-        auto commentIt = comments_.find(commentId);
-        if (commentIt == comments_.end()) {
-            throw std::invalid_argument("Comment with given ID does not exist");
-        }
-
-        if (!issueIt->second.removeComment(commentId)) {
-            return false;
-        }
-
-        comments_.erase(commentIt);
-        return true;
-    }
-
-    bool deleteComment(int commentId) override {
-        auto commentIt = comments_.find(commentId);
-        if (commentIt == comments_.end()) {
-            throw std::invalid_argument("Comment with given ID does not exist");
-        }
-
-        int issueId = findIssueForComment(commentId);
-        if (issueId != 0) {
-            auto issueIt = issues_.find(issueId);
-            if (issueIt != issues_.end()) {
-                issueIt->second.removeComment(commentId);
-            }
-        }
-
-        comments_.erase(commentIt);
-        return true;
-    }
-
-    // === Users ===
-    User getUser(const std::string& userId) const override {
-        auto it = users_.find(userId);
-        if (it == users_.end()) {
-            throw std::invalid_argument("User with given ID does not exist");
-        }
-        return it->second;
-    }
-
-    User saveUser(const User& user) override {
-        User stored = user;
-        if (stored.getName().empty()) {
-            throw std::invalid_argument("User ID must be non-empty");
-        }
-        auto [it, inserted] =
-            users_.emplace(stored.getName(), stored);
-        if (!inserted) {
-            it->second = stored;
-        }
-        return stored;
-    }
-
-    bool deleteUser(const std::string& userId) override {
-        return users_.erase(userId) > 0;
-    }
-
-    std::vector<User> listAllUsers() const override {
-        std::vector<User> out;
-        out.reserve(users_.size());
-        for (const auto& entry : users_) {
-            out.push_back(entry.second);
-        }
-        return out;
-    }
+  std::unique_ptr<IssueRepository> repository;
 };
 
-IssueRepository* createIssueRepository() {
-    return new InMemoryIssueRepository();
-} // namespace
+TEST_F(InMemoryIssueRepositoryTest, SaveAndGetIssue) {
+  Issue issue(0, "user1", "Test Issue");
+
+  Issue saved = repository->saveIssue(issue);
+  EXPECT_GT(saved.getId(), 0);
+  EXPECT_EQ(saved.getTitle(), "Test Issue");
+
+  Issue retrieved = repository->getIssue(saved.getId());
+  EXPECT_EQ(retrieved.getId(), saved.getId());
+  EXPECT_EQ(retrieved.getTitle(), "Test Issue");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, GetNonExistentIssueThrows) {
+  EXPECT_THROW(repository->getIssue(999), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteIssue) {
+  Issue issue(0, "user1", "To be deleted");
+
+  Issue saved = repository->saveIssue(issue);
+  int issueId = saved.getId();
+
+  bool deleted = repository->deleteIssue(issueId);
+  EXPECT_TRUE(deleted);
+
+  EXPECT_THROW(repository->getIssue(issueId), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteNonExistentIssueReturnsFalse) {
+  bool result = repository->deleteIssue(999);
+  EXPECT_FALSE(result);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, ListIssues) {
+  Issue issue1(0, "user1", "Issue 1");
+  repository->saveIssue(issue1);
+
+  Issue issue2(0, "user2", "Issue 2");
+  repository->saveIssue(issue2);
+
+  std::vector<Issue> issues = repository->listIssues();
+  EXPECT_THAT(issues, SizeIs(2));
+}
+
+TEST_F(InMemoryIssueRepositoryTest, FindIssuesByCriteria) {
+  Issue issue1(0, "user1", "Bug");
+  issue1.assignTo("user3");
+  repository->saveIssue(issue1);
+
+  Issue issue2(0, "user2", "Feature");
+  issue2.assignTo("user4");
+  repository->saveIssue(issue2);
+
+  auto results = repository->findIssues(
+      [](const Issue& issue) {
+        return issue.getTitle() == "Bug";
+      });
+
+  EXPECT_THAT(results, SizeIs(1));
+  EXPECT_EQ(results[0].getTitle(), "Bug");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, FindIssuesByUserId) {
+  Issue issue1(0, "user1", "Bug");
+  issue1.assignTo("alice");
+  repository->saveIssue(issue1);
+
+  Issue issue2(0, "user2", "Feature");
+  issue2.assignTo("bob");
+  repository->saveIssue(issue2);
+
+  Issue issue3(0, "user3", "Another");
+  issue3.assignTo("alice");
+  repository->saveIssue(issue3);
+
+  auto aliceIssues = repository->findIssues("alice");
+  EXPECT_THAT(aliceIssues, SizeIs(2));
+
+  auto bobIssues = repository->findIssues("bob");
+  EXPECT_THAT(bobIssues, SizeIs(1));
+}
+
+TEST_F(InMemoryIssueRepositoryTest, ListAllUnassigned) {
+  Issue issue1(0, "user1", "Unassigned 1");
+  repository->saveIssue(issue1);
+
+  Issue issue2(0, "user2", "Assigned");
+  issue2.assignTo("user3");
+  repository->saveIssue(issue2);
+
+  Issue issue3(0, "user4", "Unassigned 2");
+  repository->saveIssue(issue3);
+
+  auto unassigned = repository->listAllUnassigned();
+  EXPECT_THAT(unassigned, SizeIs(2));
+
+  for (const auto& issue : unassigned) {
+    EXPECT_FALSE(issue.hasAssignee());
+  }
+}
+
+TEST_F(InMemoryIssueRepositoryTest, SaveAndGetComment) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment(0, "user2", "Test comment");
+
+  Comment savedComment = repository->saveComment(savedIssue.getId(), comment);
+  EXPECT_GT(savedComment.getId(), 0);
+
+  Comment retrieved = repository->getComment(savedIssue.getId(),
+                                             savedComment.getId());
+  EXPECT_EQ(retrieved.getId(), savedComment.getId());
+  EXPECT_EQ(retrieved.getText(), "Test comment");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, GetCommentWithWrongIssueThrows) {
+  Issue issue1(0, "user1", "Issue 1");
+  Issue saved1 = repository->saveIssue(issue1);
+
+  Issue issue2(0, "user2", "Issue 2");
+  Issue saved2 = repository->saveIssue(issue2);
+
+  Comment comment(0, "user1", "Test comment");
+  Comment saved = repository->saveComment(saved1.getId(), comment);
+
+  EXPECT_THROW(repository->getComment(saved2.getId(), saved.getId()),
+               std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, GetAllComments) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment1(0, "user1", "First comment");
+  repository->saveComment(savedIssue.getId(), comment1);
+
+  Comment comment2(0, "user2", "Second comment");
+  repository->saveComment(savedIssue.getId(), comment2);
+
+  auto comments = repository->getAllComments(savedIssue.getId());
+  EXPECT_THAT(comments, SizeIs(2));
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIssueAndId) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment(0, "user1", "Test comment");
+  Comment saved = repository->saveComment(savedIssue.getId(), comment);
+
+  bool deleted = repository->deleteComment(savedIssue.getId(), saved.getId());
+  EXPECT_TRUE(deleted);
+
+  EXPECT_THROW(repository->getComment(savedIssue.getId(), saved.getId()),
+               std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIdOnly) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment(0, "user1", "Test comment");
+  Comment saved = repository->saveComment(savedIssue.getId(), comment);
+
+  bool deleted = repository->deleteComment(saved.getId());
+  EXPECT_TRUE(deleted);
+
+  // Should throw when trying to get the deleted comment
+  EXPECT_THROW(repository->getComment(savedIssue.getId(), saved.getId()),
+               std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, SaveAndGetUser) {
+  User user("testuser", "developer");
+
+  User saved = repository->saveUser(user);
+  EXPECT_EQ(saved.getName(), "testuser");
+
+  User retrieved = repository->getUser("testuser");
+  EXPECT_EQ(retrieved.getName(), "testuser");
+  EXPECT_EQ(retrieved.getRole(), "developer");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, GetNonExistentUserThrows) {
+  EXPECT_THROW(repository->getUser("nonexistent"), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, SaveUserWithEmptyNameThrows) {
+  User user("", "role");
+
+  EXPECT_THROW(repository->saveUser(user), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, UpdateUser) {
+  User user("user1", "oldrole");
+  repository->saveUser(user);
+
+  user.setRole("newrole");
+  User updated = repository->saveUser(user);
+
+  User retrieved = repository->getUser("user1");
+  EXPECT_EQ(retrieved.getRole(), "newrole");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteUser) {
+  User user("todelete", "role");
+  repository->saveUser(user);
+
+  bool deleted = repository->deleteUser("todelete");
+  EXPECT_TRUE(deleted);
+
+  EXPECT_THROW(repository->getUser("todelete"), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteNonExistentUserReturnsFalse) {
+  bool result = repository->deleteUser("nonexistent");
+  EXPECT_FALSE(result);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, ListAllUsers) {
+  User user1("user1", "role1");
+  repository->saveUser(user1);
+
+  User user2("user2", "role2");
+  repository->saveUser(user2);
+
+  auto users = repository->listAllUsers();
+  EXPECT_THAT(users, SizeIs(2));
+}
+
+TEST_F(InMemoryIssueRepositoryTest, IssueWithCommentsHydration) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment1(0, "user1", "Comment 1");
+  repository->saveComment(savedIssue.getId(), comment1);
+
+  Comment comment2(0, "user2", "Comment 2");
+  repository->saveComment(savedIssue.getId(), comment2);
+
+  Issue retrieved = repository->getIssue(savedIssue.getId());
+  auto comments = retrieved.getComments();
+  EXPECT_THAT(comments, SizeIs(2));
+}
+
+TEST_F(InMemoryIssueRepositoryTest, UpdateIssueWithExistingId) {
+  Issue issue(0, "user1", "Original");
+  Issue saved = repository->saveIssue(issue);
+
+  saved.setTitle("Updated");
+  Issue updated = repository->saveIssue(saved);
+
+  EXPECT_EQ(updated.getId(), saved.getId());
+  EXPECT_EQ(updated.getTitle(), "Updated");
+
+  Issue retrieved = repository->getIssue(saved.getId());
+  EXPECT_EQ(retrieved.getTitle(), "Updated");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, UpdateNonExistentIssueThrows) {
+  Issue issue(999, "user1", "Non-existent");
+
+  EXPECT_THROW(repository->saveIssue(issue), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, UpdateCommentWithExistingId) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment(0, "user1", "Original");
+  Comment saved = repository->saveComment(savedIssue.getId(), comment);
+
+  saved.setText("Updated");
+  Comment updated = repository->saveComment(savedIssue.getId(), saved);
+
+  EXPECT_EQ(updated.getId(), saved.getId());
+  EXPECT_EQ(updated.getText(), "Updated");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteIssueAlsoDeletesComments) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  Comment comment(0, "user1", "Test comment");
+  Comment savedComment = repository->saveComment(savedIssue.getId(), comment);
+
+  repository->deleteIssue(savedIssue.getId());
+
+  // Should throw when trying to get the comment after issue deletion
+  EXPECT_THROW(repository->getComment(savedIssue.getId(), savedComment.getId()),
+               std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, CommentValidation) {
+  EXPECT_THROW(Comment(-1, "user1", "text"), std::invalid_argument);
+  EXPECT_THROW(Comment(0, "", "text"), std::invalid_argument);
+  EXPECT_THROW(Comment(0, "user1", ""), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, IssueValidation) {
+  EXPECT_THROW(Issue(-1, "user1", "title"), std::invalid_argument);
+  EXPECT_THROW(Issue(0, "", "title"), std::invalid_argument);
+  EXPECT_THROW(Issue(0, "user1", ""), std::invalid_argument);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, UserRoleManagement) {
+  User user("testuser", "admin");
+  repository->saveUser(user);
+
+  User retrieved = repository->getUser("testuser");
+  EXPECT_EQ(retrieved.getRole(), "admin");
+
+  user.setRole("developer");
+  repository->saveUser(user);
+
+  retrieved = repository->getUser("testuser");
+  EXPECT_EQ(retrieved.getRole(), "developer");
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
