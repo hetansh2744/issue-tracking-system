@@ -54,38 +54,48 @@ class IssueTrackerViewTest : public ::testing::Test {
     mockController = std::make_unique<NiceMock<MockIssueTrackerController>>(
         nullptr);
     view = std::make_unique<IssueTrackerView>(mockController.get());
-
-    originalCoutBuffer = std::cout.rdbuf();
-    std::cout.rdbuf(outputStream.rdbuf());
   }
 
   void TearDown() override {
+    std::cin.rdbuf(originalCinBuffer);
     std::cout.rdbuf(originalCoutBuffer);
   }
 
   void simulateUserInput(const std::string& input) {
-    std::istringstream inputStream(input);
+    inputStream.str(input);
+    inputStream.clear();
+    originalCinBuffer = std::cin.rdbuf();
     std::cin.rdbuf(inputStream.rdbuf());
   }
 
-  void clearOutputStream() {
-    outputStream.str("");
-    outputStream.clear();
+  void restoreCin() {
+    if (originalCinBuffer) {
+      std::cin.rdbuf(originalCinBuffer);
+    }
   }
 
-  std::string getOutput() {
+  std::string captureOutput(std::function<void()> func) {
+    std::stringstream outputStream;
+    originalCoutBuffer = std::cout.rdbuf();
+    std::cout.rdbuf(outputStream.rdbuf());
+
+    func();
+
+    std::cout.rdbuf(originalCoutBuffer);
     return outputStream.str();
   }
 
   std::unique_ptr<NiceMock<MockIssueTrackerController>> mockController;
   std::unique_ptr<IssueTrackerView> view;
-  std::stringstream outputStream;
-  std::streambuf* originalCoutBuffer;
+  std::stringstream inputStream;
+  std::streambuf* originalCinBuffer = nullptr;
+  std::streambuf* originalCoutBuffer = nullptr;
 };
 
 TEST_F(IssueTrackerViewTest, DisplayMenuShowsAllOptions) {
-  view->displayMenu();
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->displayMenu();
+  });
 
   EXPECT_THAT(output, testing::HasSubstr("Create Issue"));
   EXPECT_THAT(output, testing::HasSubstr("Update Issue Field"));
@@ -108,18 +118,21 @@ TEST_F(IssueTrackerViewTest, DisplayMenuShowsAllOptions) {
 TEST_F(IssueTrackerViewTest, GetValidIntValidInput) {
   simulateUserInput("3\n");
   int result = view->getvalidInt(5);
+  restoreCin();
   EXPECT_EQ(result, 3);
 }
 
 TEST_F(IssueTrackerViewTest, GetValidIntInvalidThenValidInput) {
   simulateUserInput("10\n3\n");
   int result = view->getvalidInt(5);
+  restoreCin();
   EXPECT_EQ(result, 3);
 }
 
 TEST_F(IssueTrackerViewTest, GetValidIntNonNumericThenValidInput) {
   simulateUserInput("abc\n2\n");
   int result = view->getvalidInt(5);
+  restoreCin();
   EXPECT_EQ(result, 2);
 }
 
@@ -131,6 +144,7 @@ TEST_F(IssueTrackerViewTest, GetUserIdWithExistingUsers) {
 
   simulateUserInput("1\n");
   std::string result = view->getuserId();
+  restoreCin();
   EXPECT_EQ(result, "user1");
 }
 
@@ -142,6 +156,7 @@ TEST_F(IssueTrackerViewTest, GetIssueIdWithExistingIssues) {
 
   simulateUserInput("1\n");
   int result = view->getissueId();
+  restoreCin();
   EXPECT_EQ(result, 1);
 }
 
@@ -164,9 +179,12 @@ TEST_F(IssueTrackerViewTest, CreateIssueSuccess) {
       .WillOnce(Return(expectedIssue));
 
   simulateUserInput("Test Title\nTest Description\n1\n");
-  view->createIssue();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->createIssue();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("Issue assigned to user: testuser"));
 }
 
@@ -178,9 +196,12 @@ TEST_F(IssueTrackerViewTest, UpdateIssueTitleSuccess) {
       .WillOnce(Return(true));
 
   simulateUserInput("1\n1\nNew Title\n");
-  view->updateIssue();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->updateIssue();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("Updated successfully"));
 }
 
@@ -192,9 +213,12 @@ TEST_F(IssueTrackerViewTest, UpdateIssueDescriptionSuccess) {
       .WillOnce(Return(true));
 
   simulateUserInput("1\n2\nNew Desc\n");
-  view->updateIssue();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->updateIssue();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("Updated successfully"));
 }
 
@@ -210,9 +234,12 @@ TEST_F(IssueTrackerViewTest, AssignUserSuccess) {
       .WillOnce(Return(true));
 
   simulateUserInput("1\n1\n");
-  view->assignUser();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->assignUser();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("User assigned"));
 }
 
@@ -224,9 +251,12 @@ TEST_F(IssueTrackerViewTest, UnassignUserSuccess) {
       .WillOnce(Return(true));
 
   simulateUserInput("1\n");
-  view->unassignUser();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->unassignUser();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("User unassigned"));
 }
 
@@ -238,9 +268,12 @@ TEST_F(IssueTrackerViewTest, DeleteIssueSuccess) {
       .WillOnce(Return(true));
 
   simulateUserInput("1\n");
-  view->deleteIssue();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->deleteIssue();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("Deleted successfully"));
 }
 
@@ -252,9 +285,10 @@ TEST_F(IssueTrackerViewTest, ListIssuesWithResults) {
   EXPECT_CALL(*mockController, listAllIssues())
       .WillOnce(Return(issues));
 
-  view->listIssues();
+  auto output = captureOutput([this]() {
+    view->listIssues();
+  });
 
-  std::string output = getOutput();
   EXPECT_THAT(output, testing::HasSubstr("All Issues"));
   EXPECT_THAT(output, testing::HasSubstr("Issue 1"));
   EXPECT_THAT(output, testing::HasSubstr("Issue 2"));
@@ -264,9 +298,10 @@ TEST_F(IssueTrackerViewTest, ListIssuesEmpty) {
   EXPECT_CALL(*mockController, listAllIssues())
       .WillOnce(Return(std::vector<Issue>{}));
 
-  view->listIssues();
+  auto output = captureOutput([this]() {
+    view->listIssues();
+  });
 
-  std::string output = getOutput();
   EXPECT_THAT(output, testing::HasSubstr("No issues found"));
 }
 
@@ -277,9 +312,10 @@ TEST_F(IssueTrackerViewTest, ListUnassignedIssuesWithResults) {
   EXPECT_CALL(*mockController, listAllUnassignedIssues())
       .WillOnce(Return(issues));
 
-  view->listUnassignedIssues();
+  auto output = captureOutput([this]() {
+    view->listUnassignedIssues();
+  });
 
-  std::string output = getOutput();
   EXPECT_THAT(output, testing::HasSubstr("Unassigned Issues"));
   EXPECT_THAT(output, testing::HasSubstr("Unassigned"));
 }
@@ -290,9 +326,12 @@ TEST_F(IssueTrackerViewTest, FindIssuesByUser) {
       .WillOnce(Return(issues));
 
   simulateUserInput("user1\n");
-  view->findIssuesByUser();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->findIssuesByUser();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("User1 Issue"));
 }
 
@@ -302,9 +341,12 @@ TEST_F(IssueTrackerViewTest, CreateUserSuccess) {
       .WillOnce(Return(expectedUser));
 
   simulateUserInput("newuser\n2\n");
-  view->createUser();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->createUser();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("User created: newuser"));
 }
 
@@ -316,9 +358,10 @@ TEST_F(IssueTrackerViewTest, ListUsersWithResults) {
   EXPECT_CALL(*mockController, listAllUsers())
       .WillOnce(Return(users));
 
-  view->listUsers();
+  auto output = captureOutput([this]() {
+    view->listUsers();
+  });
 
-  std::string output = getOutput();
   EXPECT_THAT(output, testing::HasSubstr("All Users"));
   EXPECT_THAT(output, testing::HasSubstr("user1"));
   EXPECT_THAT(output, testing::HasSubstr("user2"));
@@ -329,8 +372,11 @@ TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
       .WillOnce(Return(true));
 
   simulateUserInput("olduser\n");
-  view->removeUser();
 
-  std::string output = getOutput();
+  auto output = captureOutput([this]() {
+    view->removeUser();
+  });
+  restoreCin();
+
   EXPECT_THAT(output, testing::HasSubstr("User removed"));
 }
