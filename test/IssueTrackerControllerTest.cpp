@@ -2,6 +2,8 @@
 #include "gmock/gmock.h"
 #include "IssueTrackerController.hpp"
 
+using ::testing::Throw;
+
 class MockIssueRepository : public IssueRepository {
  public:
     MOCK_METHOD(Issue, saveIssue, (const Issue& issue), (override));
@@ -21,7 +23,7 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override));
     MOCK_METHOD(std::vector<Comment>,
         getAllComments, (int issueId), (const, override));
-    MOCK_METHOD(bool, deleteComment, (int commentId), (override));
+    MOCK_METHOD(bool, deleteComment, (int commentId), (override)); 
 
     MOCK_METHOD(User, saveUser, (const User& user), (override));
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
@@ -51,9 +53,10 @@ TEST(IssueTrackerControllerTest, CreateIssueValid) {
 TEST(IssueTrackerControllerTest, CreateIssueInvalidEmptyFields) {
     MockIssueRepository mockRepo;
     IssueTrackerController controller(&mockRepo);
-    Issue result = controller.createIssue("", "desc", "user123");
-
-    EXPECT_EQ(result.getId(), 0);
+    EXPECT_NO_THROW({
+        Issue result = controller.createIssue("", "desc", "user123");
+        EXPECT_EQ(result.getId(), 0);
+    });
 }
 
 TEST(IssueTrackerControllerTest, UpdateIssueFieldTitleSuccess) {
@@ -135,12 +138,13 @@ TEST(IssueTrackerControllerTest, AssignUserToIssueThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getUser("user123"))
-        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.assignUserToIssue(1, "user123");
-
-    EXPECT_FALSE(result);
+    EXPECT_NO_THROW({
+        bool result = controller.assignUserToIssue(1, "user123");
+        EXPECT_FALSE(result);
+    });
 }
 
 TEST(IssueTrackerControllerTest, UnassignUserFromIssueSuccess) {
@@ -162,12 +166,13 @@ TEST(IssueTrackerControllerTest, UnassignUserFromIssueThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getIssue(1))
-        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.unassignUserFromIssue(1);
-
-    EXPECT_FALSE(result);
+    EXPECT_NO_THROW({
+        bool result = controller.unassignUserFromIssue(1);
+        EXPECT_FALSE(result);
+    });
 }
 
 TEST(IssueTrackerControllerTest, DeleteIssue) {
@@ -233,21 +238,23 @@ TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
 TEST(IssueTrackerControllerTest, AddCommentToIssueEmptyText) {
     MockIssueRepository mockRepo;
     IssueTrackerController controller(&mockRepo);
-    Comment result = controller.addCommentToIssue(1, "", "author");
-
-    EXPECT_EQ(result.getId(), 0);
+    EXPECT_NO_THROW({
+        Comment result = controller.addCommentToIssue(1, "", "author");
+        EXPECT_EQ(result.getId(), 0);
+    });
 }
 
 TEST(IssueTrackerControllerTest, AddCommentToIssueThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getIssue(1))
-        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
 
     IssueTrackerController controller(&mockRepo);
-    Comment result = controller.addCommentToIssue(1, "text", "author");
-
-    EXPECT_EQ(result.getId(), 0);
+    EXPECT_NO_THROW({
+        Comment result = controller.addCommentToIssue(1, "text", "author");
+        EXPECT_EQ(result.getId(), 0);
+    });
 }
 
 TEST(IssueTrackerControllerTest, UpdateCommentSuccess) {
@@ -269,12 +276,13 @@ TEST(IssueTrackerControllerTest, UpdateCommentThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getComment(1, 1))
-        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.updateComment(1, 1, "text");
-
-    EXPECT_FALSE(result);
+    EXPECT_NO_THROW({
+        bool result = controller.updateComment(1, 1, "text");
+        EXPECT_FALSE(result);
+    });
 }
 
 TEST(IssueTrackerControllerTest, DeleteCommentSuccess) {
@@ -301,12 +309,13 @@ TEST(IssueTrackerControllerTest, DeleteCommentThrows) {
     MockIssueRepository mockRepo;
 
     EXPECT_CALL(mockRepo, getComment(1, 5))
-        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+        .WillOnce(testing::Throw(std::out_of_range("Not found"))); 
 
     IssueTrackerController controller(&mockRepo);
-    bool result = controller.deleteComment(1, 5);
-
-    EXPECT_FALSE(result);
+    EXPECT_NO_THROW({
+        bool result = controller.deleteComment(1, 5);
+        EXPECT_FALSE(result);
+    });
 }
 
 TEST(IssueTrackerControllerTest, CreateUserSuccess) {
