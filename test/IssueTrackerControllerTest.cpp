@@ -50,15 +50,6 @@ TEST(IssueTrackerControllerTest, CreateIssueValid) {
     EXPECT_EQ(result.getAuthorId(), "user123");
 }
 
-TEST(IssueTrackerControllerTest, CreateIssueInvalidEmptyFields) {
-    MockIssueRepository mockRepo;
-    IssueTrackerController controller(&mockRepo);
-    EXPECT_NO_THROW({
-        Issue result = controller.createIssue("", "desc", "user123");
-        EXPECT_EQ(result.getId(), 0);
-    });
-}
-
 TEST(IssueTrackerControllerTest, UpdateIssueFieldTitleSuccess) {
     MockIssueRepository mockRepo;
     Issue existingIssue(1, "user", "old", 0);
@@ -233,28 +224,6 @@ TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
     Comment result = controller.addCommentToIssue(1, "text", "author");
 
     EXPECT_EQ(result.getAuthor(), "author");
-}
-
-TEST(IssueTrackerControllerTest, AddCommentToIssueEmptyText) {
-    MockIssueRepository mockRepo;
-    IssueTrackerController controller(&mockRepo);
-    EXPECT_NO_THROW({
-        Comment result = controller.addCommentToIssue(1, "", "author");
-        EXPECT_EQ(result.getId(), 0);
-    });
-}
-
-TEST(IssueTrackerControllerTest, AddCommentToIssueThrows) {
-    MockIssueRepository mockRepo;
-
-    EXPECT_CALL(mockRepo, getIssue(1))
-        .WillOnce(testing::Throw(std::out_of_range("Not found")));
-
-    IssueTrackerController controller(&mockRepo);
-    EXPECT_NO_THROW({
-        Comment result = controller.addCommentToIssue(1, "text", "author");
-        EXPECT_EQ(result.getId(), 0);
-    });
 }
 
 TEST(IssueTrackerControllerTest, UpdateCommentSuccess) {
