@@ -364,6 +364,7 @@ void IssueTrackerView:: addComIssue() {
   std::cout << "What Issue Needs a Comment" << std::endl;
   std::cin >> issueId;
   displayIssue(issueId);
+  std::cout << std::endl;
   std::cout << "Comment text add here" << std::endl;
   std::cin >> text;
   std::cout << "Name of Author" << std::endl;
