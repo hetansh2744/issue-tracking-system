@@ -1,10 +1,10 @@
 #include "User.hpp"
 
-std::string User::getName() {
+std::string User::getName() const {
     return name;
 }
 
-std::string User::getRole() {
+std::string User::getRole() const {
     return role;
 }
 
