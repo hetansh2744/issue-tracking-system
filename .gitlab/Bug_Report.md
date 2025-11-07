@@ -7,11 +7,10 @@
 - **Impact:** 
 
 ## Steps to Reproduce
-1. 
+1. <!-- -->
 
 ## Attachments / Logs
 <!-- Paste logs, screenshots, links. -->
 
 ## Acceptance Criteria
-- [ ] 
-- [ ] 
+- [ ] <!-- -->
