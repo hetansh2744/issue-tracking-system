@@ -2,10 +2,10 @@
 /milestone %
 
 ## Task
-Describe what needs maintenance or housekeeping.
+<!-- Describe what needs maintenance or housekeeping. -->
 
 ## Reason
-Describe reasoning for task.
+<!-- Describe reasoning for task. -->
 
 ## Acceptance Criteria
 - [ ]

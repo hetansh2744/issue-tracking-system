@@ -4,10 +4,10 @@
 ## Problem / Request
 
 ## Context
-Why now?
+<!-- Why now? -->
 
 ## Tests
-What ensures parity?
+<!-- What ensures parity? -->
 
 ## Acceptance Criteria
 - [ ] All tests pass unchanged

@@ -10,8 +10,8 @@
 1. 
 
 ## Attachments / Logs
-Paste logs, screenshots, links.
+<!-- Paste logs, screenshots, links. -->
 
 ## Acceptance Criteria
-- [ ] …
-- [ ] …
+- [ ] 
+- [ ] 
