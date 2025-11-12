@@ -112,7 +112,15 @@ void IssueTrackerView::assignUser() {
     int issueId;
     std::string userName;
 
+    if (!ensureIssuesAvailable("Assigning a user")) {
+      return;
+    }
+
     issueId = getissueId();
+    if (issueId == -1) {
+      return;
+    }
+
     userName = getuserId();
 
     bool success = controller->assignUserToIssue(issueId, userName);
@@ -123,7 +131,14 @@ void IssueTrackerView::assignUser() {
 //from a specific user
 void IssueTrackerView::unassignUser() {
     int issueId;
+    if (!ensureIssuesAvailable("Unassigning a user")) {
+      return;
+    }
+
     issueId = getissueId();
+    if (issueId == -1) {
+      return;
+    }
 
     bool success = controller->unassignUserFromIssue(issueId);
     std::cout << (success ? "User unassigned.\n" : "Failed to unassign.\n");
@@ -363,6 +378,29 @@ int IssueTrackerView::getissueId() {
   return issueids[userinput -1];
 }
 
+bool IssueTrackerView::ensureIssuesAvailable(const std::string& actionName) {
+  while (true) {
+    std::vector<Issue> issues = controller->listAllIssues();
+    if (!issues.empty()) {
+      return true;
+    }
+
+    std::cout << "\nNo issues exist. " << actionName <<
+    " requires at least one issue.\n";
+    std::cout << "1) Create an issue\n";
+    std::cout << "2) Return to main menu\n";
+
+    int selection = getvalidInt(2);
+    if (selection == 1) {
+      createIssue();
+      continue;
+    }
+
+    std::cout << "Returning to main menu.\n";
+    return false;
+  }
+}
+
 //error handling so user cant input unused ints
 int IssueTrackerView::getvalidInt(int bound) {
     if (bound < 1) {
@@ -424,8 +462,17 @@ void IssueTrackerView:: addComIssue() {
   int issueId;
   std::string text;
   std::string authorID;
+
+  if (!ensureIssuesAvailable("Adding a comment")) {
+    return;
+  }
+
   listIssues();
   issueId = getissueId();
+  if (issueId == -1) {
+    return;
+  }
+
   displayIssue(issueId);
   std::cout << std::endl;
   std::cout << "Comment text add here" << std::endl;
@@ -458,7 +505,17 @@ void IssueTrackerView::updateComment() {
     int id;
     std::string text;
     int issueid;
+
+    if (!ensureIssuesAvailable("Updating a comment")) {
+      return;
+    }
+
+    listIssues();
     issueid = getissueId();
+    if (issueid == -1) {
+      return;
+    }
+
     displayIssue(issueid);
     std::cout << "Enter Comment ID: ";
     std::cin >> id;
@@ -482,8 +539,17 @@ void IssueTrackerView::updateComment() {
 void IssueTrackerView::deleteComment() {
     int issueid;
     int comid;
+
+    if (!ensureIssuesAvailable("Deleting a comment")) {
+      return;
+    }
+
     listIssues();
     issueid = getissueId();
+    if (issueid == -1) {
+      return;
+    }
+
     controller->getIssue(issueid);
     displayIssue(issueid);
     std::cout << "Enter Comment ID: ";
