@@ -51,7 +51,7 @@ class IssueTrackerController {
      * @param issueId The unique identifier of the issue
      * @return Issue The requested issue object
      */
-    Issue getIssue(const int issueId);
+    virtual Issue getIssue(const int issueId);
 
     /**
      * @brief Updates a specific field of an issue
