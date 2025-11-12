@@ -404,5 +404,6 @@ TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
   time_t expectedTime = static_cast<std::time_t>(creationTs / 1000);
   char expectedStr[26];
   ctime_r(&expectedTime, expectedStr);
-  EXPECT_THAT(output, testing::HasSubstr(std::string("Created: ") + expectedStr));
+  EXPECT_THAT(output, 
+    testing::HasSubstr(std::string("Created: ") + expectedStr));
 }
