@@ -1,7 +1,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <sstream>
+#include <ctime>
 #include <iostream>
+#include <sstream>
 
 #include "IssueTrackerView.hpp"
 
@@ -26,6 +27,8 @@ class MockIssueTrackerController : public IssueTrackerController {
               (override));
   MOCK_METHOD(bool, unassignUserFromIssue, (int issueId), (override));
   MOCK_METHOD(bool, deleteIssue, (int issueId), (override));
+  MOCK_METHOD(Issue, getIssue, (const int issueId), (override));
+  MOCK_METHOD(std::vector<Comment>, getallComments, (int issueId), (override));
   MOCK_METHOD(std::vector<Issue>, listAllIssues, (), (override));
   MOCK_METHOD(std::vector<Issue>, listAllUnassignedIssues, (), (override));
   MOCK_METHOD(std::vector<Issue>, findIssuesByUserId,
@@ -379,4 +382,28 @@ TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
   restoreCin();
 
   EXPECT_THAT(output, testing::HasSubstr("User removed"));
+}
+
+TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
+  const Issue::TimePoint creationTs = 1'700'000'000'000;  // deterministic epoch
+  Issue issue(42, "author1", "Detailed View", creationTs);
+  issue.addComment(1);  // ensure comment sizing remains non-negative
+
+  std::vector<Comment> comments = {
+      Comment(1, "author1", "Initial description", creationTs)};
+
+  EXPECT_CALL(*mockController, getIssue(42))
+      .WillOnce(Return(issue));
+  EXPECT_CALL(*mockController, getallComments(42))
+      .WillOnce(Return(comments));
+
+  auto output = captureOutput([this]() {
+    view->displayIssue(42);
+  });
+
+  time_t expectedTime = static_cast<std::time_t>(creationTs / 1000);
+  char expectedStr[26];
+  ctime_r(&expectedTime, expectedStr);
+  EXPECT_THAT(output,
+    testing::HasSubstr(std::string("Created: ") + expectedStr));
 }

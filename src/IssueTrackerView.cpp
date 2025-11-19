@@ -152,14 +152,13 @@ void IssueTrackerView::listIssues() {
     std::cout << "ID: " << issue.getId() << "\n";
     std::cout << "Author: " << issue.getAuthorId() << "\n";
     std::cout << "Title: " << issue.getTitle() << "\n";
-    std::int64_t timestamp = issue.getCreatedAt();
-    std::time_t time_t_value =
-    static_cast<std::time_t>(timestamp / 1000);
-
-    char time_buffer[80];
-    std::strftime(time_buffer, sizeof(time_buffer),
-    "%Y-%m-%d %H:%M:%S", std::localtime(&time_t_value));
-    std::cout << "Created: " << time_buffer << "\n";
+    time_t now = time(0);
+    if (issue.getCreatedAt() > 0) {
+      now = static_cast<std::time_t>(issue.getCreatedAt() / 1000);
+    }
+    char timeStr[26]; // ctime_r requires a buffer of at least 26 bytes
+    ctime_r(&now, timeStr);
+    std::cout << "Created: " << timeStr;
 
     if (issue.hasDescriptionComment()) {
       const Comment* desc =
@@ -400,18 +399,20 @@ int IssueTrackerView::getvalidInt(int bound) {
 
 //displays a certian issue by id
 void IssueTrackerView:: displayIssue(int id) {
-    time_t now = time(0);
-    char timeStr[26]; // ctime_r requires a buffer of at least 26 bytes
-    ctime_r(&now, timeStr);
-
-    // Convert to local time structure
   Issue iss = controller->getIssue(id);
   std::vector <Comment> comments = controller->getallComments(id);
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n";
-    std::cout << "Time: " << timeStr;
+    time_t now = time(0);
+    if (iss.getCreatedAt() > 0) {
+      now = static_cast<std::time_t>(iss.getCreatedAt() / 1000);
+    }
+    char timeStr[26]; // ctime_r requires a buffer of at least 26 bytes
+    ctime_r(&now, timeStr);
+    std::cout << "Created: " << timeStr;
+
     int i = 1;
     for (auto it : comments) {
       std::cout << i << it.getText() <<std::endl;

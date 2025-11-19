@@ -1,8 +1,18 @@
 #include "IssueTrackerController.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <stdexcept>
+
+namespace {
+Issue::TimePoint currentTimeMillis() {
+    auto now = std::chrono::system_clock::now();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch());
+    return static_cast<Issue::TimePoint>(millis.count());
+}
+}  // namespace
 
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
@@ -14,7 +24,7 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     }
 
     // 1. Create the Issue (no description yet)
-    Issue newIssue(0, author_id, title, 0);
+    Issue newIssue(0, author_id, title, currentTimeMillis());
     Issue savedIssue = repo->saveIssue(newIssue);
 
     // 2. Create the first Comment = Description
@@ -236,4 +246,3 @@ std::vector<Issue> IssueTrackerController::findIssuesByUserId(
 std::vector<User> IssueTrackerController::listAllUsers() {
     return repo->listAllUsers();
 }
-
