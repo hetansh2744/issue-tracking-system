@@ -20,6 +20,14 @@
 class IssueTrackerView {
  private:
     IssueTrackerController* controller;  ///< Controller for business logic
+    /**
+     * @brief Ensures issue-dependent actions have at least one issue
+     *
+     * @param actionName Description of the action that requires an issue
+     * @return true if issues exist (or were created) and the action can proceed
+     * @return false if the user decided to return to the main menu
+     */
+    bool ensureIssuesAvailable(const std::string& actionName);
 
  public:
     // === Menu Operation Methods ===

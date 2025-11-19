@@ -230,7 +230,8 @@ TEST_F(IssueTrackerViewTest, AssignUserSuccess) {
   std::vector<User> users = {User("user1", "Developer")};
 
   EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
+      .Times(2)
+      .WillRepeatedly(Return(issues));
   EXPECT_CALL(*mockController, listAllUsers())
       .WillOnce(Return(users));
   EXPECT_CALL(*mockController, assignUserToIssue(1, "user1"))
@@ -249,7 +250,8 @@ TEST_F(IssueTrackerViewTest, AssignUserSuccess) {
 TEST_F(IssueTrackerViewTest, UnassignUserSuccess) {
   std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
   EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
+      .Times(2)
+      .WillRepeatedly(Return(issues));
   EXPECT_CALL(*mockController, unassignUserFromIssue(1))
       .WillOnce(Return(true));
 
