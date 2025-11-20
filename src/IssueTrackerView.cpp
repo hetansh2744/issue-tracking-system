@@ -1,8 +1,82 @@
 #include "IssueTrackerView.hpp"
+#include <algorithm>
 #include <ctime>
 #include <iomanip> // For std::put_time
+#include <limits>
 IssueTrackerView::IssueTrackerView(IssueTrackerController* controller)
     : controller(controller) {}
+
+namespace {
+std::size_t countRealComments(const Issue& issue) {
+  if (!issue.hasDescriptionComment()) {
+    return issue.getCommentIds().size();
+  }
+
+  const int descId = issue.getDescriptionCommentId();
+  const auto& ids = issue.getCommentIds();
+  return std::count_if(
+      ids.begin(), ids.end(),
+      [descId](int id) { return id != descId; });
+}
+
+const Comment* findDescription(const Issue& issue,
+                               const std::vector<Comment>& comments) {
+  if (!issue.hasDescriptionComment()) {
+    return nullptr;
+  }
+
+  const int descId = issue.getDescriptionCommentId();
+  for (const auto& c : comments) {
+    if (c.getId() == descId) {
+      return &c;
+    }
+  }
+  return nullptr;
+}
+
+std::vector<int> collectNonDescriptionIds(
+    const Issue& issue, const std::vector<Comment>& comments) {
+  std::vector<int> ids;
+  ids.reserve(comments.size());
+  if (!issue.hasDescriptionComment()) {
+    for (const auto& c : comments) {
+      ids.push_back(c.getId());
+    }
+    return ids;
+  }
+
+  const int descId = issue.getDescriptionCommentId();
+  for (const auto& c : comments) {
+    if (c.getId() != descId) {
+      ids.push_back(c.getId());
+    }
+  }
+  return ids;
+}
+
+int promptForVisibleCommentId(const std::vector<int>& visibleIds) {
+  while (true) {
+    std::cout << "Enter comment ID: ";
+    int selection;
+    if (std::cin >> selection) {
+      const bool found = std::find(
+          visibleIds.begin(), visibleIds.end(), selection) != visibleIds.end();
+      if (found) {
+        std::cout << "Input accepted: " << selection << "\n";
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        return selection;
+      }
+      std::cout << "Input error: Comment ID not in the list. "
+                << "Please try again.\n";
+    } else {
+      std::cin.clear();
+      std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      std::cout << "Input error: Invalid input. "
+                << "Please enter a whole number.\n";
+    }
+  }
+}
+}  // namespace
 
     //Displays all current functions of program pro
     //-mpting user for input
@@ -194,7 +268,7 @@ void IssueTrackerView::listIssues() {
       std::cout << "Assigned To: (unassigned)\n";
     }
 
-    std::cout << "Comments:" << issue.getCommentIds().size() << "\n\n";
+    std::cout << "Comments: " << countRealComments(issue) << "\n\n";
   }
 }
 
@@ -218,7 +292,7 @@ void IssueTrackerView::listUnassignedIssues() {
     } else {
       std::cout << "(none)\n";
     }
-    std::cout << "Comments: " << issue.getCommentIds().size() << "\n\n";
+    std::cout << "Comments: " << countRealComments(issue) << "\n\n";
   }
 }
 
@@ -436,13 +510,19 @@ int IssueTrackerView::getvalidInt(int bound) {
 }
 
 //displays a certian issue by id
-void IssueTrackerView:: displayIssue(int id) {
+std::vector<int> IssueTrackerView:: displayIssue(int id) {
   Issue iss = controller->getIssue(id);
-  std::vector <Comment> comments = controller->getallComments(id);
+  std::vector<Comment> comments = controller->getallComments(id);
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
-    std::cout << "Amount of Comments: " << iss.getCommentIds().size()-1 << "\n";
+    std::cout << "Amount of Comments: " << countRealComments(iss) << "\n";
+    const Comment* desc = findDescription(iss, comments);
+    if (desc) {
+      std::cout << "Description: " << desc->getText() << "\n";
+    } else {
+      std::cout << "Description: (none)\n";
+    }
     time_t now = time(0);
     if (iss.getCreatedAt() > 0) {
       now = static_cast<std::time_t>(iss.getCreatedAt() / 1000);
@@ -451,11 +531,18 @@ void IssueTrackerView:: displayIssue(int id) {
     ctime_r(&now, timeStr);
     std::cout << "Created: " << timeStr;
 
-    int i = 1;
-    for (auto it : comments) {
-      std::cout << i << it.getText() <<std::endl;
-      i++;
+    std::vector<int> visibleIds = collectNonDescriptionIds(iss, comments);
+    for (std::size_t i = 0; i < visibleIds.size(); ++i) {
+      const int idToShow = visibleIds[i];
+      const auto it = std::find_if(
+          comments.begin(), comments.end(),
+          [idToShow](const Comment& c) { return c.getId() == idToShow; });
+      if (it != comments.end()) {
+        std::cout << "[id=" << it->getId() << "] "
+                  << it->getText() << std::endl;
+      }
     }
+    return visibleIds;
 }
 
 //add comments to an issue
@@ -503,7 +590,6 @@ void IssueTrackerView::addComment() {
 //updates a certian comment from comment id
 // and issue id
 void IssueTrackerView::updateComment() {
-    int id;
     std::string text;
     int issueid;
 
@@ -517,10 +603,12 @@ void IssueTrackerView::updateComment() {
       return;
     }
 
-    displayIssue(issueid);
-    std::cout << "Enter Comment ID: ";
-    std::cin >> id;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::vector<int> visibleIds = displayIssue(issueid);
+    if (visibleIds.empty()) {
+      std::cout << "No comments to update.\n";
+      return;
+    }
+    int actualId = promptForVisibleCommentId(visibleIds);
 
     do {
         std::cout << "Enter new text: ";
@@ -531,7 +619,7 @@ void IssueTrackerView::updateComment() {
         }
     } while (text.empty());
 
-    bool success = controller->updateComment(issueid, id, text);
+    bool success = controller->updateComment(issueid, actualId, text);
     std::cout << (success ? "Updated.\n" : "Failed to update.\n");
 }
 
@@ -539,7 +627,6 @@ void IssueTrackerView::updateComment() {
 //also displays all comments in the issue
 void IssueTrackerView::deleteComment() {
     int issueid;
-    int comid;
 
     if (!ensureIssuesAvailable("Deleting a comment")) {
       return;
@@ -551,10 +638,13 @@ void IssueTrackerView::deleteComment() {
       return;
     }
 
-    controller->getIssue(issueid);
-    displayIssue(issueid);
-    std::cout << "Enter Comment ID: ";
-    std::cin >> comid;
-    bool success = controller->deleteComment(issueid, comid);
+    std::vector<int> visibleIds = displayIssue(issueid);
+    if (visibleIds.empty()) {
+      std::cout << "No comments to delete.\n";
+      return;
+    }
+    int actualId = promptForVisibleCommentId(visibleIds);
+
+    bool success = controller->deleteComment(issueid, actualId);
     std::cout << (success ? "Deleted.\n" : "Failed to delete.\n");
 }

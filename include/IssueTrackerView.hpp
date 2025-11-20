@@ -147,8 +147,10 @@ class IssueTrackerView {
      * @brief Displays detailed information about a specific issue
      *
      * @param id The ID of the issue to display
+     * @return list of actual comment IDs shown (excludes description),
+     *         in the same order they were printed (1-based display order)
      */
-    void displayIssue(int id);
+    std::vector<int> displayIssue(int id);
 
     /**
      * @brief Constructs a new view with the given controller
