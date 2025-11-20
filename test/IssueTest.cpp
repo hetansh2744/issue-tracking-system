@@ -52,13 +52,16 @@ TEST(IssueModel, SetTitle_RejectsEmpty) {
 
 TEST(IssueModel, AddCommentId_DeDup_And_Validation) {
   Issue is{0, "u1", "T", 0};
-  EXPECT_THROW(is.addComment(0), std::invalid_argument);
   EXPECT_THROW(is.addComment(-5), std::invalid_argument);
+
+  is.addComment(0);  // description allowed id
+  ASSERT_EQ(is.getCommentIds().size(), 1u);
+  EXPECT_EQ(is.getCommentIds()[0], 0);
 
   is.addComment(10);
   is.addComment(10);
-  ASSERT_EQ(is.getCommentIds().size(), 1u);
-  EXPECT_EQ(is.getCommentIds()[0], 10);
+  ASSERT_EQ(is.getCommentIds().size(), 2u);
+  EXPECT_EQ(is.getCommentIds()[1], 10);
 }
 
 TEST(IssueModel, SetDescription_AddsIdIfMissing) {
@@ -91,7 +94,7 @@ TEST(IssueModel, RemoveComment_ClearsDescriptionIfThatId) {
 TEST(IssueModel, AddCommentObject_StoresAndSyncsIds) {
   Issue is{0, "u1", "T", 0};
 
-  Comment c{0, "u2", "first text", 0};
+  Comment c{-1, "u2", "first text", 0};
   c.setIdForPersistence(101);
 
   is.addComment(c);
@@ -111,9 +114,9 @@ TEST(IssueModel, AddCommentObject_StoresAndSyncsIds) {
 
 TEST(IssueModel, FindCommentById_ConstAndMutable) {
   Issue is{0, "u1", "T", 0};
-  Comment c1{0, "a", "x", 0};
+  Comment c1{-1, "a", "x", 0};
   c1.setIdForPersistence(5);
-  Comment c2{0, "b", "y", 0};
+  Comment c2{-1, "b", "y", 0};
   c2.setIdForPersistence(6);
   is.addComment(c1);
   is.addComment(c2);
@@ -136,20 +139,19 @@ TEST(IssueModel, FindCommentById_ConstAndMutable) {
 TEST(IssueModel, RemoveCommentById_RemovesBothAndClearsDesc) {
   Issue is{0, "u1", "T", 0};
   Comment c{0, "u2", "desc", 0};
-  c.setIdForPersistence(77);
   is.addComment(c);
-  is.setDescriptionCommentId(77);
+  is.setDescriptionCommentId(0);
 
   ASSERT_TRUE(is.hasDescriptionComment());
   ASSERT_EQ(is.getComments().size(), 1u);
   ASSERT_EQ(is.getCommentIds().size(), 1u);
 
-  EXPECT_TRUE(is.removeCommentById(77));
+  EXPECT_TRUE(is.removeCommentById(0));
   EXPECT_FALSE(is.hasDescriptionComment());
   EXPECT_TRUE(is.getComments().empty());
   EXPECT_TRUE(is.getCommentIds().empty());
 
-  EXPECT_FALSE(is.removeCommentById(77));
+  EXPECT_FALSE(is.removeCommentById(0));
 }
 
 // -------------------------------------------------
@@ -158,14 +160,14 @@ TEST(IssueModel, RemoveCommentById_RemovesBothAndClearsDesc) {
 
 TEST(IssueModel, SetDescription_InvalidId_Throws) {
   Issue is{0, "u1", "T", 0};
-  EXPECT_THROW(is.setDescriptionCommentId(0), std::invalid_argument);
+  EXPECT_THROW(is.setDescriptionCommentId(-1), std::invalid_argument);
 }
 
 TEST(IssueModel, AddCommentObject_RequiresPersistedId_Throws) {
   Issue is{0, "u1", "T", 0};
-  Comment draft{0, "u2", "text", 0};
+  Comment draft{-1, "u2", "text", 0};
   EXPECT_THROW(is.addComment(draft), std::invalid_argument);
-  EXPECT_THROW(is.addComment(Comment{0, "u2", "text", 0}),
+  EXPECT_THROW(is.addComment(Comment{-1, "u2", "text", 0}),
                std::invalid_argument);
 }
 

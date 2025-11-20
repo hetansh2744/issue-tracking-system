@@ -125,7 +125,7 @@ TEST_F(InMemoryIssueRepositoryTest, SaveAndGetComment) {
   Issue issue(0, "user1", "Test Issue");
   Issue savedIssue = repository->saveIssue(issue);
 
-  Comment comment(0, "user2", "Test comment");
+  Comment comment(-1, "user2", "Test comment");
 
   Comment savedComment = repository->saveComment(savedIssue.getId(), comment);
   EXPECT_GT(savedComment.getId(), 0);
@@ -143,7 +143,7 @@ TEST_F(InMemoryIssueRepositoryTest, GetCommentWithWrongIssueThrows) {
   Issue issue2(0, "user2", "Issue 2");
   Issue saved2 = repository->saveIssue(issue2);
 
-  Comment comment(0, "user1", "Test comment");
+  Comment comment(-1, "user1", "Test comment");
   Comment saved = repository->saveComment(saved1.getId(), comment);
 
   EXPECT_THROW(repository->getComment(saved2.getId(), saved.getId()),
@@ -154,10 +154,10 @@ TEST_F(InMemoryIssueRepositoryTest, GetAllComments) {
   Issue issue(0, "user1", "Test Issue");
   Issue savedIssue = repository->saveIssue(issue);
 
-  Comment comment1(0, "user1", "First comment");
+  Comment comment1(-1, "user1", "First comment");
   repository->saveComment(savedIssue.getId(), comment1);
 
-  Comment comment2(0, "user2", "Second comment");
+  Comment comment2(-1, "user2", "Second comment");
   repository->saveComment(savedIssue.getId(), comment2);
 
   auto comments = repository->getAllComments(savedIssue.getId());
@@ -168,7 +168,7 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIssueAndId) {
   Issue issue(0, "user1", "Test Issue");
   Issue savedIssue = repository->saveIssue(issue);
 
-  Comment comment(0, "user1", "Test comment");
+  Comment comment(-1, "user1", "Test comment");
   Comment saved = repository->saveComment(savedIssue.getId(), comment);
 
   bool deleted = repository->deleteComment(savedIssue.getId(), saved.getId());
@@ -182,7 +182,7 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteCommentByIdOnly) {
   Issue issue(0, "user1", "Test Issue");
   Issue savedIssue = repository->saveIssue(issue);
 
-  Comment comment(0, "user1", "Test comment");
+  Comment comment(-1, "user1", "Test comment");
   Comment saved = repository->saveComment(savedIssue.getId(), comment);
 
   bool deleted = repository->deleteComment(saved.getId());
@@ -254,10 +254,10 @@ TEST_F(InMemoryIssueRepositoryTest, IssueWithCommentsHydration) {
   Issue issue(0, "user1", "Test Issue");
   Issue savedIssue = repository->saveIssue(issue);
 
-  Comment comment1(0, "user1", "Comment 1");
+  Comment comment1(-1, "user1", "Comment 1");
   repository->saveComment(savedIssue.getId(), comment1);
 
-  Comment comment2(0, "user2", "Comment 2");
+  Comment comment2(-1, "user2", "Comment 2");
   repository->saveComment(savedIssue.getId(), comment2);
 
   Issue retrieved = repository->getIssue(savedIssue.getId());
@@ -313,9 +313,9 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteIssueAlsoDeletesComments) {
 }
 
 TEST_F(InMemoryIssueRepositoryTest, CommentValidation) {
-  EXPECT_THROW(Comment(-1, "user1", "text"), std::invalid_argument);
-  EXPECT_THROW(Comment(0, "", "text"), std::invalid_argument);
-  EXPECT_THROW(Comment(0, "user1", ""), std::invalid_argument);
+  EXPECT_THROW(Comment(-2, "user1", "text"), std::invalid_argument);
+  EXPECT_THROW(Comment(-1, "", "text"), std::invalid_argument);
+  EXPECT_THROW(Comment(-1, "user1", ""), std::invalid_argument);
 }
 
 TEST_F(InMemoryIssueRepositoryTest, IssueValidation) {

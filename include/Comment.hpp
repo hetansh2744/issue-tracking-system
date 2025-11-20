@@ -9,7 +9,8 @@
  * @brief Value object representing a single comment.
  *
  * Invariants:
- *  - New comments start with id == 0 (not persisted).
+ *  - New comments start with id == -1 (not persisted).
+ *  - Description comments can use id == 0.
  *  - author_id_ and text_ must be non-empty.
  *  - timestamp_ is epoch ms; 0 means "unknown/unset".
  */
@@ -19,7 +20,7 @@ class Comment {
   using TimePoint = std::int64_t;
 
  private:
-  int id_{0};              ///< 0 => new (not yet persisted)
+  int id_{-1};             ///< -1 => new (not yet persisted)
   std::string author_id_;  ///< non-empty author user id
   std::string text_;       ///< non-empty comment text
   TimePoint timestamp_{0}; ///< creation/mod time; 0 => unknown
@@ -30,7 +31,7 @@ class Comment {
 
   /**
    * @brief Construct and validate a comment.
-   * @param id         >= 0 (0 new; >0 already persisted)
+   * @param id         >= -1 (-1 new; 0 description; >0 persisted)
    * @param author_id  non-empty user id of author
    * @param text       non-empty body text
    * @param timestamp  epoch ms (0 allowed for unknown)
@@ -45,7 +46,7 @@ class Comment {
 
   /**
    * @brief Whether this comment has a persistent id.
-   * @return true if id_ > 0, false otherwise.
+   * @return true if id_ >= 0, false otherwise.
    */
   bool hasPersistentId() const noexcept;
 
@@ -57,7 +58,7 @@ class Comment {
 
   /**
    * @brief Assign a persistent id exactly once.
-   * @param new_id  > 0
+   * @param new_id  >= 0 (0 reserved for description)
    * @throws std::logic_error if id already set
    * @throws std::invalid_argument if new_id <= 0
    */

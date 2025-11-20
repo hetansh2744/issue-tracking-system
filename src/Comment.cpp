@@ -1,7 +1,7 @@
 #include "Comment.hpp"
 #include <utility>
 
-// Construct and validate a comment (id >= 0, strings non-empty).
+// Construct and validate a comment (id >= -1, strings non-empty).
 Comment::Comment(int id,
                  std::string author_id,
                  std::string text,
@@ -10,21 +10,21 @@ Comment::Comment(int id,
       author_id_{std::move(author_id)},
       text_{std::move(text)},
       timestamp_{timestamp} {
-  if (id_ < 0) throw std::invalid_argument("id must be >= 0");
+  if (id_ < -1) throw std::invalid_argument("id must be >= -1");
   if (author_id_.empty()) throw std::invalid_argument("authorId empty");
   if (text_.empty()) throw std::invalid_argument("text empty");
 }
 
-// Whether this comment was persisted (id > 0).
-bool Comment::hasPersistentId() const noexcept { return id_ > 0; }
+// Whether this comment was persisted (id >= 0).
+bool Comment::hasPersistentId() const noexcept { return id_ >= 0; }
 
 // Current id value (0 if new).
 int Comment::getId() const noexcept { return id_; }
 
-// Assign a persistent id exactly once; must be > 0.
+// Assign a persistent id exactly once; must be >= 0.
 void Comment::setIdForPersistence(int new_id) {
   if (hasPersistentId()) throw std::logic_error("id already set");
-  if (new_id <= 0) throw std::invalid_argument("new_id must be > 0");
+  if (new_id < 0) throw std::invalid_argument("new_id must be >= 0");
   id_ = new_id;
 }
 

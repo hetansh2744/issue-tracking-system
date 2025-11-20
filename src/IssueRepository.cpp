@@ -155,16 +155,17 @@ class InMemoryIssueRepository : public IssueRepository {
     }
 
     Comment stored = comment;
-    if (!stored.hasPersistentId()) {
+    if (!stored.hasPersistentId()) {  // id == -1 for new comments
       stored.setIdForPersistence(++nextCommentId_);
+    } else if (stored.getId() == 0 && comments_.find(0) == comments_.end()) {
+      // allow first-time persistence of description comment id 0
     } else if (comments_.find(stored.getId()) == comments_.end()) {
       throw std::invalid_argument("Comment with given ID does not exist");
-    } else {
-      nextCommentId_ = std::max(nextCommentId_, stored.getId());
     }
 
     comments_[stored.getId()] = stored;
     issueIt->second.addComment(stored);
+    nextCommentId_ = std::max(nextCommentId_, stored.getId());
     return stored;
   }
 

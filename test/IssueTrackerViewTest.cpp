@@ -409,3 +409,26 @@ TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
   EXPECT_THAT(output,
     testing::HasSubstr(std::string("Created: ") + expectedStr));
 }
+
+TEST_F(IssueTrackerViewTest, DisplayIssueShowsDescriptionAndIndexesComments) {
+  Issue issue(1, "author1", "Detailed View");
+  issue.setDescriptionCommentId(2);
+  issue.addComment(5);
+
+  std::vector<Comment> comments = {
+      Comment(2, "author1", "Description text", 0),
+      Comment(5, "author2", "User comment", 0)};
+
+  EXPECT_CALL(*mockController, getIssue(1))
+      .WillOnce(Return(issue));
+  EXPECT_CALL(*mockController, getallComments(1))
+      .WillOnce(Return(comments));
+
+  auto output = captureOutput([this]() {
+    view->displayIssue(1);
+  });
+
+  EXPECT_THAT(output, testing::HasSubstr("Amount of Comments: 1"));
+  EXPECT_THAT(output, testing::HasSubstr("Description: Description text"));
+  EXPECT_THAT(output, testing::HasSubstr("[id=5] User comment"));
+}

@@ -137,13 +137,13 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
         if (text.empty() || authorId.empty()) {
-            return Comment(0, "", "");
+            return Comment();
         }
 
         Issue issue = repo->getIssue(issueId);
         repo->getUser(authorId);
 
-        Comment newComment(0, authorId, text, 0);
+        Comment newComment(-1, authorId, text, 0);
         Comment savedComment = repo->saveComment(issueId, newComment);
 
         issue.addComment(savedComment.getId());
@@ -151,7 +151,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
 
         return savedComment;
     } catch (const std::out_of_range&) {
-        return Comment(0, "", "");
+        return Comment();
     }
 }
 

@@ -7,16 +7,16 @@ using std::string;
 // Core happy-path tests (existing ones)
 // --------------------------------------
 
-TEST(Comment, ConstructNewWithIdZero) {
-  Comment c{0, "u1", "hello", 0};
+TEST(Comment, ConstructNewWithIdNegativeOne) {
+  Comment c{-1, "u1", "hello", 0};
   EXPECT_FALSE(c.hasPersistentId());
-  EXPECT_EQ(c.getId(), 0);
+  EXPECT_EQ(c.getId(), -1);
   EXPECT_EQ(c.getAuthor(), "u1");
   EXPECT_EQ(c.getText(), "hello");
 }
 
 TEST(Comment, RepoAssignsIdOnce) {
-  Comment c{0, "u1", "t", 0};
+  Comment c{-1, "u1", "t", 0};
   c.setIdForPersistence(10);
   EXPECT_TRUE(c.hasPersistentId());
   EXPECT_EQ(c.getId(), 10);
@@ -24,14 +24,14 @@ TEST(Comment, RepoAssignsIdOnce) {
 }
 
 TEST(Comment, TextValidation) {
-  Comment c{0, "u1", "t", 0};
+  Comment c{-1, "u1", "t", 0};
   EXPECT_NO_THROW(c.setText("abc"));
   EXPECT_EQ(c.getText(), "abc");
   EXPECT_THROW(c.setText(""), std::invalid_argument);
 }
 
 TEST(Comment, TimestampSet) {
-  Comment c{0, "u1", "t", 0};
+  Comment c{-1, "u1", "t", 0};
   c.setTimeStamp(1234);
   EXPECT_EQ(c.getTimeStamp(), 1234);
 }
@@ -41,7 +41,7 @@ TEST(Comment, TimestampSet) {
 // -------------------------------------------------
 
 TEST(Comment, CtorRejectsInvalidInputs) {
-  EXPECT_THROW((Comment(-1, "u", "t", 0)), std::invalid_argument);
-  EXPECT_THROW((Comment(0, "", "t", 0)), std::invalid_argument);
-  EXPECT_THROW((Comment(0, "u", "", 0)), std::invalid_argument);
+  EXPECT_THROW((Comment(-2, "u", "t", 0)), std::invalid_argument);
+  EXPECT_THROW((Comment(-1, "", "t", 0)), std::invalid_argument);
+  EXPECT_THROW((Comment(-1, "u", "", 0)), std::invalid_argument);
 }
