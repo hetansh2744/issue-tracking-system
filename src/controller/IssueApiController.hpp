@@ -6,9 +6,9 @@
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
 
-#include "dtos/IssueDto.hpp"
-#include "dtos/CommentDto.hpp"
-#include "dtos/UserDto.hpp"
+#include "IssueDto.hpp"
+#include "CommentDto.hpp"
+#include "UserDto.hpp"
 #include "service/IssueService.hpp"
 
 #include "Issue.hpp"

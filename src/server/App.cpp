@@ -1,21 +1,28 @@
 #include "AppComponent.hpp"
 #include "Runner.hpp"
 
-#include "oatpp/core/base/CommandLineArguments.hpp"
-#include "oatpp/core/base/Environment.hpp"
+#include <oatpp/network/tcp/server/ConnectionProvider.hpp>
+
+void run() {
+
+  // Register Oat++ components
+  AppComponent components;
+
+  // Create server connection provider (localhost:8100)
+  auto connectionProvider =
+      oatpp::network::tcp::server::ConnectionProvider::createShared(
+          {"localhost", 8100, oatpp::network::Address::IP_4});
+
+  // Create runner with provider
+  Runner runner(connectionProvider);
+
+  // Run server
+  runner.run();
+}
 
 int main(int argc, const char* argv[]) {
-  oatpp::Environment::init();
-
-  [[maybe_unused]] AppComponent components;
-
-  OATPP_COMPONENT(std::shared_ptr<
-    oatpp::network::tcp::server::ConnectionProvider>,
-    connectionProvider);
-
-  Runner runner(connectionProvider);
-  runner.run();
-
-  oatpp::Environment::destroy();
+  oatpp::base::Environment::init();
+  run();
+  oatpp::base::Environment::destroy();
   return 0;
 }

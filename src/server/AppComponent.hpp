@@ -2,9 +2,20 @@
 #define APP_COMPONENT_HPP_
 
 #include <memory>
-#include "oatpp/core/macro/component.hpp"
+
+#include "Constants.hpp"
+
+#include "SwaggerComponent.hpp"
+
+#include "oatpp/web/server/HttpRouter.hpp"
+
+#include "oatpp/network/virtual_/server/ConnectionProvider.hpp"
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
+
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
+
+#include "oatpp/core/macro/component.hpp"
+
 
 class AppComponent {
  public:
