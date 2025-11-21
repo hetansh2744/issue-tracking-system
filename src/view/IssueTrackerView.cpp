@@ -33,9 +33,9 @@ void IssueTrackerView::displayMenu() {
 //running after user inputs
 void IssueTrackerView::run() {
     int choice = -1;
-    while (choice != 19) {
+    while (choice != 18) {
         displayMenu();
-        int length_display = 19;
+        int length_display = 18;
         choice = getvalidInt(length_display);
 
         switch (choice) {
@@ -54,7 +54,9 @@ void IssueTrackerView::run() {
         case 13: removeUser(); break;
         case 14: updateUser(); break;
         case 15: listUnassignedIssues(); break;
-        case 16: std::cout << "Goodbye!\n"; break;
+        case 16: addTag(); break;
+        case 17: removeTag(); break;
+        case 18: std::cout << "Goodbye!\n"; break;
         }
     }
 }
@@ -148,7 +150,6 @@ std::string IssueTrackerView::getuserId() {
 void IssueTrackerView::createIssue() {
     std::string title, desc, assignedTo;
 
-    // get non-empty title
     do {
         std::cout << "Enter title:\n";
         std::getline(std::cin, title);
@@ -165,12 +166,7 @@ void IssueTrackerView::createIssue() {
     // choose author / assignee
     std::cout << "Select author of Issue";
     assignedTo = getuserId();
-
-    // ✅ this is what the test looks for:
-    // "Issue assigned to user: testuser"
     std::cout << "Issue assigned to user: " << assignedTo << std::endl;
-
-    // create the issue via controller
     Issue issue = controller->createIssue(title, desc, assignedTo);
 }
 
