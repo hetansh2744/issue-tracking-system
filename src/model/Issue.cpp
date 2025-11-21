@@ -119,7 +119,7 @@ void Issue::addComment(Comment&& comment) {
   const int commentId = comment.getId();
   if (commentId < 0) {
     throw std::invalid_argument("comment.id must be > 0 but was " 
-                                + std::to_string(commentId)s);
+                                + std::to_string(commentId));
   }
 
   // upsert by id (move)
