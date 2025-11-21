@@ -1,11 +1,11 @@
 #ifndef SQLITE_ISSUE_REPOSITORY_HPP
 #define SQLITE_ISSUE_REPOSITORY_HPP
 
+#include <sqlite3.h>
+
 #include <functional>
 #include <string>
 #include <vector>
-
-#include <sqlite3.h>
 
 #include "IssueRepository.hpp"
 

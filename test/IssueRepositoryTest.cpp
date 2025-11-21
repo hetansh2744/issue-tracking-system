@@ -1,5 +1,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include <cstdlib>
 
 #include "Comment.hpp"
@@ -14,7 +15,7 @@ using ::testing::SizeIs;
 
 class InMemoryIssueRepositoryTest : public ::testing::Test {
  protected:
- void SetUp() override {
+  void SetUp() override {
     setenv("ISSUE_REPO_BACKEND", "memory", 1);
     repository = std::unique_ptr<IssueRepository>(createIssueRepository());
   }
@@ -76,9 +77,7 @@ TEST_F(InMemoryIssueRepositoryTest, FindIssuesByCriteria) {
   repository->saveIssue(issue2);
 
   auto results = repository->findIssues(
-      [](const Issue& issue) {
-        return issue.getTitle() == "Bug";
-      });
+      [](const Issue& issue) { return issue.getTitle() == "Bug"; });
 
   EXPECT_THAT(results, SizeIs(1));
   EXPECT_EQ(results[0].getTitle(), "Bug");
@@ -132,8 +131,8 @@ TEST_F(InMemoryIssueRepositoryTest, SaveAndGetComment) {
   Comment savedComment = repository->saveComment(savedIssue.getId(), comment);
   EXPECT_GT(savedComment.getId(), -1);
 
-  Comment retrieved = repository->getComment(savedIssue.getId(),
-                                             savedComment.getId());
+  Comment retrieved =
+      repository->getComment(savedIssue.getId(), savedComment.getId());
   EXPECT_EQ(retrieved.getId(), savedComment.getId());
   EXPECT_EQ(retrieved.getText(), "Test comment");
 }

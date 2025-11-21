@@ -21,9 +21,9 @@ std::vector<Issue> IssueRepository::listAllUnassigned() const {
 
 namespace {
 std::string toLowerCopy(std::string value) {
-  std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-    return static_cast<char>(std::tolower(c));
-  });
+  std::transform(
+      value.begin(), value.end(), value.begin(),
+      [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   return value;
 }
 }  // namespace
