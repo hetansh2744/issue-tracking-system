@@ -166,7 +166,7 @@ class IssueTrackerView {
 
     void addTag();
 
-    void removeTag(); 
+    void removeTag();
 };
 
 #endif  // ISSUE_TRACKER_VIEW_H

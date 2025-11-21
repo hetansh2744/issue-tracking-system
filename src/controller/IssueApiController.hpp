@@ -1,6 +1,7 @@
 #ifndef ISSUE_API_CONTROLLER_HPP_
 #define ISSUE_API_CONTROLLER_HPP_
 
+#include <memory>
 #include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
@@ -182,7 +183,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
-
 };
 
 #include OATPP_CODEGEN_END(ApiController)

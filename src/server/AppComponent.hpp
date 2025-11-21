@@ -1,6 +1,7 @@
 #ifndef APP_COMPONENT_HPP_
 #define APP_COMPONENT_HPP_
 
+#include <memory>
 #include "oatpp/core/macro/component.hpp"
 #include "oatpp/network/tcp/server/ConnectionProvider.hpp"
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
