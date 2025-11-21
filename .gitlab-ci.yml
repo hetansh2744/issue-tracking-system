@@ -9,6 +9,10 @@ variables:
   GIT_STRATEGY: clone
   TIMEOUT: 10m
 
+before_script:
+  - chmod +x scripts/build_sqlite.sh
+  - ./scripts/build_sqlite.sh
+
 docs:
    stage: documentation
    script:

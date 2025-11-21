@@ -20,14 +20,15 @@ CXX=g++
 CXXVERSION= -std=c++17
 CXXFLAGS= ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
-LINKFLAGS= -lgtest -lgmock -pthread -lsqlite3
+SQLITE_PREFIX = third_party/sqlite-build
+LINKFLAGS= -lgtest -lgmock -pthread -L ${SQLITE_PREFIX}/lib -lsqlite3
 
 # Directories
 SRC_DIR = src
 PROJECT_SRC_DIR = src/project
 GTEST_DIR = test
 SRC_INCLUDE = include
-INCLUDE = -I ${SRC_INCLUDE}
+INCLUDE = -I ${SRC_INCLUDE} -I ${SQLITE_PREFIX}/include
 
 # Tool variables
 GCOV = gcov
@@ -99,7 +100,7 @@ ${GTEST}: ${GTEST_DIR} ${SRC_DIR} clean-exec
 # using the files in include, src, and src/project, but not test
 compileProject: ${SRC_DIR} ${PROJECT_SRC_DIR} clean-exec
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${SRC_DIR}/*.cpp ${PROJECT_SRC_DIR}/*.cpp -lsqlite3
+	${SRC_DIR}/*.cpp ${PROJECT_SRC_DIR}/*.cpp ${LINKFLAGS}
 
 ################################################################################
 # Test targets
