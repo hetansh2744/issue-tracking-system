@@ -387,7 +387,8 @@ TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
 }
 
 // TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
-//   const Issue::TimePoint creationTs = 1'700'000'000'000;  // deterministic epoch
+//   const Issue::TimePoint creationTs = 
+//   1'700'000'000'000;  // deterministic epoch
 //   Issue issue(42, "author1", "Detailed View", creationTs);
 //   issue.addComment(1);  // ensure comment sizing remains non-negative
 
@@ -410,7 +411,8 @@ TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
 //     testing::HasSubstr(std::string("Created: ") + expectedStr));
 // }
 
-// TEST_F(IssueTrackerViewTest, DisplayIssueShowsDescriptionAndIndexesComments) {
+// TEST_F(IssueTrackerViewTest, 
+// DisplayIssueShowsDescriptionAndIndexesComments) {
 //   Issue issue(1, "author1", "Detailed View");
 //   issue.setDescriptionCommentId(2);
 //   issue.addComment(5);
