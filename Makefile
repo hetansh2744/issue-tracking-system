@@ -20,7 +20,7 @@ CXX=g++
 CXXVERSION= -std=c++17
 CXXFLAGS= ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
-LINKFLAGS= -lgtest -lgmock -pthread
+LINKFLAGS= -lgtest -lgmock -pthread -lsqlite3
 
 # Directories
 SRC_DIR = src
@@ -99,7 +99,7 @@ ${GTEST}: ${GTEST_DIR} ${SRC_DIR} clean-exec
 # using the files in include, src, and src/project, but not test
 compileProject: ${SRC_DIR} ${PROJECT_SRC_DIR} clean-exec
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${SRC_DIR}/*.cpp ${PROJECT_SRC_DIR}/*.cpp
+	${SRC_DIR}/*.cpp ${PROJECT_SRC_DIR}/*.cpp -lsqlite3
 
 ################################################################################
 # Test targets
