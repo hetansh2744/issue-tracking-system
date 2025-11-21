@@ -3,14 +3,14 @@
 #define issue_SwaggerComponent_hpp
 
 #include "Constants.hpp"
+#include <memory>
 
 #include "oatpp-swagger/Model.hpp"
 #include "oatpp-swagger/Resources.hpp"
 #include "oatpp/core/macro/component.hpp"
 
 class SwaggerComponent {
-public:
-
+ public:
   /**
    *  General API docs info
    */
