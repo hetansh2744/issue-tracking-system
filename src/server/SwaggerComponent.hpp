@@ -2,8 +2,8 @@
 #ifndef issue_SwaggerComponent_hpp
 #define issue_SwaggerComponent_hpp
 
-#include "Constants.hpp"
 #include <memory>
+#include "Constants.hpp"
 
 #include "oatpp-swagger/Model.hpp"
 #include "oatpp-swagger/Resources.hpp"
