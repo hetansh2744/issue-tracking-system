@@ -8,8 +8,7 @@ namespace {
 class SqliteStmt {
  public:
   SqliteStmt(sqlite3* db, const std::string& sql) : stmt_(nullptr) {
-    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt_, nullptr) !=
-        SQLITE_OK) {
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt_, nullptr) != SQLITE_OK) {
       throw std::runtime_error(sqlite3_errmsg(db));
     }
   }
@@ -51,8 +50,7 @@ SQLiteIssueRepository::~SQLiteIssueRepository() {
 
 void SQLiteIssueRepository::execOrThrow(const std::string& sql) const {
   char* errMsg = nullptr;
-  if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &errMsg) !=
-      SQLITE_OK) {
+  if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
     std::string message = errMsg ? errMsg : "Unknown SQLite error";
     sqlite3_free(errMsg);
     throw std::runtime_error(message);
@@ -96,8 +94,7 @@ bool SQLiteIssueRepository::exists(
 }
 
 void SQLiteIssueRepository::forEachRow(
-    const std::string& sql,
-    const std::function<void(sqlite3_stmt*)>& binder,
+    const std::string& sql, const std::function<void(sqlite3_stmt*)>& binder,
     const std::function<void(sqlite3_stmt*)>& onRow) const {
   SqliteStmt stmt(db_, sql);
   if (binder) {
@@ -143,19 +140,17 @@ Comment SQLiteIssueRepository::insertCommentRow(int issueId,
 }
 
 bool SQLiteIssueRepository::issueExists(int issueId) const {
-  return exists("SELECT 1 FROM issues WHERE id = ? LIMIT 1;",
-                [issueId](sqlite3_stmt* stmt) {
-                  sqlite3_bind_int(stmt, 1, issueId);
-                });
+  return exists(
+      "SELECT 1 FROM issues WHERE id = ? LIMIT 1;",
+      [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); });
 }
 
 bool SQLiteIssueRepository::commentExists(int issueId, int commentId) const {
-  return exists(
-      "SELECT 1 FROM comments WHERE issue_id = ? AND id = ? LIMIT 1;",
-      [issueId, commentId](sqlite3_stmt* stmt) {
-        sqlite3_bind_int(stmt, 1, issueId);
-        sqlite3_bind_int(stmt, 2, commentId);
-      });
+  return exists("SELECT 1 FROM comments WHERE issue_id = ? AND id = ? LIMIT 1;",
+                [issueId, commentId](sqlite3_stmt* stmt) {
+                  sqlite3_bind_int(stmt, 1, issueId);
+                  sqlite3_bind_int(stmt, 2, commentId);
+                });
 }
 
 int SQLiteIssueRepository::nextCommentIdForIssue(int issueId) const {
@@ -176,8 +171,7 @@ std::vector<Comment> SQLiteIssueRepository::loadComments(int issueId) const {
       "ORDER BY id ASC;",
       [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); },
       [&comments](sqlite3_stmt* stmt) {
-        comments.emplace_back(sqlite3_column_int(stmt, 0),
-                              columnText(stmt, 1),
+        comments.emplace_back(sqlite3_column_int(stmt, 0), columnText(stmt, 1),
                               columnText(stmt, 2),
                               sqlite3_column_int64(stmt, 3));
       });
@@ -195,10 +189,8 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
     throw std::invalid_argument("Issue with given ID does not exist");
   }
 
-  Issue issue(sqlite3_column_int(stmt.get(), 0),
-              columnText(stmt.get(), 1),
-              columnText(stmt.get(), 2),
-              sqlite3_column_int64(stmt.get(), 5));
+  Issue issue(sqlite3_column_int(stmt.get(), 0), columnText(stmt.get(), 1),
+              columnText(stmt.get(), 2), sqlite3_column_int64(stmt.get(), 5));
 
   const int descriptionId = sqlite3_column_int(stmt.get(), 3);
   const std::string assigned = columnText(stmt.get(), 4);
@@ -248,10 +240,10 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
                                 std::to_string(stored.getId()));
   }
 
-  SqliteStmt stmt(
-      db_,
-      "UPDATE issues SET author_id = ?, title = ?, "
-      "description_comment_id = ?, assigned_to = ?, created_at = ? WHERE id = ?;");
+  SqliteStmt stmt(db_,
+                  "UPDATE issues SET author_id = ?, title = ?, "
+                  "description_comment_id = ?, assigned_to = ?, "
+                  "created_at = ? WHERE id = ?;");
   sqlite3_bind_text(stmt.get(), 1, stored.getAuthorId().c_str(), -1,
                     SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt.get(), 2, stored.getTitle().c_str(), -1,
@@ -284,13 +276,11 @@ bool SQLiteIssueRepository::deleteIssue(int issueId) {
 
 std::vector<Issue> SQLiteIssueRepository::listIssues() const {
   std::vector<Issue> issues;
-  forEachRow(
-      "SELECT id FROM issues ORDER BY id ASC;",
-      {},
-      [this, &issues](sqlite3_stmt* stmt) {
-        int id = sqlite3_column_int(stmt, 0);
-        issues.push_back(getIssue(id));
-      });
+  forEachRow("SELECT id FROM issues ORDER BY id ASC;", {},
+             [this, &issues](sqlite3_stmt* stmt) {
+               int id = sqlite3_column_int(stmt, 0);
+               issues.push_back(getIssue(id));
+             });
   return issues;
 }
 
@@ -307,10 +297,9 @@ std::vector<Issue> SQLiteIssueRepository::findIssues(
 }
 
 Comment SQLiteIssueRepository::getComment(int issueId, int commentId) const {
-  SqliteStmt stmt(
-      db_,
-      "SELECT id, author_id, text, timestamp FROM comments "
-      "WHERE issue_id = ? AND id = ? LIMIT 1;");
+  SqliteStmt stmt(db_,
+                  "SELECT id, author_id, text, timestamp FROM comments "
+                  "WHERE issue_id = ? AND id = ? LIMIT 1;");
   sqlite3_bind_int(stmt.get(), 1, issueId);
   sqlite3_bind_int(stmt.get(), 2, commentId);
 
@@ -351,10 +340,9 @@ Comment SQLiteIssueRepository::saveComment(int issueId,
     throw std::invalid_argument("Comment with given ID does not exist");
   }
 
-  SqliteStmt stmt(
-      db_,
-      "UPDATE comments SET author_id = ?, text = ?, timestamp = ? "
-      "WHERE issue_id = ? AND id = ?;");
+  SqliteStmt stmt(db_,
+                  "UPDATE comments SET author_id = ?, text = ?, timestamp = ? "
+                  "WHERE issue_id = ? AND id = ?;");
   sqlite3_bind_text(stmt.get(), 1, comment.getAuthor().c_str(), -1,
                     SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt.get(), 2, comment.getText().c_str(), -1,
@@ -414,10 +402,9 @@ User SQLiteIssueRepository::saveUser(const User& user) {
     throw std::invalid_argument("User ID must be non-empty");
   }
 
-  SqliteStmt stmt(
-      db_,
-      "INSERT INTO users (name, role) VALUES (?, ?) "
-      "ON CONFLICT(name) DO UPDATE SET role = excluded.role;");
+  SqliteStmt stmt(db_,
+                  "INSERT INTO users (name, role) VALUES (?, ?) "
+                  "ON CONFLICT(name) DO UPDATE SET role = excluded.role;");
   sqlite3_bind_text(stmt.get(), 1, user.getName().c_str(), -1,
                     SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt.get(), 2, user.getRole().c_str(), -1,
@@ -440,11 +427,9 @@ bool SQLiteIssueRepository::deleteUser(const std::string& userId) {
 
 std::vector<User> SQLiteIssueRepository::listAllUsers() const {
   std::vector<User> users;
-  forEachRow(
-      "SELECT name, role FROM users ORDER BY name ASC;",
-      {},
-      [&users](sqlite3_stmt* stmt) {
-        users.emplace_back(columnText(stmt, 0), columnText(stmt, 1));
-      });
+  forEachRow("SELECT name, role FROM users ORDER BY name ASC;", {},
+             [&users](sqlite3_stmt* stmt) {
+               users.emplace_back(columnText(stmt, 0), columnText(stmt, 1));
+             });
   return users;
 }
