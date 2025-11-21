@@ -37,7 +37,7 @@ OATPP_INCLUDE = -I src -I $(OATPP_INCLUDE_LIB) -I $(OATPP_SWAGGER_INCLUDE)
 
 SRC_DIR = src
 MODEL_DIR = src/model
-REPO_DIR = src/repo
+REPO_DIR = src/repository
 VIEW_DIR = src/view
 CONTROLLER_DIR = src/controller
 SERVER_DIR = src/server
@@ -66,7 +66,7 @@ LINKFLAGS = -lgtest -lgmock -pthread \
 	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
 	-L $(OATPP_LIB_DIR) \
 	-Wl,-rpath,$(OATPP_LIB_DIR) \
-	-loatpp -loatpp-swagger \
+	-loatpp-swagger -loatpp \
 	-lsqlite3
 
 ################################################################################
@@ -110,7 +110,7 @@ clean:
 	rm -rf *.gcov *.gcda *.gcno ${COVERAGE_RESULTS} ${COVERAGE_DIR}
 	rm -rf docs/code/html
 	rm -rf ${PROJECT} ${GTEST} ${REST}
-	rm -rf src/*.o src/model/*.o src/repo/*.o \
+	rm -rf src/*.o src/model/*.o src/repository/*.o \
 	       src/view/*.o src/controller/*.o \
 	       src/server/*.o src/project/*.o
 	rm -rf *~ \#* .\#* src/*~ test/*~ include/*~

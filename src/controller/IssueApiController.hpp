@@ -2,6 +2,7 @@
 #define ISSUE_API_CONTROLLER_HPP_
 
 #include <memory>
+#include <string>
 #include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
@@ -20,6 +21,9 @@
 class IssueApiController : public oatpp::web::server::api::ApiController {
  private:
   std::shared_ptr<IssueService> service;
+  static std::string asStdString(const oatpp::String& value) {
+    return value ? *value : std::string();
+  }
 
  public:
   IssueApiController(
@@ -38,7 +42,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
         i.hasAssignee() ? i.getAssignedTo().c_str() : "";
     auto ids = oatpp::List<oatpp::Int32>::createShared();
     for (int cid : i.getCommentIds()) {
-      ids->pushBack(cid);
+      ids->push_back(cid);
     }
     dto->commentIds = ids;
     dto->createdAt = i.getCreatedAt();
@@ -69,9 +73,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       return createResponse(Status::CODE_400, "Missing fields");
     }
     Issue i = service->createIssue(
-        body->title->std_str(),
-        body->description ? body->description->std_str() : "",
-        body->authorId->std_str());
+        asStdString(body->title),
+        asStdString(body->description),
+        asStdString(body->authorId));
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 
@@ -79,7 +83,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     auto issues = service->listAllIssues();
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
     for (auto& i : issues) {
-      list->pushBack(issueToDto(i));
+      list->push_back(issueToDto(i));
     }
     return createDtoResponse(Status::CODE_200, list);
   }
@@ -98,7 +102,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<IssueUpdateFieldDto>, body)) {
     bool ok = service->updateIssueField(
-        id, body->field->std_str(), body->value->std_str());
+        id, asStdString(body->field), asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_400, "Failed");
   }
@@ -116,7 +120,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<CommentCreateDto>, body)) {
     Comment c = service->addCommentToIssue(
-        id, body->text->std_str(), body->authorId->std_str());
+        id, asStdString(body->text), asStdString(body->authorId));
     return createDtoResponse(Status::CODE_201, commentToDto(c));
   }
 
@@ -125,7 +129,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     auto comments = service->getAllComments(id);
     auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
     for (auto& c : comments) {
-      list->pushBack(commentToDto(c));
+      list->push_back(commentToDto(c));
     }
     return createDtoResponse(Status::CODE_200, list);
   }
@@ -136,7 +140,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, commentId),
            BODY_DTO(oatpp::Object<CommentUpdateDto>, body)) {
     bool ok = service->updateComment(
-        issueId, commentId, body->text->std_str());
+        issueId, commentId, asStdString(body->text));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
@@ -155,7 +159,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
     User u = service->createUser(
-        body->name->std_str(), body->role->std_str());
+        asStdString(body->name), asStdString(body->role));
     return createDtoResponse(Status::CODE_201, userToDto(u));
   }
 
@@ -163,7 +167,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     auto users = service->listAllUsers();
     auto list = oatpp::List<oatpp::Object<UserDto>>::createShared();
     for (auto& u : users) {
-      list->pushBack(userToDto(u));
+      list->push_back(userToDto(u));
     }
     return createDtoResponse(Status::CODE_200, list);
   }
@@ -172,14 +176,14 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::String, id),
            BODY_DTO(oatpp::Object<UserUpdateDto>, body)) {
     bool ok = service->updateUser(
-        id->std_str(), body->field->std_str(), body->value->std_str());
+        asStdString(id), asStdString(body->field), asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_400, "Failed");
   }
 
   ENDPOINT("DELETE", "/users/{id}", deleteUser,
            PATH(oatpp::String, id)) {
-    bool ok = service->removeUser(id->std_str());
+    bool ok = service->removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
