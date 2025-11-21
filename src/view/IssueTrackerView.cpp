@@ -23,7 +23,9 @@ void IssueTrackerView::displayMenu() {
     std::cout << "13. Remove User\n";
     std::cout << "14. Update User\n";
     std::cout << "15. List Unassigned Issues\n";
-    std::cout << "16. Exit\n";
+    std::cout << "17. Add Tag to Issue\n";
+    std::cout << "18. Remove Tag from Issue\n";
+    std::cout << "19. Exit\n";
     std::cout << "Select an option: ";
 }
 
@@ -31,9 +33,9 @@ void IssueTrackerView::displayMenu() {
 //running after user inputs
 void IssueTrackerView::run() {
     int choice = -1;
-    while (choice != 16) {
+    while (choice != 19) {
         displayMenu();
-        int length_display = 16;
+        int length_display = 19;
         choice = getvalidInt(length_display);
 
         switch (choice) {
@@ -259,7 +261,6 @@ void IssueTrackerView::listIssues() {
     return;
   }
 
-  // Group issues by status.
   std::vector<Issue> todo;
   std::vector<Issue> inProgress;
   std::vector<Issue> done;
@@ -271,7 +272,6 @@ void IssueTrackerView::listIssues() {
     } else if (status == "Done") {
       done.push_back(issue);
     } else {
-      // Default bucket for "To Be Done" or any unknown status.
       todo.push_back(issue);
     }
   }
@@ -289,6 +289,7 @@ void IssueTrackerView::listIssues() {
       std::cout << "Author: " << issue.getAuthorId() << "\n";
       std::cout << "Title: " << issue.getTitle() << "\n";
       std::cout << "Status: " << issue.getStatus() << "\n";
+
       std::int64_t timestamp = issue.getCreatedAt();
       std::time_t time_t_value =
           static_cast<std::time_t>(timestamp / 1000);
@@ -317,7 +318,20 @@ void IssueTrackerView::listIssues() {
         std::cout << "Assigned To: (unassigned)\n";
       }
 
-      std::cout << "Comments:" << issue.getCommentIds().size() << "\n\n";
+      // ✅ TAG DISPLAY LOGIC (ADDED)
+      std::cout << "Tags: ";
+      const auto& tags = issue.getTags();
+      if (tags.empty()) {
+        std::cout << "(none)";
+      } else {
+        for (const auto& tag : tags) {
+          std::cout << "[" << tag << "] ";
+        }
+      }
+      std::cout << "\n";
+
+      std::cout << "Comments: " <<
+      issue.getCommentIds().size() << "\n\n";
     }
   };
 
@@ -326,6 +340,7 @@ void IssueTrackerView::listIssues() {
   printGroup("In Progress", inProgress);
   printGroup("Done", done);
 }
+
 
 //prints a list of all the issues that dont
 //have users assigned
@@ -517,4 +532,26 @@ void IssueTrackerView:: deleteComment() {
   int choice = getvalidInt(comments.size());
   commentId = comments[choice].getId();
   controller->deleteComment(issueId, commentId);
+}
+
+void IssueTrackerView::addTag() {
+  int issueId = getissueId();
+  std::string tag;
+
+  std::cout << "Enter tag: ";
+  std::getline(std::cin, tag);
+
+  bool success = controller->addTagToIssue(issueId, tag);
+  std::cout << (success ? "Tag added.\n" : "Failed to add tag.\n");
+}
+
+void IssueTrackerView::removeTag() {
+  int issueId = getissueId();
+  std::string tag;
+
+  std::cout << "Enter tag to remove: ";
+  std::getline(std::cin, tag);
+
+  bool success = controller->removeTagFromIssue(issueId, tag);
+  std::cout << (success ? "Tag removed.\n" : "Failed to remove tag.\n");
 }

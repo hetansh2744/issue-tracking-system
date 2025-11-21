@@ -163,6 +163,10 @@ class IssueTrackerView {
      * @brief Main application loop that handles user interaction
      */
     void run();
+
+    void addTag();
+
+    void removeTag(); 
 };
 
 #endif  // ISSUE_TRACKER_VIEW_H
