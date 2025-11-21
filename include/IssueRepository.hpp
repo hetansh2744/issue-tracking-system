@@ -167,4 +167,9 @@ class IssueRepository {
  */
 IssueRepository* createIssueRepository();
 
+virtual bool addTagToIssue(int issueId, const std::string& tag) = 0;
+
+virtual bool removeTagFromIssue(int issueId, const std::string& tag) = 0;
+
+
 #endif  // ISSUE_REPOSITORY_H_INCLUDED
