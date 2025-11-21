@@ -1,0 +1,336 @@
+openapi: 3.0.0
+info:
+  title: Issue Tracking System API
+  description: REST API for Issue Tracking System (Milestone 2)
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8100
+
+paths:
+
+  /issues:
+    post:
+      summary: Create a new issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreate'
+      responses:
+        '201':
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+
+    get:
+      summary: List all issues
+      responses:
+        '200':
+          description: List of issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+
+  /issues/{id}:
+    get:
+      summary: Get an issue by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Issue found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '404':
+          description: Issue not found
+
+    patch:
+      summary: Update an issue field
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+      responses:
+        '204':
+          description: Issue updated
+
+    delete:
+      summary: Delete an issue
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Issue deleted
+        '404':
+          description: Issue not found
+
+  /issues/{id}/comments:
+    post:
+      summary: Add a comment to an issue
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreate'
+      responses:
+        '201':
+          description: Comment created
+
+    get:
+      summary: List comments for an issue
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+
+  /issues/{issueId}/comments/{commentId}:
+    patch:
+      summary: Update a comment
+      parameters:
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: commentId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentUpdate'
+      responses:
+        '204':
+          description: Comment updated
+
+    delete:
+      summary: Delete a comment
+      parameters:
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: commentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Comment deleted
+        '404':
+          description: Comment not found
+
+  /users:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created
+
+    get:
+      summary: List all users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    patch:
+      summary: Update a user field
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '204':
+          description: User updated
+
+    delete:
+      summary: Delete a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          description: User not found
+
+components:
+  schemas:
+
+    Issue:
+      type: object
+      properties:
+        id:
+          type: integer
+        author_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        assigned_to:
+          type: string
+        comment_ids:
+          type: array
+          items:
+            type: integer
+        created_at:
+          type: integer
+
+    IssueCreate:
+      type: object
+      required:
+        - title
+        - author_id
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        author_id:
+          type: string
+
+    IssueUpdate:
+      type: object
+      required:
+        - field
+        - value
+      properties:
+        field:
+          type: string
+        value:
+          type: string
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        author_id:
+          type: string
+        text:
+          type: string
+        timestamp:
+          type: integer
+
+    CommentCreate:
+      type: object
+      required:
+        - text
+        - author_id
+      properties:
+        text:
+          type: string
+        author_id:
+          type: string
+
+    CommentUpdate:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+
+    UserCreate:
+      type: object
+      required:
+        - name
+        - role
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+
+    UserUpdate:
+      type: object
+      required:
+        - field
+        - value
+      properties:
+        field:
+          type: string
+        value:
+          type: string
