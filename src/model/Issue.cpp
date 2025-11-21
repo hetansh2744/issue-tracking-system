@@ -170,3 +170,22 @@ bool Issue::removeCommentById(int id) {
   // also removes id and clears description if needed
   return removeComment(id);
 }
+
+bool Issue::addTag(const std::string& tag) {
+  if (tag.empty()) {
+    throw std::invalid_argument("tag must not be empty");
+  }
+  return tags_.insert(tag).second;
+}
+
+bool Issue::removeTag(const std::string& tag) {
+  return tags_.erase(tag) > 0;
+}
+
+bool Issue::hasTag(const std::string& tag) const {
+  return tags_.find(tag) != tags_.end();
+}
+
+std::set<std::string> Issue::getTags() const {
+  return tags_;
+}
