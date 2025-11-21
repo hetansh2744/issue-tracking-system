@@ -17,10 +17,7 @@ CXX = g++
 CXXVERSION = -std=c++17
 CXXFLAGS = ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
-
-OATPP_LIBS = -loatpp -loatpp-swagger
-
-LINKFLAGS = -lgtest -lgmock -pthread ${OATPP_LIBS}
+LINKFLAGS= -lgtest -lgmock -pthread
 
 SRC_DIR = src
 MODEL_DIR = src/model
@@ -32,7 +29,7 @@ PROJECT_MAIN_DIR = src/project
 
 GTEST_DIR = test
 SRC_INCLUDE = include
-INCLUDE = -I ${SRC_INCLUDE} -I src
+INCLUDE = -I ${SRC_INCLUDE}
 
 GCOV = gcov
 LCOV = lcov
@@ -100,8 +97,7 @@ ${GTEST}: clean
 # Project build (with main)
 compileProject: clean
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${CORE_SRCS} \
-	${MAIN_SRC}
+	${SRC_DIR}/*.cpp ${PROJECT_SRC_DIR}/*.cpp
 
 ################################################################################
 # REST

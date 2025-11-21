@@ -106,7 +106,7 @@ class IssueRepository {
    * @param issueId The ID of the issue containing the comment
    * @return Comment The requested comment object
    */
-  virtual Comment getComment(int commentId, int issueId) const = 0;
+  virtual Comment getComment(int issueId, int commentId) const = 0;
 
   /**
    * @brief Retrieves all comments for a specific issue
@@ -134,14 +134,6 @@ class IssueRepository {
    * @return bool True if deletion was successful, false otherwise
    */
   virtual bool deleteComment(int issueId, int commentId) = 0;
-
-  /**
-   * @brief Deletes a comment by ID only
-   *
-   * @param commentId The ID of the comment to delete
-   * @return bool True if deletion was successful, false otherwise
-   */
-  virtual bool deleteComment(int commentId) = 0;
 
   // === Users ===
 
