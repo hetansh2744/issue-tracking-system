@@ -1,3 +1,5 @@
+image: ubuntu:22.04   # or debian:12, etc.
+
 stages:
    - documentation
    - quality
@@ -11,7 +13,8 @@ variables:
 
 before_script:
   - apt-get update
-  - apt-get install -y libsqlite3-dev
+  - apt-get install -y g++ make libsqlite3-dev libgtest-dev \
+        valgrind lcov gcovr cppcheck doxygen
 
 docs:
    stage: documentation
@@ -47,7 +50,7 @@ buildTests:
 unitTests:
    stage: unit_test
    script:
-      - test_project
+      - ./test_project
 
 memoryLeaks:
    stage: active_tests
