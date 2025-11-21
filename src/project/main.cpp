@@ -3,9 +3,11 @@
 #include "IssueRepository.hpp"
 
 int main() {
-    auto repo = createIssueRepository();
+    IssueRepository* repo;
     IssueTrackerController controller(repo);
     IssueTrackerView view(&controller);
     view.run();
+
+    delete repo;
     return 0;
 }
