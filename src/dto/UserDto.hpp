@@ -1,8 +1,10 @@
 #ifndef USER_DTO_HPP_
 #define USER_DTO_HPP_
 
+#include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
-#include "oatpp/core/mapping/type/Object.hpp"
+
+#include OATPP_CODEGEN_BEGIN(DTO)
 
 class UserDto : public oatpp::DTO {
   DTO_INIT(UserDto, DTO)
@@ -24,5 +26,6 @@ class UserUpdateDto : public oatpp::DTO {
   DTO_FIELD(oatpp::String, field);
   DTO_FIELD(oatpp::String, value);
 };
+#include OATPP_CODEGEN_END(DTO)
 
 #endif
