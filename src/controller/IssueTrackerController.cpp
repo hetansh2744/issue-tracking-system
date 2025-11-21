@@ -249,3 +249,22 @@ std::vector<Issue> IssueTrackerController::findIssuesByUserId(
 std::vector<User> IssueTrackerController::listAllUsers() {
     return repo->listAllUsers();
 }
+
+bool IssueTrackerController::addTagToIssue(
+    int issueId, const std::string& tag) {
+  try {
+    return repo->addTagToIssue(issueId, tag);
+  } catch (...) {
+    return false;
+  }
+}
+
+bool IssueTrackerController::removeTagFromIssue(
+    int issueId, const std::string& tag) {
+  try {
+    return repo->removeTagFromIssue(issueId, tag);
+  } catch (...) {
+    return false;
+  }
+}
+

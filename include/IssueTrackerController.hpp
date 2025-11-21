@@ -194,6 +194,10 @@ class IssueTrackerController {
      * @return std::vector<User> List of all registered users
      */
     virtual std::vector<User> listAllUsers();
+
+    bool addTagToIssue(int issueId, const std::string& tag);
+
+    bool removeTagFromIssue(int issueId, const std::string& tag);
 };
 
 #endif  // ISSUE_TRACKER_CONTROLLER_H
