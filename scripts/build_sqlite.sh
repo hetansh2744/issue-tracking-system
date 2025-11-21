@@ -11,8 +11,10 @@ mkdir -p "$SQLITE_PREFIX"
 cd "$SQLITE_SRC_DIR"
 
 # Configure to install under third_party/sqlite-build
+# Some runners strip execute bits; make sure configure and its helpers are runnable
 chmod +x configure
-./configure --prefix="$SQLITE_PREFIX" --disable-tcl
+chmod -R +x autosetup
+bash configure --prefix="$SQLITE_PREFIX" --disable-tcl
 
 # Build and install
 make -j"$(nproc || echo 2)"
