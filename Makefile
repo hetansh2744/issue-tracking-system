@@ -21,7 +21,7 @@ CXXVERSION= -std=c++17
 CXXFLAGS= ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
 SQLITE_PREFIX = third_party/sqlite-build
-LINKFLAGS= -lgtest -lgmock -pthread -L ${SQLITE_PREFIX}/lib -Wl,-rpath,$(abspath ${SQLITE_PREFIX}/lib) -lsqlite3
+LINKFLAGS= -lgtest -lgmock -pthread -L $(SQLITE_PREFIX)/lib -Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) -lsqlite3
 
 # Directories
 SRC_DIR = src

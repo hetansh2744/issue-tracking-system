@@ -13,6 +13,7 @@ before_script:
   - chmod +x scripts/build_sqlite.sh
   - find third_party/sqlite-src -maxdepth 1 -name configure -exec chmod +x {} \;
   - ./scripts/build_sqlite.sh
+  - export LD_LIBRARY_PATH="$PWD/third_party/sqlite-build/lib:${LD_LIBRARY_PATH:-}"
 
 docs:
    stage: documentation
