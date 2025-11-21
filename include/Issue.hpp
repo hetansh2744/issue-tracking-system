@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 #include "Comment.hpp"
 
 /**
@@ -42,6 +43,7 @@ class Issue {
   std::vector<Comment> comments_;  ///< stored Comment objects
 
   TimePoint created_at_{0};        ///< creation time; 0 => unknown
+  std::set<std::string> tags_;
 
  public:
   /// @brief Default construct (id==0, empty fields).
@@ -253,6 +255,14 @@ class Issue {
    * @return String of Time Stamp
    */
   const TimePoint& getCreatedAt() const { return created_at_; }
+
+  bool addTag(const std::string& tag);
+
+  bool removeTag(const std::string& tag);
+
+  bool hasTag(const std::string& tag) const;
+
+  std::set<std::string> getTags() const;
 };
 
 #endif  // ISSUE_HPP_
