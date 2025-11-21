@@ -1,44 +1,44 @@
+################################################################################
 # Revision History -- at the bottom of the document
 ################################################################################
-# The targets in this file are used in .gitlab-ci.yml and  the files created
+# The targets in this file are used in .gitlab-ci.yml and the files created
 # are found in the .gitignore
-################################################################################
-# Changing any names below can change the target names which will require that
-# you update .gitlab_ci.yml and .gitignore
 ################################################################################
 
 ################################################################################
 # Variable definitions
 ################################################################################
 
-# Executable names
+# Executables
 PROJECT = project
 REST = rest_server
 GTEST = test_${PROJECT}
 
-# Compilation command and flags
-CXX=g++
-CXXVERSION= -std=c++17
-CXXFLAGS= ${CXXVERSION} -g
+# Compiler
+CXX = g++
+CXXVERSION = -std=c++17
+CXXFLAGS = ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
 
-# Oat++ flags
+# Oat++ libraries
 OATPP_LIBS = -loatpp -loatpp-swagger
 
-LINKFLAGS= -lgtest -lgmock -pthread ${OATPP_LIBS}
+LINKFLAGS = -lgtest -lgmock -pthread ${OATPP_LIBS}
 
 # Directories
 SRC_DIR = src
-PROJECT_SRC_DIR = src/project
-SERVER_SRC_DIR = src/server
-DTOS_DIR = src/dtos
-SERVICE_DIR = src/service
+MODEL_DIR = src/model
+REPO_DIR = src/repo
+VIEW_DIR = src/view
 CONTROLLER_DIR = src/controller
+SERVER_DIR = src/server
+PROJECT_MAIN_DIR = src/project
+
 GTEST_DIR = test
 SRC_INCLUDE = include
 INCLUDE = -I ${SRC_INCLUDE} -I src
 
-# Tool variables
+# Tools
 GCOV = gcov
 LCOV = lcov
 COVERAGE_RESULTS = results.coverage
@@ -47,6 +47,27 @@ STATIC_ANALYSIS = cppcheck
 STYLE_CHECK = cpplint
 DESIGN_DIR = docs/design
 DOXY_DIR = docs/code
+
+################################################################################
+# Source groups
+################################################################################
+
+# Core code (NO main.cpp)
+CORE_SRCS = \
+  $(wildcard ${MODEL_DIR}/*.cpp) \
+  $(wildcard ${REPO_DIR}/*.cpp) \
+  $(wildcard ${VIEW_DIR}/*.cpp) \
+  $(wildcard ${CONTROLLER_DIR}/*.cpp)
+
+# main.cpp lives here
+MAIN_SRCS = $(wildcard ${PROJECT_MAIN_DIR}/*.cpp)
+
+# Project sources = core + main
+PROJECT_SRCS = ${CORE_SRCS} ${MAIN_SRCS}
+
+# REST sources = core + server (NO main)
+REST_SRCS = ${CORE_SRCS} \
+  $(wildcard ${SERVER_DIR}/*.cpp)
 
 ################################################################################
 # Default target
@@ -58,80 +79,59 @@ DOXY_DIR = docs/code
 # Clean targets
 ################################################################################
 
-.PHONY: clean-cov
-clean-cov:
-	rm -rf *.gcov *.gcda *.gcno ${COVERAGE_RESULTS} ${COVERAGE_DIR}
-
-.PHONY: clean-docs
-clean-docs:
+.PHONY: clean
+clean:
+	rm -rf *.gcov *.gcda *.gcno results.coverage coverage
 	rm -rf docs/code/html
-
-.PHONY: clean-exec
-clean-exec:
 	rm -rf ${PROJECT} ${GTEST} ${PROJECT}.exe \
 	       ${GTEST}.exe ${REST} ${REST}.exe
-
-.PHONY: clean-obj
-clean-obj:
-	rm -rf ${SRC_DIR}/*.o
-
-.PHONY: clean-temp
-clean-temp:
+	rm -rf src/*.o src/model/*.o src/repo/*.o \
+	       src/view/*.o src/controller/*.o \
+	       src/server/*.o src/project/*.o
 	rm -rf *~ \#* .\#* \
-	${SRC_DIR}/*~ ${SRC_DIR}/\#* ${SRC_DIR}/.\#* \
-	${GTEST_DIR}/*~ ${GTEST_DIR}/\#* ${GTEST_DIR}/.\#* \
-	${SRC_INCLUDE}/*~ ${SRC_INCLUDE}/\#* ${SRC_INCLUDE}/.\#* \
-	${PROJECT_SRC_DIR}/*~ ${PROJECT_SRC_DIR}/\#* ${PROJECT_SRC_DIR}/.\#* \
-	${DESIGN_DIR}/*~ ${DESIGN_DIR}/\#* ${DESIGN_DIR}/.\#* \
+	src/*~ src/\#* src/.\#* \
+	test/*~ test/\#* test/.\#* \
+	include/*~ include/\#* include/.\#* \
+	docs/design/*~ docs/design/\#* docs/design/.\#* \
 	*.gcov *.gcda *.gcno
 
-.PHONY: clean
-clean: clean-cov clean-docs clean-exec clean-obj clean-temp
-
 ################################################################################
-# Compilation targets
+# Build rules
 ################################################################################
 
 %.o: %.cpp
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
-# Unit tests build
-${GTEST}: ${GTEST_DIR} ${SRC_DIR} clean-exec
+# Unit tests
+${GTEST}: ${GTEST_DIR} clean
 	${CXX} ${CXXFLAGS} -o ./${GTEST} ${INCLUDE} \
-	${GTEST_DIR}/*.cpp ${SRC_DIR}/*.cpp ${LINKFLAGS}
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
 
 # Normal project build
-compileProject: ${SRC_DIR} ${PROJECT_SRC_DIR} clean-exec
+compileProject: clean
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${SRC_DIR}/*.cpp ${PROJECT_SRC_DIR}/*.cpp
+	${PROJECT_SRCS}
 
 ################################################################################
-# REST Server build (Oat++)
+# REST Server
 ################################################################################
 
-rest: ${SRC_DIR} ${PROJECT_SRC_DIR} clean-exec
+rest: clean
 	${CXX} ${CXXVERSION} -o ${REST} ${INCLUDE} \
-	${SRC_DIR}/*.cpp \
-	${PROJECT_SRC_DIR}/*.cpp \
-	${SERVER_SRC_DIR}/*.cpp \
-	${DTOS_DIR}/*.cpp \
-	${SERVICE_DIR}/*.cpp \
-	${CONTROLLER_DIR}/*.cpp \
+	${REST_SRCS} \
 	${OATPP_LIBS}
 
 ################################################################################
-# Test targets
+# Extras
 ################################################################################
-
-all: ${GTEST} memcheck coverage docs static style
 
 memcheck: ${GTEST}
 	valgrind --tool=memcheck --leak-check=yes \
 	--error-exitcode=1 ./${GTEST}
 
-coverage: clean-exec clean-cov
+coverage: clean
 	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${INCLUDE} \
-	${GTEST_DIR}/*.cpp ${SRC_DIR}/*.cpp ${LINKFLAGS}
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
 	./${GTEST}
 	${LCOV} --capture --gcov-tool ${GCOV} \
 	--directory . --output-file ${COVERAGE_RESULTS} \
@@ -139,42 +139,21 @@ coverage: clean-exec clean-cov
 	${LCOV} --extract ${COVERAGE_RESULTS} */*/*/${SRC_DIR}/* \
 	-o ${COVERAGE_RESULTS}
 	genhtml ${COVERAGE_RESULTS} --output-directory ${COVERAGE_DIR}
-	make clean-temp
 
-################################################################################
-# Static + Style
-################################################################################
-
-static: ${SRC_DIR}
+static:
 	${STATIC_ANALYSIS} --verbose --enable=all ${SRC_DIR} \
 	${SRC_INCLUDE} --suppress=missingInclude \
 	--suppress=useStlAlgorithm --error-exitcode=1
 
-style: ${SRC_DIR} ${GTEST_DIR} ${SRC_INCLUDE} ${PROJECT_SRC_DIR}
+style:
 	${STYLE_CHECK} ${SRC_DIR}/* ${GTEST_DIR}/* \
-	${SRC_INCLUDE}/* ${PROJECT_SRC_DIR}/*
+	${SRC_INCLUDE}/* \
+	${MODEL_DIR}/* ${REPO_DIR}/* ${VIEW_DIR}/* \
+	${CONTROLLER_DIR}/* ${SERVER_DIR}/* \
+	${PROJECT_MAIN_DIR}/*
 
-################################################################################
-# Documentation
-################################################################################
-
-.PHONY: docs
-docs: ${SRC_INCLUDE}
+docs:
 	doxygen ${DOXY_DIR}/doxyfile
-
-.PHONY: version
-version:
-	doxygen --version
-	cppcheck --version
-	cpplint --version
-	gcc --version
-	gcov --version
-	lcov --version
-	valgrind --version
-
-################################################################################
-# Run helpers
-################################################################################
 
 run:
 	./${PROJECT}

@@ -465,28 +465,33 @@ void IssueTrackerView::updateUser() {
                           : "Failed to update user.\n");
 }
 
-//displays specific issue as a more human reable
+//displays specific issue
 // text
-void IssueTrackerView:: displayIssue(int id) {
+std::vector<int> IssueTrackerView::displayIssue(int id) {
+    std::vector<int> displayedCommentIds;
+
     time_t now = time(0);
-    char timeStr[26]; // ctime_r requires a buffer of at least 26 bytes
+    char timeStr[26];
     ctime_r(&now, timeStr);
 
-    // Convert to local time structure
-  Issue iss = controller->getIssue(id);
-  std::vector <Comment> comments = controller->getallComments(id);
+    Issue iss = controller->getIssue(id);
+    std::vector<Comment> comments = controller->getallComments(id);
+
     std::cout << "ID: " << iss.getId() << "\n";
     std::cout << "Author: " << iss.getAuthorId() << "\n";
     std::cout << "Title: " << iss.getTitle() << "\n";
     std::cout << "Status: " << iss.getStatus() << "\n";
     std::cout << "Amount of Comments: "
-              << iss.getCommentIds().size()-1 << "\n";
+              << iss.getCommentIds().size() - 1 << "\n";
     std::cout << "Time: " << timeStr;
+
     int i = 1;
-    for (auto it : comments) {
-      std::cout << i << it.getText() <<std::endl;
-      i++;
+    for (const auto& it : comments) {
+        std::cout << i << " " << it.getText() << std::endl;
+        displayedCommentIds.push_back(it.getId());
+        i++;
     }
+    return displayedCommentIds;
 }
 
 //add comments to an issue
