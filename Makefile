@@ -18,11 +18,10 @@ CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
 # SQLite
 SQLITE_PREFIX = third_party/sqlite-build
 
-# Libraries
-LINKFLAGS = -lgtest -lgmock -pthread \
-	-L $(SQLITE_PREFIX)/lib \
-	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
-	-lsqlite3
+# OATPP
+OATPP_INCLUDE_LIB = /usr/local/include/oatpp-1.3.0/oatpp
+OATPP_SWAGGER_INCLUDE = /usr/local/include/oatpp-1.3.0/oatpp-swagger
+OATPP_LIB_DIR = /usr/local/lib/oatpp-1.3.0
 
 ################################################################################
 # Directories
@@ -39,7 +38,22 @@ PROJECT_SRC_DIR = src/project
 GTEST_DIR = test
 SRC_INCLUDE = include
 
-INCLUDE = -I ${SRC_INCLUDE} -I ${SQLITE_PREFIX}/include
+INCLUDE = -I ${SRC_INCLUDE} \
+	-I ${SQLITE_PREFIX}/include \
+	-I $(OATPP_INCLUDE_LIB) \
+	-I $(OATPP_SWAGGER_INCLUDE)
+
+################################################################################
+# Link Flags
+################################################################################
+
+LINKFLAGS = -lgtest -lgmock -pthread \
+	-L $(SQLITE_PREFIX)/lib \
+	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
+	-L $(OATPP_LIB_DIR) \
+	-Wl,-rpath,$(abspath $(OATPP_LIB_DIR)) \
+	-loatpp -loatpp-swagger \
+	-lsqlite3
 
 ################################################################################
 # Tools
@@ -175,7 +189,7 @@ run-rest:
 	./${REST}
 
 ################################################################################
-# Version Target (required for GitLab CI)
+# Version Target (required by GitLab CI)
 ################################################################################
 
 .PHONY: version
