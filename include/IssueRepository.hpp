@@ -85,7 +85,7 @@ class IssueRepository {
    * @return bool True if successful, false otherwise
    */
   virtual bool addTagToIssue(int issueId,
-                             const std::string& tag) = 0;
+                             const std::string& tag);
 
   /**
    * @brief Removes a tag from an issue
@@ -95,7 +95,7 @@ class IssueRepository {
    * @return bool True if successful, false otherwise
    */
   virtual bool removeTagFromIssue(int issueId,
-                                  const std::string& tag) = 0;
+                                  const std::string& tag);
 
   // === Comments ===
 

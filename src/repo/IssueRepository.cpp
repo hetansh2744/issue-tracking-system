@@ -30,6 +30,22 @@ std::vector<Issue> IssueRepository::listAllUnassigned() const {
   return findIssues([](const Issue& issue) { return !issue.hasAssignee(); });
 }
 
+bool IssueRepository::addTagToIssue(int issueId,
+  const std::string& tag) {
+  Issue issue = getIssue(issueId);
+  bool added = issue.addTag(tag);
+  saveIssue(issue);
+  return added;
+}
+
+bool IssueRepository::removeTagFromIssue(int issueId,
+  const std::string& tag) {
+  Issue issue = getIssue(issueId);
+  bool removed = issue.removeTag(tag);
+  saveIssue(issue);
+  return removed;
+}
+
 class InMemoryIssueRepository : public IssueRepository {
  private:
   std::unordered_map<int, Issue> issues_;
@@ -244,20 +260,4 @@ class InMemoryIssueRepository : public IssueRepository {
 
 IssueRepository* createIssueRepository() {
   return new InMemoryIssueRepository();
-}
-
-bool addTagToIssue(int issueId,
-  const std::string& tag) override {
-  Issue issue = getIssue(issueId);
-  bool added = issue.addTag(tag);
-  saveIssue(issue);
-  return added;
-}
-
-bool removeTagFromIssue(int issueId,
-  const std::string& tag) override {
-  Issue issue = getIssue(issueId);
-  bool removed = issue.removeTag(tag);
-  saveIssue(issue);
-  return removed;
 }

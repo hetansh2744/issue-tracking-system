@@ -9,23 +9,19 @@
 # Variable definitions
 ################################################################################
 
-# Executables
 PROJECT = project
 REST = rest_server
 GTEST = test_${PROJECT}
 
-# Compiler
 CXX = g++
 CXXVERSION = -std=c++17
 CXXFLAGS = ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
 
-# Oat++ libraries
 OATPP_LIBS = -loatpp -loatpp-swagger
 
 LINKFLAGS = -lgtest -lgmock -pthread ${OATPP_LIBS}
 
-# Directories
 SRC_DIR = src
 MODEL_DIR = src/model
 REPO_DIR = src/repo
@@ -38,7 +34,6 @@ GTEST_DIR = test
 SRC_INCLUDE = include
 INCLUDE = -I ${SRC_INCLUDE} -I src
 
-# Tools
 GCOV = gcov
 LCOV = lcov
 COVERAGE_RESULTS = results.coverage
@@ -52,31 +47,26 @@ DOXY_DIR = docs/code
 # Source groups
 ################################################################################
 
-# Core code (NO main.cpp)
 CORE_SRCS = \
+  $(wildcard ${SRC_DIR}/*.cpp) \
   $(wildcard ${MODEL_DIR}/*.cpp) \
-  $(wildcard ${REPO_DIR}/*.cpp) \
+  src/repo/IssueRepository.cpp \
   $(wildcard ${VIEW_DIR}/*.cpp) \
   $(wildcard ${CONTROLLER_DIR}/*.cpp)
 
-# main.cpp lives here
-MAIN_SRCS = $(wildcard ${PROJECT_MAIN_DIR}/*.cpp)
+MAIN_SRC = ${PROJECT_MAIN_DIR}/main.cpp
 
-# Project sources = core + main
-PROJECT_SRCS = ${CORE_SRCS} ${MAIN_SRCS}
-
-# REST sources = core + server (NO main)
 REST_SRCS = ${CORE_SRCS} \
   $(wildcard ${SERVER_DIR}/*.cpp)
 
 ################################################################################
-# Default target
+# Default
 ################################################################################
 
 .DEFAULT_GOAL := compileProject
 
 ################################################################################
-# Clean targets
+# Clean
 ################################################################################
 
 .PHONY: clean
@@ -102,18 +92,19 @@ clean:
 %.o: %.cpp
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
-# Unit tests
-${GTEST}: ${GTEST_DIR} clean
+# Tests (no main)
+${GTEST}: clean
 	${CXX} ${CXXFLAGS} -o ./${GTEST} ${INCLUDE} \
 	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
 
-# Normal project build
+# Project build (with main)
 compileProject: clean
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${PROJECT_SRCS}
+	${CORE_SRCS} \
+	${MAIN_SRC}
 
 ################################################################################
-# REST Server
+# REST
 ################################################################################
 
 rest: clean
@@ -122,7 +113,7 @@ rest: clean
 	${OATPP_LIBS}
 
 ################################################################################
-# Extras
+# Extra targets
 ################################################################################
 
 memcheck: ${GTEST}
