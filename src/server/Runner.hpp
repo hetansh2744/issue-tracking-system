@@ -11,7 +11,7 @@ class Runner {
  public:
      runner(const std::shared_ptr<
          oatpp::network::tcp::server::ConnectionProvider>& provider)
-      : m_tcpConnectionProvider(provider) {}
+      : m_tcpConnectionProvider(provider) {};
 
   void run();
 };
