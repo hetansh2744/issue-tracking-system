@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 #include "Comment.hpp"
 
 /**
@@ -16,7 +17,7 @@
  *  - New Issue starts with id == 0; repository assigns > 0 via
  *    setIdForPersistence() once.
  *  - author_id_ and title_ are non-empty (validated).
- *  - description_comment_id_ == -1 => no description linked.
+ *  - description_comment_id_ == 0 => no description linked.
  *  - assigned_to_ empty => unassigned.
  *  - We keep both comment id list (persistence) and Comment objects
  *    (in-memory lookups/edits).
@@ -33,14 +34,16 @@ class Issue {
   std::string title_;      ///< non-empty short summary
 
   // Relationships / metadata
-  int description_comment_id_{-1}; ///< -1 => none linked
+  int description_comment_id_{0};  ///< 0 => none linked
   std::string assigned_to_;        ///< assignee user id; empty => none
+  std::string status_{"To Be Done"};  ///< issue status
 
   // Persistence ids + in-memory objects
   std::vector<int> comment_ids_;   ///< unique attached comment ids
   std::vector<Comment> comments_;  ///< stored Comment objects
 
   TimePoint created_at_{0};        ///< creation time; 0 => unknown
+  std::set<std::string> tags_;
 
  public:
   /// @brief Default construct (id==0, empty fields).
@@ -59,7 +62,9 @@ class Issue {
         std::string title,
         TimePoint created_at = 0);
 
-  // -------- id helpers (persistence) --------
+  // ---------------------------
+  // id helpers (persistence)
+  // ---------------------------
 
   /**
    * @brief Whether issue has a persistent id.
@@ -81,7 +86,9 @@ class Issue {
    */
   void setIdForPersistence(int new_id);
 
-  // -------- accessors --------
+  // ---------------------------
+  // accessors
+  // ---------------------------
 
   /**
    * @brief Get creator user id.
@@ -97,15 +104,15 @@ class Issue {
 
   /**
    * @brief Whether description comment is linked.
-   * @return true if description_comment_id_ >= 0.
+   * @return true if description_comment_id_ > 0.
    */
   bool hasDescriptionComment() const noexcept {
-    return description_comment_id_ >= 0;
+    return description_comment_id_ > 0;
   }
 
   /**
    * @brief Get description comment id.
-   * @return id (-1 if none).
+   * @return id (0 if none).
    */
   int getDescriptionCommentId() const noexcept {
     return description_comment_id_;
@@ -122,6 +129,12 @@ class Issue {
    * @return user id (empty if unassigned).
    */
   const std::string& getAssignedTo() const noexcept { return assigned_to_; }
+
+  /**
+   * @brief Get current status of the issue.
+   * @return status string (e.g., "To Be Done", "In Progress", "Done").
+   */
+  const std::string& getStatus() const noexcept { return status_; }
 
   /**
    * @brief Get list of comment ids (read-only).
@@ -145,7 +158,9 @@ class Issue {
    */
   TimePoint getTimestamp() const noexcept { return created_at_; }
 
-  // -------- mutators / rules --------
+  // ---------------------------
+  // mutators / rules
+  // ---------------------------
 
   /**
    * @brief Set a new title.
@@ -157,9 +172,9 @@ class Issue {
   /**
    * @brief Link description to a comment id and ensure it is tracked
    *        in comment_ids_.
-   * @param comment_id  >= 0 (0 reserved for description)
-   * @throws std::invalid_argument if comment_id < 0
-  */
+   * @param comment_id  > 0
+   * @throws std::invalid_argument if comment_id <= 0
+   */
   void setDescriptionCommentId(int comment_id);
 
   /**
@@ -172,35 +187,46 @@ class Issue {
   void unassign() { assigned_to_.clear(); }
 
   /**
+   * @brief Set the status of the issue.
+   *
+   * Valid values (e.g., "To Be Done", "In Progress", "Done")
+   * are enforced at higher layers (view/controller).
+   */
+  void setStatus(std::string status) { status_ = std::move(status); }
+
+  /**
    * @brief Add a comment id to comment_ids_ (de-duplicated).
-   * @param comment_id  >= 0
-   * @throws std::invalid_argument if comment_id < 0
-  */
+   * @param comment_id  > 0
+   * @throws std::invalid_argument if comment_id <= 0
+   */
   void addComment(int comment_id);
 
   /**
-   * @brief Remove a comment id. Clears description if it was that id.
-   * @param comment_id id to remove
-   * @return true if removed; false if not present
+   * @brief Remove a comment id. Clears description if
+   *        it pointed to that id.
+   * @param comment_id
+   * @return true if removed; false if not found
    */
   bool removeComment(int comment_id);
 
-  // -------- full Comment object API --------
+  // ---------------------------
+  // full Comment object API
+  // ---------------------------
 
   /**
    * @brief Upsert a Comment (copy) by id into comments_. Ensures its id
    *        is in comment_ids_.
-   * @param comment  Comment with id >= 0
-   * @throws std::invalid_argument if comment id < 0
-  */
+   * @param comment  Comment with id > 0
+   * @throws std::invalid_argument if comment id <= 0
+   */
   void addComment(const Comment& comment);
 
   /**
    * @brief Upsert a Comment (move) by id into comments_. Ensures its id
    *        is in comment_ids_.
-   * @param comment  rvalue Comment with id >= 0
-   * @throws std::invalid_argument if comment id < 0
-  */
+   * @param comment  rvalue Comment with id > 0
+   * @throws std::invalid_argument if comment id <= 0
+   */
   void addComment(Comment&& comment);
 
   /**
@@ -218,8 +244,7 @@ class Issue {
   Comment* findCommentById(int id) noexcept;
 
   /**
-   * @brief Remove a stored Comment and its id; clears description if
-   *        it pointed to that id.
+   * @brief Remove a Comment object by id.
    * @param id comment id
    * @return true if removed from either store; false if not found
    */
@@ -229,7 +254,15 @@ class Issue {
    * @brief Getter method for time of creation sets it to a string
    * @return String of Time Stamp
    */
-    const TimePoint& getCreatedAt() const { return created_at_; }
+  const TimePoint& getCreatedAt() const { return created_at_; }
+
+  bool addTag(const std::string& tag);
+
+  bool removeTag(const std::string& tag);
+
+  bool hasTag(const std::string& tag) const;
+
+  std::set<std::string> getTags() const;
 };
 
 #endif  // ISSUE_HPP_

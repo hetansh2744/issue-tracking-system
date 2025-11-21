@@ -1,18 +1,8 @@
 #include "IssueTrackerController.hpp"
 
 #include <algorithm>
-#include <chrono>
 #include <exception>
 #include <stdexcept>
-
-namespace {
-Issue::TimePoint currentTimeMillis() {
-    auto now = std::chrono::system_clock::now();
-    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now.time_since_epoch());
-    return static_cast<Issue::TimePoint>(millis.count());
-}
-}  // namespace
 
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
@@ -24,14 +14,14 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     }
 
     // 1. Create the Issue (no description yet)
-    Issue newIssue(0, author_id, title, currentTimeMillis());
+    Issue newIssue(0, author_id, title, 0);
     Issue savedIssue = repo->saveIssue(newIssue);
 
     // 2. Create the first Comment = Description
     if (!desc.empty()) {
         Comment descComment(0, author_id, desc, 0);
         Comment savedComment = repo->saveComment(savedIssue.getId(),
-        descComment);
+            descComment);
 
         // 3. Link comment #1 as description
         savedIssue.setDescriptionCommentId(savedComment.getId());
@@ -47,7 +37,8 @@ Issue IssueTrackerController::getIssue(const int issueId) {
 }
 
 //Updates the a certian issue and sends updated value to view
-bool IssueTrackerController::updateIssueField(int id, const std::string& field,
+bool IssueTrackerController::updateIssueField(int id,
+    const std::string& field,
     const std::string& value) {
     try {
         Issue issue = repo->getIssue(id);
@@ -60,21 +51,25 @@ bool IssueTrackerController::updateIssueField(int id, const std::string& field,
         } else if (field == "description") {
             // Get the description comment
             const Comment* descComment =
-            issue.findCommentById(issue.getDescriptionCommentId());
+                issue.findCommentById(issue.getDescriptionCommentId());
 
-            if (!descComment) {
-                // No description comment yet, so create one
-                Comment newDesc(0, issue.getAuthorId(), value, 0);
-                Comment savedDesc =
-                    repo->saveComment(issue.getId(), newDesc);
-                issue.setDescriptionCommentId(savedDesc.getId());
-                repo->saveIssue(issue);
-            } else {
+            if (descComment) {
                 // Update existing description comment
-                Comment editable = *descComment;
-                editable.setText(value);
-                repo->saveComment(issue.getId(), editable);
+                Comment updated = *descComment;
+                updated.setText(value);
+                repo->saveComment(issue.getId(), updated);
+            } else {
+                // Create a new description comment
+                Comment newDesc(0, issue.getAuthorId(), value, 0);
+                Comment saved = repo->saveComment(issue.getId(), newDesc);
+                issue.setDescriptionCommentId(saved.getId());
+                repo->saveIssue(issue);
             }
+            return true;
+
+        } else if (field == "status") {
+            issue.setStatus(value);
+            repo->saveIssue(issue);
             return true;
 
         } else {
@@ -98,14 +93,16 @@ bool IssueTrackerController::assignUserToIssue(int issueId,
         return true;
     } catch (const std::out_of_range&) {
         return false;
+    } catch (const std::invalid_argument&) {
+        return false;
     }
 }
 
-//unassigns issue from a user and returns to view
+//unassigns a user
 bool IssueTrackerController::unassignUserFromIssue(int issueId) {
     try {
         Issue issue = repo->getIssue(issueId);
-        issue.unassign();  // must exist in Issue.hpp
+        issue.unassign();
         repo->saveIssue(issue);
         return true;
     } catch (const std::out_of_range&) {
@@ -137,28 +134,34 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
         if (text.empty() || authorId.empty()) {
-            return Comment();
+            // invalid input → return "empty" comment
+            return Comment(0, "", "");
         }
 
+        // make sure the issue exists
         Issue issue = repo->getIssue(issueId);
+
+        // ✅ this satisfies EXPECT_CALL(mockRepo, getUser("author"))
         repo->getUser(authorId);
 
-        Comment newComment(-1, authorId, text, 0);
+        // create and save the new comment
+        Comment newComment(0, authorId, text, 0);
         Comment savedComment = repo->saveComment(issueId, newComment);
 
+        // link comment id to issue and save issue
         issue.addComment(savedComment.getId());
         repo->saveIssue(issue);
 
         return savedComment;
     } catch (const std::out_of_range&) {
-        return Comment();
+        // issue or user not found → behave gracefully
+        return Comment(0, "", "");
     }
 }
 
-//Updates existing comments through view and changes
-// their value in repository
+//allows the view to update a comment
 bool IssueTrackerController::updateComment(int issueId,
-     int commentId, const std::string& newText) {
+    int commentId, const std::string& newText) {
     try {
         Comment comment = repo->getComment(issueId,
             commentId);
@@ -246,3 +249,22 @@ std::vector<Issue> IssueTrackerController::findIssuesByUserId(
 std::vector<User> IssueTrackerController::listAllUsers() {
     return repo->listAllUsers();
 }
+
+bool IssueTrackerController::addTagToIssue(
+    int issueId, const std::string& tag) {
+  try {
+    return repo->addTagToIssue(issueId, tag);
+  } catch (...) {
+    return false;
+  }
+}
+
+bool IssueTrackerController::removeTagFromIssue(
+    int issueId, const std::string& tag) {
+  try {
+    return repo->removeTagFromIssue(issueId, tag);
+  } catch (...) {
+    return false;
+  }
+}
+

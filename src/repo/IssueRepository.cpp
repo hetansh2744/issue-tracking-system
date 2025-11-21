@@ -19,6 +19,22 @@ std::vector<Issue> IssueRepository::listAllUnassigned() const {
   return findIssues([](const Issue& issue) { return !issue.hasAssignee(); });
 }
 
+bool IssueRepository::addTagToIssue(int issueId,
+  const std::string& tag) {
+  Issue issue = getIssue(issueId);
+  bool added = issue.addTag(tag);
+  saveIssue(issue);
+  return added;
+}
+
+bool IssueRepository::removeTagFromIssue(int issueId,
+  const std::string& tag) {
+  Issue issue = getIssue(issueId);
+  bool removed = issue.removeTag(tag);
+  saveIssue(issue);
+  return removed;
+}
+
 namespace {
 std::string toLowerCopy(std::string value) {
   std::transform(

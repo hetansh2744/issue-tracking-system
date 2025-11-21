@@ -20,7 +20,6 @@
 class IssueRepository {
  public:
   // === Issues ===
-
   /**
    * @brief Retrieves an issue by its unique identifier
    *
@@ -76,6 +75,28 @@ class IssueRepository {
    */
   virtual std::vector<Issue> listAllUnassigned() const;
 
+  // === Tags ===
+
+  /**
+   * @brief Adds a tag to an issue
+   *
+   * @param issueId The ID of the issue
+   * @param tag The tag to add
+   * @return bool True if successful, false otherwise
+   */
+  virtual bool addTagToIssue(int issueId,
+                             const std::string& tag);
+
+  /**
+   * @brief Removes a tag from an issue
+   *
+   * @param issueId The ID of the issue
+   * @param tag The tag to remove
+   * @return bool True if successful, false otherwise
+   */
+  virtual bool removeTagFromIssue(int issueId,
+                                  const std::string& tag);
+
   // === Comments ===
 
   /**
@@ -102,7 +123,8 @@ class IssueRepository {
    * @param comment The comment object to save
    * @return Comment The saved comment with updated persistence data
    */
-  virtual Comment saveComment(int issueId, const Comment& comment) = 0;
+  virtual Comment saveComment(int issueId,
+                              const Comment& comment) = 0;
 
   /**
    * @brief Deletes a comment from a specific issue
