@@ -129,8 +129,13 @@ int IssueTrackerView::getissueId() {
 std::string IssueTrackerView::getuserId() {
     std::vector<User> users = controller->listAllUsers();
     if (users.empty()) {
-        std::cout << "No users available.\n";
-        return "";
+        std::cout << "No users available. Please create a user first.\n";
+        createUser();
+        users = controller->listAllUsers();
+        if (users.empty()) {
+            std::cout << "User creation failed.\n";
+            return "";
+        }
     }
 
     std::cout << "\nAvailable Users:\n";
@@ -166,6 +171,10 @@ void IssueTrackerView::createIssue() {
     // choose author / assignee
     std::cout << "Select author of Issue";
     assignedTo = getuserId();
+    if (assignedTo.empty()) {
+        std::cout << "Issue creation cancelled: no user available.\n";
+        return;
+    }
     std::cout << "Issue assigned to user: " << assignedTo << std::endl;
     Issue issue = controller->createIssue(title, desc, assignedTo);
 }
