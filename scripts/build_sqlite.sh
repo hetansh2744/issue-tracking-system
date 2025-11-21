@@ -11,6 +11,7 @@ mkdir -p "$SQLITE_PREFIX"
 cd "$SQLITE_SRC_DIR"
 
 # Configure to install under third_party/sqlite-build
+chmod +x configure
 ./configure --prefix="$SQLITE_PREFIX" --disable-tcl
 
 # Build and install
