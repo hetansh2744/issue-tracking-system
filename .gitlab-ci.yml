@@ -1,5 +1,3 @@
-image: ubuntu:22.04   # or debian:12, etc.
-
 stages:
    - documentation
    - quality
@@ -10,11 +8,6 @@ stages:
 variables:
   GIT_STRATEGY: clone
   TIMEOUT: 10m
-
-before_script:
-  - apt-get update
-  - apt-get install -y g++ make libsqlite3-dev libgtest-dev \
-        valgrind lcov gcovr cppcheck doxygen
 
 docs:
    stage: documentation
