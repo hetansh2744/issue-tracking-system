@@ -148,7 +148,7 @@ coverage: clean
 static:
 	${STATIC_ANALYSIS} --verbose --enable=all ${SRC_DIR} \
 	${SRC_INCLUDE} --suppress=missingInclude \
-	--suppress=useStlAlgorithm --error-exitcode=1
+	--error-exitcode=1
 
 style:
 	${STYLE_CHECK} ${SRC_DIR}/* ${GTEST_DIR}/* \
