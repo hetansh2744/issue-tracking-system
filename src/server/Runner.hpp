@@ -9,7 +9,7 @@ class Runner {
       m_tcpConnectionProvider;
 
  public:
-     explict Runner(const std::shared_ptr<
+     runner(const std::shared_ptr<
          oatpp::network::tcp::server::ConnectionProvider>& provider)
       : m_tcpConnectionProvider(provider) {}
 
