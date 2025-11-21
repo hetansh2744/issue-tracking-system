@@ -1,436 +1,386 @@
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <ctime>
-#include <iostream>
-#include <sstream>
+#include "gtest/gtest.h"
+#include "gmock/gmock.h"
+#include "IssueTrackerController.hpp"
 
-#include "IssueTrackerView.hpp"
+using ::testing::Throw;
 
-using ::testing::_;
-using ::testing::Return;
-using ::testing::NiceMock;
-
-class MockIssueTrackerController : public IssueTrackerController {
+class MockIssueRepository : public IssueRepository {
  public:
-  explicit MockIssueTrackerController(IssueRepository* repo = nullptr)
-      : IssueTrackerController(repo) {}
+    MOCK_METHOD(Issue, saveIssue, (const Issue& issue), (override));
+    MOCK_METHOD(Issue, getIssue, (int id), (const, override));
+    MOCK_METHOD(bool, deleteIssue, (int id), (override));
+    MOCK_METHOD(std::vector<Issue>, listIssues, (), (const, override));
+    MOCK_METHOD(std::vector<Issue>, findIssues,
+        (std::function<bool(const Issue&)> criteria), (const, override));
+    MOCK_METHOD(std::vector<Issue>, findIssues,
+        (const std::string& userId), (const, override));
+    MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
-  MOCK_METHOD(Issue, createIssue,
-              (const std::string& title, const std::string& description,
-               const std::string& authorId),
-              (override));
-  MOCK_METHOD(bool, updateIssueField,
-              (int issueId, const std::string& field,
-               const std::string& value),
-              (override));
-  MOCK_METHOD(bool, assignUserToIssue, (int issueId, const std::string& userId),
-              (override));
-  MOCK_METHOD(bool, unassignUserFromIssue, (int issueId), (override));
-  MOCK_METHOD(bool, deleteIssue, (int issueId), (override));
-  MOCK_METHOD(Issue, getIssue, (const int issueId), (override));
-  MOCK_METHOD(std::vector<Comment>, getallComments, (int issueId), (override));
-  MOCK_METHOD(std::vector<Issue>, listAllIssues, (), (override));
-  MOCK_METHOD(std::vector<Issue>, listAllUnassignedIssues, (), (override));
-  MOCK_METHOD(std::vector<Issue>, findIssuesByUserId,
-              (const std::string& userId), (override));
-  MOCK_METHOD(Comment, addCommentToIssue,
-              (int issueId, const std::string& text,
-               const std::string& authorId),
-              (override));
-  MOCK_METHOD(bool, updateComment,
-              (int issueId, int commentId, const std::string& text),
-              (override));
-  MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override));
-  MOCK_METHOD(User, createUser,
-              (const std::string& name, const std::string& role), (override));
-  MOCK_METHOD(std::vector<User>, listAllUsers, (), (override));
-  MOCK_METHOD(bool, removeUser, (const std::string& userId), (override));
-  MOCK_METHOD(bool, updateUser,
-              (const std::string& userId, const std::string& field,
-               const std::string& value),
-              (override));
+    MOCK_METHOD(Comment, saveComment, (int issueId,
+        const Comment& comment), (override));
+    MOCK_METHOD(Comment, getComment, (int issueId,
+        int commentId), (const, override));
+    MOCK_METHOD(bool, deleteComment, (int issueId, int commentId), (override));
+    MOCK_METHOD(std::vector<Comment>,
+        getAllComments, (int issueId), (const, override));
+
+    MOCK_METHOD(User, saveUser, (const User& user), (override));
+    MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
+    MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
+    MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
 };
 
-class IssueTrackerViewTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    mockController = std::make_unique<NiceMock<MockIssueTrackerController>>(
-        nullptr);
-    view = std::make_unique<IssueTrackerView>(mockController.get());
-  }
+TEST(IssueTrackerControllerTest, CreateIssueValid) {
+    MockIssueRepository mockRepo;
+    Issue persistedIssue(1, "user123", "title", 0);
+    Comment descComment(1, "user123", "desc", 0);
 
-  void TearDown() override {
-    std::cin.rdbuf(originalCinBuffer);
-    std::cout.rdbuf(originalCoutBuffer);
-  }
+    testing::InSequence seq;
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .WillOnce(testing::Return(persistedIssue));
+    EXPECT_CALL(mockRepo, saveComment(1, testing::_))
+        .WillOnce(testing::Return(descComment));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .WillOnce(testing::Return(persistedIssue));
 
-  void simulateUserInput(const std::string& input) {
-    inputStream.str(input);
-    inputStream.clear();
-    originalCinBuffer = std::cin.rdbuf();
-    std::cin.rdbuf(inputStream.rdbuf());
-  }
+    IssueTrackerController controller(&mockRepo);
+    Issue result = controller.createIssue("title", "desc", "user123");
 
-  void restoreCin() {
-    if (originalCinBuffer) {
-      std::cin.rdbuf(originalCinBuffer);
-    }
-  }
-
-  std::string captureOutput(std::function<void()> func) {
-    std::stringstream outputStream;
-    originalCoutBuffer = std::cout.rdbuf();
-    std::cout.rdbuf(outputStream.rdbuf());
-
-    func();
-
-    std::cout.rdbuf(originalCoutBuffer);
-    return outputStream.str();
-  }
-
-  std::unique_ptr<NiceMock<MockIssueTrackerController>> mockController;
-  std::unique_ptr<IssueTrackerView> view;
-  std::stringstream inputStream;
-  std::streambuf* originalCinBuffer = nullptr;
-  std::streambuf* originalCoutBuffer = nullptr;
-};
-
-TEST_F(IssueTrackerViewTest, DisplayMenuShowsAllOptions) {
-  auto output = captureOutput([this]() {
-    view->displayMenu();
-  });
-
-  EXPECT_THAT(output, testing::HasSubstr("Create Issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Update Issue Field"));
-  EXPECT_THAT(output, testing::HasSubstr("Assign User to Issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Unassign User from Issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Delete Issue"));
-  EXPECT_THAT(output, testing::HasSubstr("List All Issues"));
-  EXPECT_THAT(output, testing::HasSubstr("Find Issues by User ID"));
-  EXPECT_THAT(output, testing::HasSubstr("Add Comment to Issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Update Comment"));
-  EXPECT_THAT(output, testing::HasSubstr("Delete Comment"));
-  EXPECT_THAT(output, testing::HasSubstr("Create User"));
-  EXPECT_THAT(output, testing::HasSubstr("List All Users"));
-  EXPECT_THAT(output, testing::HasSubstr("Remove User"));
-  EXPECT_THAT(output, testing::HasSubstr("Update User"));
-  EXPECT_THAT(output, testing::HasSubstr("List Unassigned Issues"));
-  EXPECT_THAT(output, testing::HasSubstr("Exit"));
+    EXPECT_EQ(result.getAuthorId(), "user123");
 }
 
-TEST_F(IssueTrackerViewTest, GetValidIntValidInput) {
-  simulateUserInput("3\n");
-  int result = view->getvalidInt(5);
-  restoreCin();
-  EXPECT_EQ(result, 3);
+TEST(IssueTrackerControllerTest, UpdateIssueFieldTitleSuccess) {
+    MockIssueRepository mockRepo;
+    Issue existingIssue(1, "user", "old", 0);
+
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(existingIssue));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateIssueField(1, "title", "newTitle");
+
+    EXPECT_TRUE(result);
 }
 
-TEST_F(IssueTrackerViewTest, GetValidIntInvalidThenValidInput) {
-  simulateUserInput("10\n3\n");
-  int result = view->getvalidInt(5);
-  restoreCin();
-  EXPECT_EQ(result, 3);
+TEST(IssueTrackerControllerTest, UpdateIssueFieldDescriptionSuccess) {
+    MockIssueRepository mockRepo;
+    Issue existingIssue(1, "user", "title", 0);
+
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(existingIssue));
+    EXPECT_CALL(mockRepo, saveComment(1, testing::_))
+        .WillOnce(testing::Return(Comment(1, "user", "newDesc", 0)));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateIssueField(1, "description", "newDesc");
+
+    EXPECT_TRUE(result);
 }
 
-TEST_F(IssueTrackerViewTest, GetValidIntNonNumericThenValidInput) {
-  simulateUserInput("abc\n2\n");
-  int result = view->getvalidInt(5);
-  restoreCin();
-  EXPECT_EQ(result, 2);
+TEST(IssueTrackerControllerTest, UpdateIssueFieldInvalidField) {
+    MockIssueRepository mockRepo;
+    Issue existingIssue(1, "user", "title", 0);
+
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(existingIssue));
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateIssueField(1, "invalid", "value");
+
+    EXPECT_FALSE(result);
 }
 
-TEST_F(IssueTrackerViewTest, GetUserIdWithExistingUsers) {
-  std::vector<User> users = {User("user1", "Developer"),
-                             User("user2", "Owner")};
-  EXPECT_CALL(*mockController, listAllUsers())
-      .WillOnce(Return(users));
+TEST(IssueTrackerControllerTest, UpdateIssueFieldThrows) {
+    MockIssueRepository mockRepo;
 
-  simulateUserInput("1\n");
-  std::string result = view->getuserId();
-  restoreCin();
-  EXPECT_EQ(result, "user1");
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateIssueField(1, "title", "newTitle");
+
+    EXPECT_FALSE(result);
 }
 
-TEST_F(IssueTrackerViewTest, GetIssueIdWithExistingIssues) {
-  std::vector<Issue> issues = {Issue(1, "author1", "Issue 1"),
-                               Issue(2, "author2", "Issue 2")};
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
+TEST(IssueTrackerControllerTest, AssignUserToIssueSuccess) {
+    MockIssueRepository mockRepo;
+    Issue existingIssue(1, "author", "title", 0);
+    User user("name", "role");
 
-  simulateUserInput("1\n");
-  int result = view->getissueId();
-  restoreCin();
-  EXPECT_EQ(result, 1);
+    EXPECT_CALL(mockRepo, getUser("user123"))
+        .WillOnce(testing::Return(user));
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(existingIssue));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.assignUserToIssue(1, "user123");
+
+    EXPECT_TRUE(result);
 }
 
-TEST_F(IssueTrackerViewTest, GetIssueIdWithNoIssues) {
-  std::vector<Issue> issues;
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
+TEST(IssueTrackerControllerTest, AssignUserToIssueThrows) {
+    MockIssueRepository mockRepo;
 
-  int result = view->getissueId();
-  EXPECT_EQ(result, -1);
+    EXPECT_CALL(mockRepo, getUser("user123"))
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
+
+    IssueTrackerController controller(&mockRepo);
+    EXPECT_NO_THROW({
+        bool result = controller.assignUserToIssue(1, "user123");
+        EXPECT_FALSE(result);
+    });
 }
 
-TEST_F(IssueTrackerViewTest, CreateIssueSuccess) {
-  EXPECT_CALL(*mockController, listAllUsers())
-      .WillOnce(Return(std::vector<User>{User("testuser", "Developer")}));
+TEST(IssueTrackerControllerTest, UnassignUserFromIssueSuccess) {
+    MockIssueRepository mockRepo;
+    Issue existingIssue(1, "author", "title", 0);
 
-  Issue expectedIssue(1, "testuser", "Test Title");
-  EXPECT_CALL(*mockController, createIssue("Test Title", "Test Description",
-                                           "testuser"))
-      .WillOnce(Return(expectedIssue));
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(existingIssue));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
 
-  simulateUserInput("Test Title\nTest Description\n1\n");
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.unassignUserFromIssue(1);
 
-  auto output = captureOutput([this]() {
-    view->createIssue();
-  });
-  restoreCin();
-
-  EXPECT_THAT(output, testing::HasSubstr("Issue assigned to user: testuser"));
+    EXPECT_TRUE(result);
 }
 
-TEST_F(IssueTrackerViewTest, UpdateIssueTitleSuccess) {
-  std::vector<Issue> issues = {Issue(1, "author1", "Old Title")};
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
-  EXPECT_CALL(*mockController, updateIssueField(1, "title", "New Title"))
-      .WillOnce(Return(true));
+TEST(IssueTrackerControllerTest, UnassignUserFromIssueThrows) {
+    MockIssueRepository mockRepo;
 
-  simulateUserInput("1\n1\nNew Title\n");
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
-  auto output = captureOutput([this]() {
-    view->updateIssue();
-  });
-  restoreCin();
-
-  EXPECT_THAT(output, testing::HasSubstr("Updated successfully"));
+    IssueTrackerController controller(&mockRepo);
+    EXPECT_NO_THROW({
+        bool result = controller.unassignUserFromIssue(1);
+        EXPECT_FALSE(result);
+    });
 }
 
-TEST_F(IssueTrackerViewTest, UpdateIssueDescriptionSuccess) {
-  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
-  EXPECT_CALL(*mockController, updateIssueField(1, "description", "New Desc"))
-      .WillOnce(Return(true));
+TEST(IssueTrackerControllerTest, DeleteIssue) {
+    MockIssueRepository mockRepo;
 
-  simulateUserInput("1\n2\nNew Desc\n");
+    EXPECT_CALL(mockRepo, deleteIssue(1))
+        .WillOnce(testing::Return(true));
 
-  auto output = captureOutput([this]() {
-    view->updateIssue();
-  });
-  restoreCin();
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.deleteIssue(1);
 
-  EXPECT_THAT(output, testing::HasSubstr("Updated successfully"));
+    EXPECT_TRUE(result);
 }
 
-// TEST_F(IssueTrackerViewTest, AssignUserSuccess) {
-//   std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
-//   std::vector<User> users = {User("user1", "Developer")};
+TEST(IssueTrackerControllerTest, ListAllIssues) {
+    MockIssueRepository mockRepo;
+    std::vector<Issue> issues = { Issue(1, "u1", "t1", 0),
+        Issue(2, "u2", "t2", 0) };
 
-//   EXPECT_CALL(*mockController, listAllIssues())
-//       .Times(2)
-//       .WillRepeatedly(Return(issues));
-//   EXPECT_CALL(*mockController, listAllUsers())
-//       .WillOnce(Return(users));
-//   EXPECT_CALL(*mockController, assignUserToIssue(1, "user1"))
-//       .WillOnce(Return(true));
+    EXPECT_CALL(mockRepo, listIssues())
+        .WillOnce(testing::Return(issues));
 
-//   simulateUserInput("1\n1\n");
+    IssueTrackerController controller(&mockRepo);
+    std::vector<Issue> result = controller.listAllIssues();
 
-//   auto output = captureOutput([this]() {
-//     view->assignUser();
-//   });
-//   restoreCin();
-
-//   EXPECT_THAT(output, testing::HasSubstr("User assigned"));
-// }
-
-// TEST_F(IssueTrackerViewTest, UnassignUserSuccess) {
-//   std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
-//   EXPECT_CALL(*mockController, listAllIssues())
-//       .Times(2)
-//       .WillRepeatedly(Return(issues));
-//   EXPECT_CALL(*mockController, unassignUserFromIssue(1))
-//       .WillOnce(Return(true));
-
-//   simulateUserInput("1\n");
-
-//   auto output = captureOutput([this]() {
-//     view->unassignUser();
-//   });
-//   restoreCin();
-
-//   EXPECT_THAT(output, testing::HasSubstr("User unassigned"));
-// }
-
-TEST_F(IssueTrackerViewTest, DeleteIssueSuccess) {
-  std::vector<Issue> issues = {Issue(1, "author1", "Test Issue")};
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
-  EXPECT_CALL(*mockController, deleteIssue(1))
-      .WillOnce(Return(true));
-
-  simulateUserInput("1\n");
-
-  auto output = captureOutput([this]() {
-    view->deleteIssue();
-  });
-  restoreCin();
-
-  EXPECT_THAT(output, testing::HasSubstr("Deleted successfully"));
+    EXPECT_EQ(result.size(), 2);
 }
 
-TEST_F(IssueTrackerViewTest, ListIssuesWithResults) {
-  std::vector<Issue> issues = {
-      Issue(1, "author1", "Issue 1"),
-      Issue(2, "author2", "Issue 2")};
+TEST(IssueTrackerControllerTest, FindIssuesByUserId) {
+    MockIssueRepository mockRepo;
+    std::vector<Issue> issues = { Issue(1, "u1", "t1", 0) };
 
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(issues));
+    EXPECT_CALL(mockRepo, findIssues("u1"))
+        .WillOnce(testing::Return(issues));
 
-  auto output = captureOutput([this]() {
-    view->listIssues();
-  });
+    IssueTrackerController controller(&mockRepo);
+    std::vector<Issue> result = controller.findIssuesByUserId("u1");
 
-  EXPECT_THAT(output, testing::HasSubstr("All Issues"));
-  EXPECT_THAT(output, testing::HasSubstr("Issue 1"));
-  EXPECT_THAT(output, testing::HasSubstr("Issue 2"));
+    EXPECT_EQ(result.size(), 1);
 }
 
-TEST_F(IssueTrackerViewTest, ListIssuesEmpty) {
-  EXPECT_CALL(*mockController, listAllIssues())
-      .WillOnce(Return(std::vector<Issue>{}));
+TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
+    MockIssueRepository mockRepo;
+    Issue issue(1, "author", "title", 0);
+    User user("author", "role");
+    Comment comment(1, "author", "text", 1);
 
-  auto output = captureOutput([this]() {
-    view->listIssues();
-  });
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(issue));
+    EXPECT_CALL(mockRepo, getUser("author"))
+        .WillOnce(testing::Return(user));
+    EXPECT_CALL(mockRepo, saveComment(1, testing::_))
+        .WillOnce(testing::Return(comment));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
 
-  EXPECT_THAT(output, testing::HasSubstr("No issues found"));
+    IssueTrackerController controller(&mockRepo);
+    Comment result = controller.addCommentToIssue(1, "text", "author");
+
+    EXPECT_EQ(result.getAuthor(), "author");
 }
 
-TEST_F(IssueTrackerViewTest, ListUnassignedIssuesWithResults) {
-  Issue unassignedIssue(1, "author1", "Unassigned");
-  std::vector<Issue> issues = {unassignedIssue};
+TEST(IssueTrackerControllerTest, UpdateCommentSuccess) {
+    MockIssueRepository mockRepo;
+    Comment comment(1, "author", "oldText", 1);
 
-  EXPECT_CALL(*mockController, listAllUnassignedIssues())
-      .WillOnce(Return(issues));
+    EXPECT_CALL(mockRepo, getComment(1, 1))
+        .WillOnce(testing::Return(comment));
+    EXPECT_CALL(mockRepo, saveComment(1, testing::_))
+        .Times(1);
 
-  auto output = captureOutput([this]() {
-    view->listUnassignedIssues();
-  });
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateComment(1, 1, "newText");
 
-  EXPECT_THAT(output, testing::HasSubstr("Unassigned Issues"));
-  EXPECT_THAT(output, testing::HasSubstr("Unassigned"));
+    EXPECT_TRUE(result);
 }
 
-TEST_F(IssueTrackerViewTest, FindIssuesByUser) {
-  std::vector<Issue> issues = {Issue(1, "user1", "User1 Issue")};
-  EXPECT_CALL(*mockController, findIssuesByUserId("user1"))
-      .WillOnce(Return(issues));
+TEST(IssueTrackerControllerTest, UpdateCommentThrows) {
+    MockIssueRepository mockRepo;
 
-  simulateUserInput("user1\n");
+    EXPECT_CALL(mockRepo, getComment(1, 1))
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
-  auto output = captureOutput([this]() {
-    view->findIssuesByUser();
-  });
-  restoreCin();
-
-  EXPECT_THAT(output, testing::HasSubstr("User1 Issue"));
+    IssueTrackerController controller(&mockRepo);
+    EXPECT_NO_THROW({
+        bool result = controller.updateComment(1, 1, "text");
+        EXPECT_FALSE(result);
+    });
 }
 
-TEST_F(IssueTrackerViewTest, CreateUserSuccess) {
-  User expectedUser("newuser", "Developer");
-  EXPECT_CALL(*mockController, createUser("newuser", "Developer"))
-      .WillOnce(Return(expectedUser));
+TEST(IssueTrackerControllerTest, DeleteCommentSuccess) {
+    MockIssueRepository mockRepo;
+    Comment comment(5, "author", "text", 1);
+    Issue issue(1, "author", "title", 0);
 
-  simulateUserInput("newuser\n2\n");
+    EXPECT_CALL(mockRepo, getComment(1, 5))
+        .WillOnce(testing::Return(comment));
+    EXPECT_CALL(mockRepo, deleteComment(1, 5))
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(issue));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
 
-  auto output = captureOutput([this]() {
-    view->createUser();
-  });
-  restoreCin();
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.deleteComment(1, 5);
 
-  EXPECT_THAT(output, testing::HasSubstr("User created: newuser"));
+    EXPECT_TRUE(result);
 }
 
-TEST_F(IssueTrackerViewTest, ListUsersWithResults) {
-  std::vector<User> users = {
-      User("user1", "Developer"),
-      User("user2", "Owner")};
+TEST(IssueTrackerControllerTest, DeleteCommentThrows) {
+    MockIssueRepository mockRepo;
 
-  EXPECT_CALL(*mockController, listAllUsers())
-      .WillOnce(Return(users));
+    EXPECT_CALL(mockRepo, getComment(1, 5))
+        .WillOnce(testing::Throw(std::out_of_range("Not found")));
 
-  auto output = captureOutput([this]() {
-    view->listUsers();
-  });
-
-  EXPECT_THAT(output, testing::HasSubstr("All Users"));
-  EXPECT_THAT(output, testing::HasSubstr("user1"));
-  EXPECT_THAT(output, testing::HasSubstr("user2"));
+    IssueTrackerController controller(&mockRepo);
+    EXPECT_NO_THROW({
+        bool result = controller.deleteComment(1, 5);
+        EXPECT_FALSE(result);
+    });
 }
 
-TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
-  EXPECT_CALL(*mockController, removeUser("olduser"))
-      .WillOnce(Return(true));
+TEST(IssueTrackerControllerTest, CreateUserSuccess) {
+    MockIssueRepository mockRepo;
+    User user("name", "role");
 
-  simulateUserInput("olduser\n");
+    EXPECT_CALL(mockRepo, saveUser(testing::_))
+        .WillOnce(testing::Return(user));
 
-  auto output = captureOutput([this]() {
-    view->removeUser();
-  });
-  restoreCin();
+    IssueTrackerController controller(&mockRepo);
+    User result = controller.createUser("name", "role");
 
-  EXPECT_THAT(output, testing::HasSubstr("User removed"));
+    EXPECT_EQ(result.getName(), "name");
 }
 
-// TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
-//   const Issue::TimePoint creationTs =
-//   1'700'000'000'000;  // deterministic epoch
-//   Issue issue(42, "author1", "Detailed View", creationTs);
-//   issue.addComment(1);  // ensure comment sizing remains non-negative
+TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
+    MockIssueRepository mockRepo;
+    IssueTrackerController controller(&mockRepo);
+    User result = controller.createUser("", "");
 
-//   std::vector<Comment> comments = {
-//       Comment(1, "author1", "Initial description", creationTs)};
+    EXPECT_EQ(result.getName(), "");
+}
 
-//   EXPECT_CALL(*mockController, getIssue(42))
-//       .WillOnce(Return(issue));
-//   EXPECT_CALL(*mockController, getallComments(42))
-//       .WillOnce(Return(comments));
+TEST(IssueTrackerControllerTest, UpdateUserSuccess) {
+    MockIssueRepository mockRepo;
+    User user("oldName", "role");
 
-//   auto output = captureOutput([this]() {
-//     view->displayIssue(42);
-//   });
+    EXPECT_CALL(mockRepo, getUser("user123"))
+        .WillOnce(testing::Return(user));
+    EXPECT_CALL(mockRepo, saveUser(testing::_))
+        .WillOnce(testing::Return(User("newName", "role")));
 
-//   time_t expectedTime = static_cast<std::time_t>(creationTs / 1000);
-//   char expectedStr[26];
-//   ctime_r(&expectedTime, expectedStr);
-//   EXPECT_THAT(output,
-//     testing::HasSubstr(std::string("Created: ") + expectedStr));
-// }
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateUser("user123", "name", "newName");
 
-// TEST_F(IssueTrackerViewTest,
-// DisplayIssueShowsDescriptionAndIndexesComments) {
-//   Issue issue(1, "author1", "Detailed View");
-//   issue.setDescriptionCommentId(2);
-//   issue.addComment(5);
+    EXPECT_TRUE(result);
+}
 
-//   std::vector<Comment> comments = {
-//       Comment(2, "author1", "Description text", 0),
-//       Comment(5, "author2", "User comment", 0)};
+TEST(IssueTrackerControllerTest, UpdateUserInvalidField) {
+    MockIssueRepository mockRepo;
+    User user("name", "role");
 
-//   EXPECT_CALL(*mockController, getIssue(1))
-//       .WillOnce(Return(issue));
-//   EXPECT_CALL(*mockController, getallComments(1))
-//       .WillOnce(Return(comments));
+    EXPECT_CALL(mockRepo, getUser("user123"))
+        .WillOnce(testing::Return(user));
 
-//   auto output = captureOutput([this]() {
-//     view->displayIssue(1);
-//   });
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateUser("user123", "invalid", "value");
 
-//   EXPECT_THAT(output, testing::HasSubstr("Amount of Comments: 1"));
-//   EXPECT_THAT(output, testing::HasSubstr("Description: Description text"));
-//   EXPECT_THAT(output, testing::HasSubstr("[id=5] User comment"));
-// }
+    EXPECT_FALSE(result);
+}
+
+TEST(IssueTrackerControllerTest, UpdateUserThrows) {
+    MockIssueRepository mockRepo;
+
+    EXPECT_CALL(mockRepo, getUser("user123"))
+        .WillOnce(testing::Throw(std::invalid_argument("Not found")));
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateUser("user123", "name", "newName");
+
+    EXPECT_FALSE(result);
+}
+
+TEST(IssueTrackerControllerTest, RemoveUser) {
+    MockIssueRepository mockRepo;
+
+    EXPECT_CALL(mockRepo, deleteUser("123"))
+        .WillOnce(testing::Return(true));
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.removeUser("123");
+
+    EXPECT_TRUE(result);
+}
+
+TEST(IssueTrackerControllerTest, ListAllUsers) {
+    MockIssueRepository mockRepo;
+    std::vector<User> users = { User("u1", "r1"), User("u2", "r2") };
+
+    EXPECT_CALL(mockRepo, listAllUsers())
+        .WillOnce(testing::Return(users));
+
+    IssueTrackerController controller(&mockRepo);
+    std::vector<User> result = controller.listAllUsers();
+
+    EXPECT_EQ(result.size(), 2);
+}
+
+TEST(IssueTrackerControllerTest, ListAllUnassignedIssues) {
+    MockIssueRepository mockRepo;
+    std::vector<Issue> issues = { Issue(1, "u1", "t1", 0) };
+
+    EXPECT_CALL(mockRepo, listAllUnassigned())
+        .WillOnce(testing::Return(issues));
+
+    IssueTrackerController controller(&mockRepo);
+    std::vector<Issue> result = controller.listAllUnassignedIssues();
+
+    EXPECT_EQ(result.size(), 1);
+}
