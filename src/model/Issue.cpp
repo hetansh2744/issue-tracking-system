@@ -49,8 +49,9 @@ void Issue::setTitle(std::string new_title) {
 }
 
 void Issue::addComment(int comment_id) {
-  if (comment_id <= 0) {
-    throw std::invalid_argument("comment_id must be > 0");
+  if (comment_id < 0) {
+    throw std::invalid_argument("comment_id must be > 0 but was " 
+                                + std::to_string(comment_id));
   }
   auto it =
       std::find(comment_ids_.begin(), comment_ids_.end(), comment_id);
@@ -73,8 +74,9 @@ bool Issue::removeComment(int comment_id) {
 }
 
 void Issue::setDescriptionCommentId(int comment_id) {
-  if (comment_id <= 0) {
-    throw std::invalid_argument("comment_id must be > 0");
+  if (comment_id < 0) {
+    throw std::invalid_argument("comment_id must be > 0 but was " 
+                                + std::to_string(comment_id));
   }
   auto it =
       std::find(comment_ids_.begin(), comment_ids_.end(), comment_id);
@@ -90,8 +92,9 @@ void Issue::setDescriptionCommentId(int comment_id) {
 
 void Issue::addComment(const Comment& comment) {
   const int commentId = comment.getId();
-  if (commentId <= 0) {
-    throw std::invalid_argument("comment.id must be > 0");
+  if (commentId < 0) {
+    throw std::invalid_argument("comment.id must be > 0 but was " 
+                                + std::to_string(commentId));
   }
 
   // upsert by id (copy)
@@ -114,8 +117,9 @@ void Issue::addComment(const Comment& comment) {
 
 void Issue::addComment(Comment&& comment) {
   const int commentId = comment.getId();
-  if (commentId <= 0) {
-    throw std::invalid_argument("comment.id must be > 0");
+  if (commentId < 0) {
+    throw std::invalid_argument("comment.id must be > 0 but was " 
+                                + std::to_string(commentId));
   }
 
   // upsert by id (move)
