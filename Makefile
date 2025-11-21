@@ -51,8 +51,8 @@ COVERAGE_RESULTS = results.coverage
 COVERAGE_DIR = coverage
 STATIC_ANALYSIS = cppcheck
 STYLE_CHECK = cpplint
-DESIGN_DIR = docs/design
 DOXY_DIR = docs/code
+DESIGN_DIR = docs/design
 
 ################################################################################
 # Source Groups
@@ -64,8 +64,6 @@ CORE_SRCS = \
 	$(wildcard ${REPO_DIR}/*.cpp) \
 	$(wildcard ${VIEW_DIR}/*.cpp) \
 	$(wildcard ${CONTROLLER_DIR}/*.cpp)
-
-MAIN_SRC = ${PROJECT_SRC_DIR}/main.cpp
 
 REST_SRCS = ${CORE_SRCS} \
 	$(wildcard ${SERVER_DIR}/*.cpp)
@@ -107,12 +105,12 @@ clean:
 # Build Targets
 ################################################################################
 
-# Tests (no main)
+# Tests
 ${GTEST}: clean
 	${CXX} ${CXXFLAGS} -o ./${GTEST} ${INCLUDE} \
 	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
 
-# Project build (with main)
+# Project build
 compileProject: clean
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
 	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${LINKFLAGS}
@@ -123,7 +121,7 @@ rest: clean
 	${REST_SRCS} ${LINKFLAGS}
 
 ################################################################################
-# Test Related Targets
+# Test Targets
 ################################################################################
 
 all: ${GTEST} memcheck coverage docs static style
@@ -175,3 +173,17 @@ run:
 
 run-rest:
 	./${REST}
+
+################################################################################
+# Version Target (required for GitLab CI)
+################################################################################
+
+.PHONY: version
+version:
+	doxygen --version
+	cppcheck --version
+	cpplint --version
+	gcc --version
+	gcov --version
+	lcov --version
+	valgrind --version
