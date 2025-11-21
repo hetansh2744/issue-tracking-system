@@ -7,7 +7,7 @@
 int main(int argc, const char* argv[]) {
   oatpp::Environment::init();
 
-  AppComponent components;
+  [[maybe_unused]] AppComponent components;
 
   OATPP_COMPONENT(std::shared_ptr<
     oatpp::network::tcp::server::ConnectionProvider>,
