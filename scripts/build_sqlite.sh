@@ -14,7 +14,7 @@ cd "$SQLITE_SRC_DIR"
 # Some runners strip execute bits; make sure configure and its helpers are runnable
 chmod +x configure
 chmod -R +x autosetup
-bash configure --prefix="$SQLITE_PREFIX" --disable-tcl
+bash configure --prefix="$SQLITE_PREFIX"
 
 # Build and install
 make -j"$(nproc || echo 2)"
