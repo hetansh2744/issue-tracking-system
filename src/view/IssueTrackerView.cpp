@@ -23,9 +23,9 @@ void IssueTrackerView::displayMenu() {
     std::cout << "13. Remove User\n";
     std::cout << "14. Update User\n";
     std::cout << "15. List Unassigned Issues\n";
-    std::cout << "17. Add Tag to Issue\n";
-    std::cout << "18. Remove Tag from Issue\n";
-    std::cout << "19. Exit\n";
+    std::cout << "16. Add Tag to Issue\n";
+    std::cout << "17. Remove Tag from Issue\n";
+    std::cout << "18. Exit\n";
     std::cout << "Select an option: ";
 }
 
