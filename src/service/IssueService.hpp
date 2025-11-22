@@ -94,6 +94,14 @@ class IssueService {
   std::vector<User> listAllUsers() {
     return controller_.listAllUsers();
   }
+
+  bool addTagToIssue(int issueId, const std::string& tag) {
+    return controller_.addTagToIssue(issueId, tag);
+  }
+
+  bool removeTagFromIssue(int issueId, const std::string& tag) {
+    return controller_.removeTagFromIssue(issueId, tag);
+  }
 };
 
 #endif
