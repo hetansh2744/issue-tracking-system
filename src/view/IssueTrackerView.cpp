@@ -33,21 +33,21 @@ IssueTrackerView::IssueTrackerView(IssueTrackerController* controller_in)
 
 void IssueTrackerView::displayMenu() {
   std::cout << "\n===== Issue Tracker Menu =====\n";
-  std::cout << " 1) Create issue\n";
-  std::cout << " 2) Update issue (title/description/status)\n";
-  std::cout << " 3) Assign user to issue\n";
-  std::cout << " 4) Unassign user from issue\n";
-  std::cout << " 5) Delete issue\n";
-  std::cout << " 6) List all issues\n";
-  std::cout << " 7) List unassigned issues\n";
-  std::cout << " 8) Find issues by user\n";
-  std::cout << " 9) Add comment to issue\n";
-  std::cout << "10) Update comment\n";
-  std::cout << "11) Delete comment\n";
-  std::cout << "12) Create user\n";
-  std::cout << "13) List users\n";
-  std::cout << "14) Remove user\n";
-  std::cout << "15) Update user\n";
+  std::cout << " 1) Create Issue\n";
+  std::cout << " 2) Update Issue Field\n";
+  std::cout << " 3) Assign User to Issue\n";
+  std::cout << " 4) Unassign User from Issue\n";
+  std::cout << " 5) Delete Issue\n";
+  std::cout << " 6) List All Issues\n";
+  std::cout << " 7) List Unassigned Issues\n";
+  std::cout << " 8) Find Issues by User ID\n";
+  std::cout << " 9) Add Comment to Issue\n";
+  std::cout << "10) Update Comment\n";
+  std::cout << "11) Delete Comment\n";
+  std::cout << "12) Create User\n";
+  std::cout << "13) List All Users\n";
+  std::cout << "14) Remove User\n";
+  std::cout << "15) Update User\n";
   std::cout << "16) Add tag to issue\n";
   std::cout << "17) Remove tag from issue\n";
   std::cout << "18) View issues by status\n";
@@ -76,25 +76,21 @@ bool IssueTrackerView::ensureIssuesAvailable(const std::string& actionName) {
 }
 
 void IssueTrackerView::createIssue() {
-  std::string title;
-  std::string desc;
-  std::string authorId;
-
   std::cout << "=== Create Issue ===\n";
-  std::cout << "Enter title: ";
-  std::getline(std::cin, title);
+
+  std::string title = readLine("Enter title: ");
   if (title.empty()) {
     std::cout << "Title must not be empty. Aborting.\n";
     return;
   }
 
-  std::cout << "Enter description (optional, can be empty): ";
-  std::getline(std::cin, desc);
+  std::string desc =
+      readLine("Enter description (optional, can be empty): ");
 
-  std::cout << "Enter author user id: ";
-  std::getline(std::cin, authorId);
+  std::cout << "Select an author for this issue:\n";
+  std::string authorId = getuserId();
   if (authorId.empty()) {
-    std::cout << "Author id must not be empty. Aborting.\n";
+    std::cout << "No user selected as author.\n";
     return;
   }
 
@@ -107,10 +103,13 @@ void IssueTrackerView::createIssue() {
 
   std::cout << "Issue created with id " << issue.getId() << ".\n";
 
+  if (controller->assignUserToIssue(issue.getId(), authorId)) {
+    std::cout << "Issue assigned to user: " << authorId << "\n";
+  }
+
   // Optional initial status
   std::string status;
-  std::cout << "Initial status "
-               "(To Be Done / In Progress / Done) "
+  std::cout << "Initial status (To Be Done / In Progress / Done) "
                "[leave empty for default 'To Be Done']: ";
   std::getline(std::cin, status);
   if (!status.empty()) {
@@ -124,10 +123,6 @@ void IssueTrackerView::createIssue() {
 }
 
 void IssueTrackerView::updateIssue() {
-  if (!ensureIssuesAvailable("update an issue")) {
-    return;
-  }
-
   std::cout << "=== Update Issue ===\n";
   int id = getissueId();
   if (id <= 0) {
@@ -156,18 +151,17 @@ void IssueTrackerView::updateIssue() {
 
   std::string value;
   if (field == "description") {
-    std::cout << "Enter new description: ";
+    value = readLine("Enter new description: ");
   } else if (field == "status") {
-    std::cout << "Enter new status (To Be Done / In Progress / Done): ";
+    value = readLine("Enter new status (To Be Done / In Progress / Done): ");
   } else {
-    std::cout << "Enter new title: ";
+    value = readLine("Enter new title: ");
   }
-  std::getline(std::cin, value);
 
   if (!controller->updateIssueField(id, field, value)) {
     std::cout << "Failed to update issue.\n";
   } else {
-    std::cout << "Issue updated.\n";
+    std::cout << "Updated successfully.\n";
   }
 }
 
@@ -217,10 +211,6 @@ void IssueTrackerView::unassignUser() {
 }
 
 void IssueTrackerView::deleteIssue() {
-  if (!ensureIssuesAvailable("delete an issue")) {
-    return;
-  }
-
   std::cout << "=== Delete Issue ===\n";
   int issueId = getissueId();
   if (issueId <= 0) {
@@ -229,7 +219,7 @@ void IssueTrackerView::deleteIssue() {
   }
 
   if (controller->deleteIssue(issueId)) {
-    std::cout << "Issue deleted.\n";
+    std::cout << "Deleted successfully.\n";
   } else {
     std::cout << "Failed to delete issue.\n";
   }
@@ -287,7 +277,7 @@ void IssueTrackerView::listUnassignedIssues() {
 
 void IssueTrackerView::findIssuesByUser() {
   std::cout << "=== Find Issues by User ===\n";
-  std::string userId = getuserId();
+  std::string userId = readLine("Enter user ID: ");
   if (userId.empty()) {
     std::cout << "No user selected.\n";
     return;
@@ -409,8 +399,25 @@ void IssueTrackerView::deleteComment() {
 
 void IssueTrackerView::createUser() {
   std::cout << "=== Create User ===\n";
-  std::string name = readLine("Enter user name/id: ");
-  std::string role = readLine("Enter role: ");
+  std::string name = readLine("Enter user name: ");
+
+  std::cout << "Select role:\n";
+  std::cout << " 1) Tester\n";
+  std::cout << " 2) Developer\n";
+  std::cout << " 3) Manager\n";
+  std::cout << "Choice: ";
+  int roleChoice = readIntChoice();
+
+  std::string role;
+  if (roleChoice == 1) {
+    role = "Tester";
+  } else if (roleChoice == 2) {
+    role = "Developer";
+  } else if (roleChoice == 3) {
+    role = "Manager";
+  } else {
+    role = "User";
+  }
 
   User u = controller->createUser(name, role);
   if (u.getName().empty()) {
@@ -437,7 +444,7 @@ void IssueTrackerView::listUsers() {
 
 void IssueTrackerView::removeUser() {
   std::cout << "=== Remove User ===\n";
-  std::string userId = getuserId();
+  std::string userId = readLine("Enter user ID to remove: ");
   if (userId.empty()) {
     std::cout << "No user selected.\n";
     return;
@@ -671,7 +678,8 @@ void IssueTrackerView::removeTag() {
     std::cout << "Invalid choice.\n";
     return;
   }
-  const std::string& tagToRemove = tagList[static_cast<std::size_t>(idx - 1)];
+  const std::string& tagToRemove =
+      tagList[static_cast<std::size_t>(idx - 1)];
   if (controller->removeTagFromIssue(issueId, tagToRemove)) {
     std::cout << "Tag removed.\n";
   } else {
