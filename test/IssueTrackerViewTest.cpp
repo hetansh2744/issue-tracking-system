@@ -1,12 +1,9 @@
 #include "IssueTrackerView.hpp"
 
-#include <ctime>
 
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <sstream>
-#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
