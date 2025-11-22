@@ -501,12 +501,33 @@ std::vector<int> IssueTrackerView::displayIssue(int id) {
 
 //add comments to an issue
 void IssueTrackerView:: addComIssue() {
-  int issueId;
-  std::string text, authorId;
-  issueId = getissueId();
-  authorId = getuserId();
+  int issueId = getissueId();
+  if (issueId < 0) {
+    std::cout << "No issue selected.\n";
+    return;
+  }
+
+  std::string text;
+  do {
+    std::cout << "Enter comment text:\n";
+    std::getline(std::cin, text);
+    if (text.empty()) {
+      std::cout << "Comment text cannot be empty. Please try again.\n";
+    }
+  } while (text.empty());
+
+  std::string authorId = getuserId();
+  if (authorId.empty()) {
+    std::cout << "No author selected.\n";
+    return;
+  }
+
   Comment newcom = controller->addCommentToIssue(issueId, text, authorId);
-  std::cout << "new comment has been added with id "
+  if (!newcom.hasPersistentId()) {
+    std::cout << "Failed to add comment.\n";
+    return;
+  }
+  std::cout << "New comment has been added with id "
             << newcom.getId() << std::endl;
 }
 
