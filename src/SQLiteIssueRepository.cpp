@@ -10,7 +10,8 @@ namespace {
 class SqliteStmt {
  public:
   SqliteStmt(sqlite3* db, const std::string& sql) : stmt_(nullptr) {
-    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt_, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt_, nullptr)
+        != SQLITE_OK) {
       throw std::runtime_error(sqlite3_errmsg(db));
     }
   }
@@ -56,7 +57,8 @@ SQLiteIssueRepository::~SQLiteIssueRepository() {
 
 void SQLiteIssueRepository::execOrThrow(const std::string& sql) const {
   char* errMsg = nullptr;
-  if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
+  if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &errMsg)
+      != SQLITE_OK) {
     std::string message = errMsg ? errMsg : "Unknown SQLite error";
     sqlite3_free(errMsg);
     throw std::runtime_error(message);
@@ -64,44 +66,23 @@ void SQLiteIssueRepository::execOrThrow(const std::string& sql) const {
 }
 
 void SQLiteIssueRepository::initializeSchema() {
-  // NOTE:
-  // - We add a `status` column for issues.
-  // - We add an `issue_tags` table for tags.
-  //
-  // If you already have an old DB without these, you may need to delete the
-  // file once so the schema can be recreated cleanly.
+  // NOTE: we add a status column for issues so that issue status can
+  // be persisted. Tags are NOT changed here.
   const char* statements[] = {
-      "CREATE TABLE IF NOT EXISTS issues ("
-      "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
-      "  author_id TEXT NOT NULL,"
-      "  title TEXT NOT NULL,"
-      "  description_comment_id INTEGER NOT NULL DEFAULT -1,"
-      "  assigned_to TEXT,"
-      "  status TEXT NOT NULL DEFAULT 'To Be Done',"
-      "  created_at INTEGER DEFAULT 0"
-      ");",
-      "CREATE TABLE IF NOT EXISTS comments ("
-      "  id INTEGER NOT NULL,"
-      "  issue_id INTEGER NOT NULL,"
-      "  author_id TEXT NOT NULL,"
-      "  text TEXT NOT NULL,"
-      "  timestamp INTEGER DEFAULT 0,"
-      "  PRIMARY KEY(issue_id, id),"
-      "  FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE"
-      ");",
-      "CREATE TABLE IF NOT EXISTS users ("
-      "  name TEXT PRIMARY KEY,"
-      "  role TEXT NOT NULL"
-      ");",
-      // Tags table for issues
-      "CREATE TABLE IF NOT EXISTS issue_tags ("
-      "  issue_id INTEGER NOT NULL,"
-      "  tag TEXT NOT NULL,"
-      "  PRIMARY KEY(issue_id, tag),"
-      "  FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE"
-      ");",
-      "CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments(issue_id);",
-      "CREATE INDEX IF NOT EXISTS idx_issue_tags_issue ON issue_tags(issue_id);"};
+      "CREATE TABLE IF NOT EXISTS issues (id INTEGER PRIMARY KEY "
+      "AUTOINCREMENT, author_id TEXT NOT NULL, title TEXT NOT NULL, "
+      "description_comment_id INTEGER NOT NULL DEFAULT -1, "
+      "assigned_to TEXT, "
+      "status TEXT NOT NULL DEFAULT 'To Be Done', "
+      "created_at INTEGER DEFAULT 0);",
+      "CREATE TABLE IF NOT EXISTS comments (id INTEGER NOT NULL, "
+      "issue_id INTEGER NOT NULL, author_id TEXT NOT NULL, "
+      "text TEXT NOT NULL, "
+      "timestamp INTEGER DEFAULT 0, PRIMARY KEY(issue_id, id), "
+      "FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE);",
+      "CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, role TEXT NOT "
+      "NULL);",
+      "CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments(issue_id);"};
 
   for (const char* sql : statements) {
     execOrThrow(sql);
@@ -175,20 +156,25 @@ Comment SQLiteIssueRepository::insertCommentRow(int issueId,
 bool SQLiteIssueRepository::issueExists(int issueId) const {
   return exists(
       "SELECT 1 FROM issues WHERE id = ? LIMIT 1;",
-      [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); });
+      [issueId](sqlite3_stmt* stmt) {
+        sqlite3_bind_int(stmt, 1, issueId);
+      });
 }
 
-bool SQLiteIssueRepository::commentExists(int issueId, int commentId) const {
-  return exists("SELECT 1 FROM comments WHERE issue_id = ? AND id = ? LIMIT 1;",
-                [issueId, commentId](sqlite3_stmt* stmt) {
-                  sqlite3_bind_int(stmt, 1, issueId);
-                  sqlite3_bind_int(stmt, 2, commentId);
-                });
+bool SQLiteIssueRepository::commentExists(int issueId,
+                                          int commentId) const {
+  return exists(
+      "SELECT 1 FROM comments WHERE issue_id = ? AND id = ? LIMIT 1;",
+      [issueId, commentId](sqlite3_stmt* stmt) {
+        sqlite3_bind_int(stmt, 1, issueId);
+        sqlite3_bind_int(stmt, 2, commentId);
+      });
 }
 
 int SQLiteIssueRepository::nextCommentIdForIssue(int issueId) const {
   SqliteStmt stmt(
-      db_, "SELECT COALESCE(MAX(id), -1) FROM comments WHERE issue_id = ?;");
+      db_,
+      "SELECT COALESCE(MAX(id), -1) FROM comments WHERE issue_id = ?;");
   sqlite3_bind_int(stmt.get(), 1, issueId);
   if (sqlite3_step(stmt.get()) != SQLITE_ROW) {
     throw std::runtime_error("Failed to compute next comment id");
@@ -197,18 +183,21 @@ int SQLiteIssueRepository::nextCommentIdForIssue(int issueId) const {
   return maxId + 1;
 }
 
-std::vector<Comment> SQLiteIssueRepository::loadComments(int issueId) const {
+std::vector<Comment> SQLiteIssueRepository::loadComments(
+    int issueId) const {
   std::vector<Comment> comments;
   forEachRow(
-      "SELECT id, author_id, text, timestamp FROM comments WHERE issue_id = ? "
-      "ORDER BY id ASC;",
-      [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); },
+      "SELECT id, author_id, text, timestamp FROM comments "
+      "WHERE issue_id = ? ORDER BY id ASC;",
+      [issueId](sqlite3_stmt* stmt) {
+        sqlite3_bind_int(stmt, 1, issueId);
+      },
       [&comments](sqlite3_stmt* stmt) {
-        comments.emplace_back(sqlite3_column_int(stmt, 0),  // id
-                              columnText(stmt, 1),          // author_id
-                              columnText(stmt, 2),          // text
-                              sqlite3_column_int64(stmt, 3) // timestamp
-                              );
+        comments.emplace_back(
+            sqlite3_column_int(stmt, 0),
+            columnText(stmt, 1),
+            columnText(stmt, 2),
+            sqlite3_column_int64(stmt, 3));
       });
   return comments;
 }
@@ -216,24 +205,23 @@ std::vector<Comment> SQLiteIssueRepository::loadComments(int issueId) const {
 Issue SQLiteIssueRepository::getIssue(int issueId) const {
   SqliteStmt stmt(
       db_,
-      "SELECT id, author_id, title, description_comment_id, "
-      "assigned_to, status, created_at "
-      "FROM issues WHERE id = ? LIMIT 1;");
+      "SELECT id, author_id, title, description_comment_id, assigned_to, "
+      "status, created_at FROM issues WHERE id = ? LIMIT 1;");
   sqlite3_bind_int(stmt.get(), 1, issueId);
 
   if (sqlite3_step(stmt.get()) != SQLITE_ROW) {
     throw std::invalid_argument("Issue with given ID does not exist");
   }
 
-  const int id = sqlite3_column_int(stmt.get(), 0);
-  const std::string authorId = columnText(stmt.get(), 1);
-  const std::string title = columnText(stmt.get(), 2);
+  Issue issue(
+      sqlite3_column_int(stmt.get(), 0),
+      columnText(stmt.get(), 1),
+      columnText(stmt.get(), 2),
+      sqlite3_column_int64(stmt.get(), 6));
+
   const int descriptionId = sqlite3_column_int(stmt.get(), 3);
   const std::string assigned = columnText(stmt.get(), 4);
   const std::string status = columnText(stmt.get(), 5);
-  const Issue::TimePoint createdAt = sqlite3_column_int64(stmt.get(), 6);
-
-  Issue issue(id, authorId, title, createdAt);
 
   if (!assigned.empty()) {
     issue.assignTo(assigned);
@@ -245,36 +233,21 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
     issue.setStatus(status);
   }
 
-  // Load comments
   for (const auto& comment : loadComments(issueId)) {
     issue.addComment(comment);
   }
-
-  // Load tags
-  forEachRow(
-      "SELECT tag FROM issue_tags WHERE issue_id = ? ORDER BY tag ASC;",
-      [issueId](sqlite3_stmt* tstmt) { sqlite3_bind_int(tstmt, 1, issueId); },
-      [&issue](sqlite3_stmt* tstmt) {
-        std::string tag = columnText(tstmt, 0);
-        if (!tag.empty()) {
-          issue.addTag(tag);
-        }
-      });
-
   return issue;
 }
 
 Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
   Issue stored = issue;
 
-  // New issue (no persistent id yet)
   if (!stored.hasPersistentId()) {
     SqliteStmt stmt(
         db_,
         "INSERT INTO issues (author_id, title, description_comment_id, "
         "assigned_to, status, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?);");
-
     sqlite3_bind_text(stmt.get(), 1, stored.getAuthorId().c_str(), -1,
                       SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt.get(), 2, stored.getTitle().c_str(), -1,
@@ -295,35 +268,20 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
     }
     int newId = static_cast<int>(sqlite3_last_insert_rowid(db_));
     stored.setIdForPersistence(newId);
-
-    // Persist tags for new issue
-    auto tags = stored.getTags();
-    for (const auto& tag : tags) {
-      SqliteStmt tagStmt(
-          db_,
-          "INSERT OR IGNORE INTO issue_tags (issue_id, tag) VALUES (?, ?);");
-      sqlite3_bind_int(tagStmt.get(), 1, newId);
-      sqlite3_bind_text(tagStmt.get(), 2, tag.c_str(), -1, SQLITE_TRANSIENT);
-      if (sqlite3_step(tagStmt.get()) != SQLITE_DONE) {
-        throw std::runtime_error("Failed to insert tag");
-      }
-    }
-
     return getIssue(newId);
   }
 
-  // Existing issue: ensure it exists
   if (!issueExists(stored.getId())) {
-    throw std::invalid_argument("Issue with given ID does not exist: " +
-                                std::to_string(stored.getId()));
+    throw std::invalid_argument(
+        "Issue with given ID does not exist: "
+        + std::to_string(stored.getId()));
   }
 
-  // Update issue row
   SqliteStmt stmt(
       db_,
       "UPDATE issues SET author_id = ?, title = ?, "
-      "description_comment_id = ?, assigned_to = ?, status = ?, "
-      "created_at = ? WHERE id = ?;");
+      "description_comment_id = ?, assigned_to = ?, "
+      "status = ?, created_at = ? WHERE id = ?;");
   sqlite3_bind_text(stmt.get(), 1, stored.getAuthorId().c_str(), -1,
                     SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt.get(), 2, stored.getTitle().c_str(), -1,
@@ -344,27 +302,6 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
     throw std::runtime_error("Failed to update issue");
   }
 
-  // Replace tags for this issue with the ones currently on the model.
-  {
-    SqliteStmt delTags(db_, "DELETE FROM issue_tags WHERE issue_id = ?;");
-    sqlite3_bind_int(delTags.get(), 1, stored.getId());
-    if (sqlite3_step(delTags.get()) != SQLITE_DONE) {
-      throw std::runtime_error("Failed to clear tags for issue");
-    }
-  }
-
-  auto tags = stored.getTags();
-  for (const auto& tag : tags) {
-    SqliteStmt tagStmt(
-        db_,
-        "INSERT OR IGNORE INTO issue_tags (issue_id, tag) VALUES (?, ?);");
-    sqlite3_bind_int(tagStmt.get(), 1, stored.getId());
-    sqlite3_bind_text(tagStmt.get(), 2, tag.c_str(), -1, SQLITE_TRANSIENT);
-    if (sqlite3_step(tagStmt.get()) != SQLITE_DONE) {
-      throw std::runtime_error("Failed to insert tag");
-    }
-  }
-
   return getIssue(stored.getId());
 }
 
@@ -379,11 +316,13 @@ bool SQLiteIssueRepository::deleteIssue(int issueId) {
 
 std::vector<Issue> SQLiteIssueRepository::listIssues() const {
   std::vector<Issue> issues;
-  forEachRow("SELECT id FROM issues ORDER BY id ASC;", {},
-             [this, &issues](sqlite3_stmt* stmt) {
-               int id = sqlite3_column_int(stmt, 0);
-               issues.push_back(getIssue(id));
-             });
+  forEachRow(
+      "SELECT id FROM issues ORDER BY id ASC;",
+      nullptr,
+      [this, &issues](sqlite3_stmt* stmt) {
+        int id = sqlite3_column_int(stmt, 0);
+        issues.push_back(getIssue(id));
+      });
   return issues;
 }
 
@@ -409,7 +348,8 @@ Comment SQLiteIssueRepository::getComment(int issueId,
   sqlite3_bind_int(stmt.get(), 2, commentId);
 
   if (sqlite3_step(stmt.get()) != SQLITE_ROW) {
-    throw std::invalid_argument("Comment does not belong to the given issue");
+    throw std::invalid_argument(
+        "Comment does not belong to the given issue");
   }
 
   int id = sqlite3_column_int(stmt.get(), 0);
@@ -494,14 +434,15 @@ bool SQLiteIssueRepository::deleteComment(int issueId, int commentId) {
 
 User SQLiteIssueRepository::getUser(const std::string& userId) const {
   SqliteStmt stmt(
-      db_, "SELECT name, role FROM users WHERE name = ? LIMIT 1;");
+      db_,
+      "SELECT name, role FROM users WHERE name = ? LIMIT 1;");
   sqlite3_bind_text(stmt.get(), 1, userId.c_str(), -1, SQLITE_TRANSIENT);
 
   if (sqlite3_step(stmt.get()) != SQLITE_ROW) {
     throw std::invalid_argument("User with given ID does not exist");
   }
 
-  // 🔧 FIXED: use stmt.get() instead of stmt when calling columnText
+  // FIX: pass stmt.get() into columnText
   std::string name = columnText(stmt.get(), 0);
   std::string role = columnText(stmt.get(), 1);
   return User(name, role);
@@ -538,9 +479,13 @@ bool SQLiteIssueRepository::deleteUser(const std::string& userId) {
 
 std::vector<User> SQLiteIssueRepository::listAllUsers() const {
   std::vector<User> users;
-  forEachRow("SELECT name, role FROM users ORDER BY name ASC;", {},
-             [&users](sqlite3_stmt* stmt) {
-               users.emplace_back(columnText(stmt, 0), columnText(stmt, 1));
-             });
+  forEachRow(
+      "SELECT name, role FROM users ORDER BY name ASC;",
+      nullptr,
+      [&users](sqlite3_stmt* stmt) {
+        users.emplace_back(
+            columnText(stmt, 0),
+            columnText(stmt, 1));
+      });
   return users;
 }
