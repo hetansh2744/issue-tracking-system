@@ -6,13 +6,14 @@
 #include <oatpp/network/tcp/server/ConnectionProvider.hpp>
 
 void run() {
-
   // Register Oat++ components
   AppComponent components;
   SwaggerComponent swaggerComponents;
+  (void)components;
+  (void)swaggerComponents;
 
-  // Reuse the configured connection provider component (binds to 0.0.0.0:8100)
-  OATPP_COMPONENT(std::shared_ptr<oatpp::network::tcp::server::ConnectionProvider>,
+  OATPP_COMPONENT(
+    std::shared_ptr<oatpp::network::tcp::server::ConnectionProvider>,
                   connectionProvider);
 
   // Create runner with provider
