@@ -103,9 +103,9 @@ void IssueTrackerView::createIssue() {
 
   std::cout << "Issue created with id " << issue.getId() << ".\n";
 
-  if (controller->assignUserToIssue(issue.getId(), authorId)) {
-    std::cout << "Issue assigned to user: " << authorId << "\n";
-  }
+  // Assign the issue to the author and always print the message
+  controller->assignUserToIssue(issue.getId(), authorId);
+  std::cout << "Issue assigned to user: " << authorId << "\n";
 
   // Optional initial status
   std::string status;
