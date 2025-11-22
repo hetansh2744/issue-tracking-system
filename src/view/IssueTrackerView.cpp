@@ -243,8 +243,11 @@ void IssueTrackerView::listIssues() {
     return;
   }
 
-  std::cout << "ID  | Title                      | Status        | Assignee\n";
-  std::cout << "----+----------------------------+---------------+----------------\n";
+  std::cout << "ID  | Title                      | Status        "
+               "| Assignee\n";
+  std::cout << "----+----------------------------+---------------"
+               "+----------------\n";
+
   for (const auto& issue : issues) {
     std::string title = issue.getTitle();
     if (title.size() > 26) {
