@@ -145,7 +145,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
         repo->getUser(authorId);
 
         // create and save the new comment
-        Comment newComment(0, authorId, text, 0);
+        Comment newComment(-1, authorId, text, 0);
         Comment savedComment = repo->saveComment(issueId, newComment);
 
         // link comment id to issue and save issue
