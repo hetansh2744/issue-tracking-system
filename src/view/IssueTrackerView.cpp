@@ -548,12 +548,20 @@ void IssueTrackerView::addTag() {
   int issueId = getissueId();
   std::string tag;
 
+  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
   std::cout << "Enter tag: ";
   std::getline(std::cin, tag);
+
+  if (tag.empty()) {
+    std::cout << "Tag cannot be empty.\n";
+    return;
+  }
 
   bool success = controller->addTagToIssue(issueId, tag);
   std::cout << (success ? "Tag added.\n" : "Failed to add tag.\n");
 }
+
 
 void IssueTrackerView::removeTag() {
   int issueId = getissueId();
