@@ -1,12 +1,11 @@
-#include "IssueTrackerView.hpp"
-
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <functional>
 #include <memory>
 #include <sstream>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "IssueTrackerView.hpp"
 
 using ::testing::_;
 using ::testing::Return;
