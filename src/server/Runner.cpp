@@ -2,18 +2,6 @@
 // Entry point helper that wires the HTTP router, controllers, and server.
 #include "Runner.hpp"
 
-#include <oatpp/network/Server.hpp>
-#include <oatpp/web/server/HttpConnectionHandler.hpp>
-#include <oatpp/web/server/HttpRouter.hpp>
-#include <oatpp-swagger/Controller.hpp>
-#include <oatpp/core/macro/component.hpp>
-
-#include <memory>
-
-#include "Constants.hpp"
-#include "controller/IssueApiController.hpp"
-#include "SwaggerComponent.hpp"
-
 void Runner::run() {
   // Pull shared components configured in AppComponent/SwaggerComponent.
   OATPP_COMPONENT(std::shared_ptr<oatpp::data::mapping::ObjectMapper>,
