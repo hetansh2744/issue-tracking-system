@@ -134,8 +134,8 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
         if (text.empty() || authorId.empty()) {
-            // invalid input → return "empty" comment
-            return Comment(0, "", "");
+            // invalid input → return placeholder comment
+            return Comment();
         }
 
         // make sure the issue exists
@@ -155,7 +155,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
         return savedComment;
     } catch (const std::out_of_range&) {
         // issue or user not found → behave gracefully
-        return Comment(0, "", "");
+        return Comment();
     }
 }
 
@@ -267,4 +267,3 @@ bool IssueTrackerController::removeTagFromIssue(
     return false;
   }
 }
-

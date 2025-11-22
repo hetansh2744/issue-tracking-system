@@ -1,5 +1,6 @@
 #include "SQLiteIssueRepository.hpp"
 
+#include <chrono>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -30,6 +31,12 @@ class SqliteStmt {
 std::string columnText(sqlite3_stmt* stmt, int index) {
   const unsigned char* text = sqlite3_column_text(stmt, index);
   return text ? reinterpret_cast<const char*>(text) : std::string();
+}
+
+Comment::TimePoint currentTimeMillis() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+      .count();
 }
 }  // namespace
 
@@ -127,23 +134,26 @@ void SQLiteIssueRepository::forEachRow(
 Comment SQLiteIssueRepository::insertCommentRow(int issueId,
                                                 const Comment& comment,
                                                 int commentId) {
+  Comment stored = comment;
+  if (stored.getTimeStamp() == 0) {
+    stored.setTimeStamp(currentTimeMillis());
+  }
   SqliteStmt stmt(
       db_,
       "INSERT INTO comments (id, issue_id, author_id, text, timestamp) "
       "VALUES (?, ?, ?, ?, ?);");
   sqlite3_bind_int(stmt.get(), 1, commentId);
   sqlite3_bind_int(stmt.get(), 2, issueId);
-  sqlite3_bind_text(stmt.get(), 3, comment.getAuthor().c_str(), -1,
+  sqlite3_bind_text(stmt.get(), 3, stored.getAuthor().c_str(), -1,
                     SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt.get(), 4, comment.getText().c_str(), -1,
+  sqlite3_bind_text(stmt.get(), 4, stored.getText().c_str(), -1,
                     SQLITE_TRANSIENT);
-  sqlite3_bind_int64(stmt.get(), 5, comment.getTimeStamp());
+  sqlite3_bind_int64(stmt.get(), 5, stored.getTimeStamp());
 
   if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
     throw std::runtime_error("Failed to insert comment");
   }
 
-  Comment stored = comment;
   if (!stored.hasPersistentId()) {
     stored.setIdForPersistence(commentId);
   }
@@ -233,6 +243,9 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
   Issue stored = issue;
 
   if (!stored.hasPersistentId()) {
+    if (stored.getTimestamp() == 0) {
+      stored.setTimestamp(currentTimeMillis());
+    }
     SqliteStmt stmt(
         db_,
         "INSERT INTO issues (author_id, title, description_comment_id, "
@@ -262,6 +275,9 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
                                   std::to_string(stored.getId()));
     }
 
+    if (stored.getTimestamp() == 0) {
+      stored.setTimestamp(currentTimeMillis());
+    }
     SqliteStmt stmt(db_,
                     "UPDATE issues SET author_id = ?, title = ?, "
                     "description_comment_id = ?, assigned_to = ?, "
@@ -378,14 +394,18 @@ Comment SQLiteIssueRepository::saveComment(int issueId,
     throw std::invalid_argument("Comment with given ID does not exist");
   }
 
+  Comment updated = comment;
+  if (updated.getTimeStamp() == 0) {
+    updated.setTimeStamp(currentTimeMillis());
+  }
   SqliteStmt stmt(db_,
                   "UPDATE comments SET author_id = ?, text = ?, timestamp = ? "
                   "WHERE issue_id = ? AND id = ?;");
-  sqlite3_bind_text(stmt.get(), 1, comment.getAuthor().c_str(), -1,
+  sqlite3_bind_text(stmt.get(), 1, updated.getAuthor().c_str(), -1,
                     SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt.get(), 2, comment.getText().c_str(), -1,
+  sqlite3_bind_text(stmt.get(), 2, updated.getText().c_str(), -1,
                     SQLITE_TRANSIENT);
-  sqlite3_bind_int64(stmt.get(), 3, comment.getTimeStamp());
+  sqlite3_bind_int64(stmt.get(), 3, updated.getTimeStamp());
   sqlite3_bind_int(stmt.get(), 4, issueId);
   sqlite3_bind_int(stmt.get(), 5, commentId);
 
@@ -393,7 +413,7 @@ Comment SQLiteIssueRepository::saveComment(int issueId,
     throw std::runtime_error("Failed to update comment");
   }
 
-  return comment;
+  return updated;
 }
 
 bool SQLiteIssueRepository::deleteComment(int issueId, int commentId) {
