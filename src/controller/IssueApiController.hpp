@@ -10,6 +10,7 @@
 #include "IssueDto.hpp"
 #include "CommentDto.hpp"
 #include "UserDto.hpp"
+#include "TagDto.hpp"
 #include "service/IssueService.hpp"
 
 #include "Issue.hpp"
@@ -27,27 +28,37 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
  public:
   IssueApiController(
-      const std::shared_ptr<oatpp::data::mapping::ObjectMapper>& objectMapper)
+      const std::shared_ptr<
+      oatpp::data::mapping::ObjectMapper>& objectMapper)
       : oatpp::web::server::api::ApiController(objectMapper),
         service(std::make_shared<IssueService>()) {}
 
   // Convert helpers
-  static oatpp::Object<IssueDto> issueToDto(const Issue& i) {
-    auto dto = IssueDto::createShared();
-    dto->id = i.getId();
-    dto->authorId = i.getAuthorId().c_str();
-    dto->title = i.getTitle().c_str();
-    dto->description = "";
-    dto->assignedTo =
-        i.hasAssignee() ? i.getAssignedTo().c_str() : "";
-    auto ids = oatpp::List<oatpp::Int32>::createShared();
-    for (int cid : i.getCommentIds()) {
-      ids->push_back(cid);
-    }
-    dto->commentIds = ids;
-    dto->createdAt = i.getCreatedAt();
-    return dto;
+static oatpp::Object<IssueDto> issueToDto(const Issue& i) {
+  auto dto = IssueDto::createShared();
+  dto->id = i.getId();
+  dto->authorId = i.getAuthorId().c_str();
+  dto->title = i.getTitle().c_str();
+  dto->description = "";
+  dto->assignedTo =
+      i.hasAssignee() ? i.getAssignedTo().c_str() : "";
+
+  auto ids = oatpp::List<oatpp::Int32>::createShared();
+  for (int cid : i.getCommentIds()) {
+    ids->push_back(cid);
   }
+  dto->commentIds = ids;
+
+  auto tags = oatpp::List<oatpp::String>::createShared();
+  for (const auto& t : i.getTags()) {
+    tags->push_back(t.c_str());
+  }
+  dto->tags = tags;
+
+  dto->createdAt = i.getCreatedAt();
+  return dto;
+}
+
 
   static oatpp::Object<CommentDto> commentToDto(const Comment& c) {
     auto dto = CommentDto::createShared();
@@ -186,6 +197,52 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     bool ok = service->removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
+  }
+
+  // ---- Tag endpoints ----
+
+  ENDPOINT("POST", "/issues/{id}/tags", addTag,
+           PATH(oatpp::Int32, id),
+           BODY_DTO(oatpp::Object<TagDto>, body)) {
+    if (!body || !body->tag) {
+      return createResponse(Status::CODE_400, "Missing tag");
+    }
+
+    bool ok = service->addTagToIssue(
+        id, asStdString(body->tag));
+
+    return ok ? createResponse(Status::CODE_201, "Tag added")
+              : createResponse(Status::CODE_400, "Failed");
+  }
+
+  ENDPOINT("DELETE", "/issues/{id}/tags", removeTag,
+           PATH(oatpp::Int32, id),
+           BODY_DTO(oatpp::Object<TagDto>, body)) {
+    if (!body || !body->tag) {
+      return createResponse(Status::CODE_400, "Missing tag");
+    }
+
+    bool ok = service->removeTagFromIssue(
+        id, asStdString(body->tag));
+
+    return ok ? createResponse(Status::CODE_204, "")
+              : createResponse(Status::CODE_404, "Not found");
+  }
+
+  ENDPOINT("GET", "/issues/{id}/tags", listTags,
+           PATH(oatpp::Int32, id)) {
+    try {
+      Issue issue = service->getIssue(id);
+
+      auto list = oatpp::List<oatpp::String>::createShared();
+      for (const auto& tag : issue.getTags()) {
+        list->push_back(tag.c_str());
+      }
+
+      return createDtoResponse(Status::CODE_200, list);
+    } catch (...) {
+      return createResponse(Status::CODE_404, "Issue not found");
+    }
   }
 };
 

@@ -22,16 +22,14 @@ CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
 SQLITE_PREFIX = third_party/sqlite-build
 
 ################################################################################
-# OATPP (LOCAL BUILD)
+# OATPP (FIXED DEPTH)
 ################################################################################
 
-OATPP_VERSION = 1.3.0
-OATPP_DIR = third_party/oatpp-${OATPP_VERSION}
-OATPP_SWAGGER_DIR = third_party/oatpp-swagger-${OATPP_VERSION}
-OATPP_BUILD_DIR = ${OATPP_DIR}/build
-OATPP_SWAGGER_BUILD_DIR = ${OATPP_SWAGGER_DIR}/build
+OATPP_INCLUDE_LIB = /usr/local/include/oatpp-1.3.0/oatpp
+OATPP_SWAGGER_INCLUDE = /usr/local/include/oatpp-1.3.0/oatpp-swagger
+OATPP_LIB_DIR = /usr/local/lib/oatpp-1.3.0
 
-OATPP_INCLUDE = -I src -I ${OATPP_DIR}/src -I ${OATPP_SWAGGER_DIR}/src
+OATPP_INCLUDE = -I src -I $(OATPP_INCLUDE_LIB) -I $(OATPP_SWAGGER_INCLUDE)
 
 ################################################################################
 # Directories
@@ -66,15 +64,9 @@ INCLUDE = $(OATPP_INCLUDE) \
 LINKFLAGS = -lgtest -lgmock -pthread \
 	-L $(SQLITE_PREFIX)/lib \
 	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
-	-L ${OATPP_BUILD_DIR} \
-	-L ${OATPP_SWAGGER_BUILD_DIR} \
+	-L $(OATPP_LIB_DIR) \
+	-Wl,-rpath,$(OATPP_LIB_DIR) \
 	-loatpp-swagger -loatpp \
-	-lsqlite3
-
-# Test-only link flags (without OATPP)
-TEST_LINKFLAGS = -lgtest -lgmock -pthread \
-	-L $(SQLITE_PREFIX)/lib \
-	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
 	-lsqlite3
 
 ################################################################################
@@ -110,41 +102,6 @@ REST_SRCS = ${CORE_SRCS} \
 .DEFAULT_GOAL := compileProject
 
 ################################################################################
-# Dependencies
-################################################################################
-
-.PHONY: deps
-deps: ${OATPP_BUILD_DIR}/liboatpp.a ${OATPP_SWAGGER_BUILD_DIR}/liboatpp-swagger.a
-
-# Download and build oatpp
-${OATPP_DIR}/CMakeLists.txt:
-	@echo "Downloading oatpp ${OATPP_VERSION}..."
-	@mkdir -p third_party
-	@cd third_party && wget -q https://github.com/oatpp/oatpp/archive/refs/tags/${OATPP_VERSION}.tar.gz -O oatpp-${OATPP_VERSION}.tar.gz
-	@cd third_party && tar -xzf oatpp-${OATPP_VERSION}.tar.gz
-	@rm third_party/oatpp-${OATPP_VERSION}.tar.gz
-
-${OATPP_BUILD_DIR}/liboatpp.a: ${OATPP_DIR}/CMakeLists.txt
-	@echo "Building oatpp..."
-	@mkdir -p ${OATPP_BUILD_DIR}
-	@cd ${OATPP_BUILD_DIR} && cmake .. -DOATPP_BUILD_TESTS=OFF > /dev/null
-	@cd ${OATPP_BUILD_DIR} && make -j$(nproc) > /dev/null
-
-# Download and build oatpp-swagger
-${OATPP_SWAGGER_DIR}/CMakeLists.txt:
-	@echo "Downloading oatpp-swagger ${OATPP_VERSION}..."
-	@mkdir -p third_party
-	@cd third_party && wget -q https://github.com/oatpp/oatpp-swagger/archive/refs/tags/${OATPP_VERSION}.tar.gz -O oatpp-swagger-${OATPP_VERSION}.tar.gz
-	@cd third_party && tar -xzf oatpp-swagger-${OATPP_VERSION}.tar.gz
-	@rm third_party/oatpp-swagger-${OATPP_VERSION}.tar.gz
-
-${OATPP_SWAGGER_BUILD_DIR}/liboatpp-swagger.a: ${OATPP_SWAGGER_DIR}/CMakeLists.txt ${OATPP_BUILD_DIR}/liboatpp.a
-	@echo "Building oatpp-swagger..."
-	@mkdir -p ${OATPP_SWAGGER_BUILD_DIR}
-	@cd ${OATPP_SWAGGER_BUILD_DIR} && cmake .. -DOATPP_BUILD_TESTS=OFF > /dev/null
-	@cd ${OATPP_SWAGGER_BUILD_DIR} && make -j$(nproc) > /dev/null
-
-################################################################################
 # Clean
 ################################################################################
 
@@ -158,11 +115,6 @@ clean:
 	       src/server/*.o src/project/*.o
 	rm -rf *~ \#* .\#* src/*~ test/*~ include/*~
 
-.PHONY: distclean
-distclean: clean
-	rm -rf third_party/oatpp-${OATPP_VERSION}
-	rm -rf third_party/oatpp-swagger-${OATPP_VERSION}
-
 ################################################################################
 # Object rule
 ################################################################################
@@ -175,14 +127,14 @@ distclean: clean
 ################################################################################
 
 ${GTEST}: clean
-	${CXX} ${CXXFLAGS} -o ./${GTEST} -I include -I src -I src/dto -I third_party/sqlite-build/include \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${TEST_LINKFLAGS}
+	${CXX} ${CXXFLAGS} -o ./${GTEST} ${INCLUDE} \
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
 
-compileProject: clean deps
+compileProject: clean
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
 	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${LINKFLAGS}
 
-rest: clean deps
+rest: clean
 	${CXX} ${CXXVERSION} -o ${REST} ${INCLUDE} \
 	${REST_SRCS} ${LINKFLAGS}
 
@@ -195,8 +147,8 @@ memcheck: ${GTEST}
 	--error-exitcode=1 ./${GTEST}
 
 coverage: clean
-	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} -I include -I src -I src/dto -I third_party/sqlite-build/include \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${TEST_LINKFLAGS}
+	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${INCLUDE} \
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
 	./${GTEST}
 	${LCOV} --capture --gcov-tool ${GCOV} \
 	--directory . --output-file ${COVERAGE_RESULTS} \
@@ -239,6 +191,3 @@ version:
 	gcov --version
 	lcov --version
 	valgrind --version
-
-.PHONY: test_project
-test_project: ${GTEST}
