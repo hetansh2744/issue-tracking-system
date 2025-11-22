@@ -667,4 +667,147 @@ void IssueTrackerView::removeTag() {
 
   std::vector<std::string> tagList(tags.begin(), tags.end());
   std::cout << "Existing tags:\n";
-  for (std::size_t_
+  for (std::size_t i = 0; i < tagList.size(); ++i) {
+    std::cout << " " << (i + 1) << ") " << tagList[i] << "\n";
+  }
+  std::cout << "Choice (1-" << tagList.size() << "): ";
+  int idx = getvalidInt(static_cast<int>(tagList.size()));
+  if (idx <= 0 || static_cast<std::size_t>(idx) > tagList.size()) {
+    std::cout << "Invalid choice.\n";
+    return;
+  }
+  const std::string& tagToRemove = tagList[static_cast<std::size_t>(idx - 1)];
+  if (controller->removeTagFromIssue(issueId, tagToRemove)) {
+    std::cout << "Tag removed.\n";
+  } else {
+    std::cout << "Failed to remove tag.\n";
+  }
+}
+
+void IssueTrackerView::viewIssuesByStatus() {
+  std::cout << "=== Issues by Status ===\n";
+  auto issues = controller->listAllIssues();
+  if (issues.empty()) {
+    std::cout << "No issues found.\n";
+    return;
+  }
+
+  std::vector<Issue> todo;
+  std::vector<Issue> inProgress;
+  std::vector<Issue> done;
+  std::vector<Issue> other;
+
+  for (const auto& issue : issues) {
+    const std::string status = issue.getStatus();
+    if (status == "To Be Done") {
+      todo.push_back(issue);
+    } else if (status == "In Progress") {
+      inProgress.push_back(issue);
+    } else if (status == "Done") {
+      done.push_back(issue);
+    } else {
+      other.push_back(issue);
+    }
+  }
+
+  std::cout << "Summary:\n";
+  std::cout << "  To Be Done : " << todo.size() << " issue(s)\n";
+  std::cout << "  In Progress: " << inProgress.size() << " issue(s)\n";
+  std::cout << "  Done       : " << done.size() << " issue(s)\n";
+  if (!other.empty()) {
+    std::cout << "  Other      : " << other.size() << " issue(s)\n";
+  }
+
+  auto printGroup = [](const std::string& label,
+                       const std::vector<Issue>& group) {
+    if (group.empty()) {
+      return;
+    }
+    std::cout << "\n" << label << ":\n";
+    for (const auto& issue : group) {
+      std::cout << "  Id: " << issue.getId()
+                << " | Title: " << issue.getTitle();
+      if (issue.hasAssignee()) {
+        std::cout << " | Assignee: " << issue.getAssignedTo();
+      }
+      std::cout << "\n";
+    }
+  };
+
+  printGroup("To Be Done", todo);
+  printGroup("In Progress", inProgress);
+  printGroup("Done", done);
+  printGroup("Other / Unknown", other);
+}
+
+void IssueTrackerView::run() {
+  bool done = false;
+  while (!done) {
+    displayMenu();
+    std::cout << "Enter choice: ";
+    int choice = readIntChoice();
+    switch (choice) {
+      case 1:
+        createIssue();
+        break;
+      case 2:
+        updateIssue();
+        break;
+      case 3:
+        assignUser();
+        break;
+      case 4:
+        unassignUser();
+        break;
+      case 5:
+        deleteIssue();
+        break;
+      case 6:
+        listIssues();
+        break;
+      case 7:
+        listUnassignedIssues();
+        break;
+      case 8:
+        findIssuesByUser();
+        break;
+      case 9:
+        addComment();
+        break;
+      case 10:
+        updateComment();
+        break;
+      case 11:
+        deleteComment();
+        break;
+      case 12:
+        createUser();
+        break;
+      case 13:
+        listUsers();
+        break;
+      case 14:
+        removeUser();
+        break;
+      case 15:
+        updateUser();
+        break;
+      case 16:
+        addTag();
+        break;
+      case 17:
+        removeTag();
+        break;
+      case 18:
+        viewIssuesByStatus();
+        break;
+      case 0:
+        done = true;
+        std::cout << "Exiting Issue Tracker.\n";
+        break;
+      default:
+        std::cout << "Unknown choice. Try again.\n";
+        break;
+    }
+  }
+}
