@@ -544,7 +544,7 @@ void IssueTrackerView:: updateComment() {
   }
   std::cout << "Pick an comment to edit" << std::endl;
   int choice = getvalidInt(comments.size());
-  commentId = comments[choice].getId();
+  commentId = comments[choice - 1].getId();
   std::cout << "Enter new text: ";
   std::getline(std::cin, text);
   controller->updateComment(issueId, commentId, text);
@@ -561,7 +561,7 @@ void IssueTrackerView:: deleteComment() {
   }
   std::cout << "Pick a comment to delete" << std::endl;
   int choice = getvalidInt(comments.size());
-  commentId = comments[choice].getId();
+  commentId = comments[choice - 1].getId();
   controller->deleteComment(issueId, commentId);
 }
 
