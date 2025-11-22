@@ -1,9 +1,9 @@
 #include "IssueTrackerView.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 
-// Helper functions for input
 namespace {
 
 int readIntChoice() {
@@ -107,7 +107,7 @@ void IssueTrackerView::createIssue() {
 
   std::cout << "Issue created with id " << issue.getId() << ".\n";
 
-  // Let the user optionally pick an initial status
+  // Optional initial status
   std::string status;
   std::cout << "Initial status "
                "(To Be Done / In Progress / Done) "
@@ -330,7 +330,6 @@ void IssueTrackerView::addComment() {
     return;
   }
 
-  // ✅ Use correct controller API: addCommentToIssue
   Comment c = controller->addCommentToIssue(issueId, text, authorId);
   if (c.getId() <= 0) {
     std::cout << "Failed to create comment.\n";
@@ -351,7 +350,6 @@ void IssueTrackerView::updateComment() {
     return;
   }
 
-  // ✅ Correct method name: getallComments
   auto comments = controller->getallComments(issueId);
   if (comments.empty()) {
     std::cout << "No comments for this issue.\n";
@@ -361,7 +359,7 @@ void IssueTrackerView::updateComment() {
   std::cout << "Comments:\n";
   for (const auto& c : comments) {
     std::cout << "  Id: " << c.getId()
-              << " | Author: " << c.getAuthorId()
+              << " | Author: " << c.getAuthor()
               << " | Text: " << c.getText() << "\n";
   }
 
@@ -387,7 +385,6 @@ void IssueTrackerView::deleteComment() {
     return;
   }
 
-  // ✅ Correct method name: getallComments
   auto comments = controller->getallComments(issueId);
   if (comments.empty()) {
     std::cout << "No comments for this issue.\n";
@@ -397,7 +394,7 @@ void IssueTrackerView::deleteComment() {
   std::cout << "Comments:\n";
   for (const auto& c : comments) {
     std::cout << "  Id: " << c.getId()
-              << " | Author: " << c.getAuthorId()
+              << " | Author: " << c.getAuthor()
               << " | Text: " << c.getText() << "\n";
   }
 
@@ -499,7 +496,6 @@ void IssueTrackerView::addComIssue() {
 
   std::string desc = readLine("Enter description text: ");
 
-  // ✅ Use updateIssueField to manage description comment
   if (!controller->updateIssueField(issueId, "description", desc)) {
     std::cout << "Failed to update description.\n";
   } else {
@@ -599,7 +595,6 @@ std::vector<int> IssueTrackerView::displayIssue(int id) {
       std::cout << "\n";
     }
 
-    // ✅ Correct method name: getallComments
     auto comments = controller->getallComments(id);
     if (!comments.empty()) {
       std::cout << "\nComments:\n";
@@ -607,7 +602,7 @@ std::vector<int> IssueTrackerView::displayIssue(int id) {
       for (const auto& c : comments) {
         std::cout << "  [" << displayIndex << "] "
                   << "Id: " << c.getId()
-                  << " | Author: " << c.getAuthorId()
+                  << " | Author: " << c.getAuthor()
                   << " | " << c.getText() << "\n";
         commentIdsShown.push_back(c.getId());
         ++displayIndex;
