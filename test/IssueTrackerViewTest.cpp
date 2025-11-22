@@ -102,23 +102,23 @@ TEST_F(IssueTrackerViewTest, DisplayMenuShowsAllOptions) {
     view->displayMenu();
   });
 
-  EXPECT_THAT(output, testing::HasSubstr("Create issue"));
-  EXPECT_THAT(
-      output,
-      testing::HasSubstr("Update issue (title/description/status)"));
-  EXPECT_THAT(output, testing::HasSubstr("Assign user to issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Unassign user from issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Delete issue"));
-  EXPECT_THAT(output, testing::HasSubstr("List all issues"));
-  EXPECT_THAT(output, testing::HasSubstr("List unassigned issues"));
-  EXPECT_THAT(output, testing::HasSubstr("Find issues by user"));
-  EXPECT_THAT(output, testing::HasSubstr("Add comment to issue"));
-  EXPECT_THAT(output, testing::HasSubstr("Update comment"));
-  EXPECT_THAT(output, testing::HasSubstr("Delete comment"));
-  EXPECT_THAT(output, testing::HasSubstr("Create user"));
-  EXPECT_THAT(output, testing::HasSubstr("List users"));
-  EXPECT_THAT(output, testing::HasSubstr("Remove user"));
-  EXPECT_THAT(output, testing::HasSubstr("Update user"));
+  EXPECT_THAT(output, testing::HasSubstr("Create Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Update Issue Field"));
+  EXPECT_THAT(output, testing::HasSubstr("Assign User to Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Unassign User from Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Delete Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("List All Issues"));
+  EXPECT_THAT(output, testing::HasSubstr("List Unassigned Issues"));
+  EXPECT_THAT(output, testing::HasSubstr("Find Issues by User ID"));
+  EXPECT_THAT(output, testing::HasSubstr("Add Comment to Issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Update Comment"));
+  EXPECT_THAT(output, testing::HasSubstr("Delete Comment"));
+  EXPECT_THAT(output, testing::HasSubstr("Create User"));
+  EXPECT_THAT(output, testing::HasSubstr("List All Users"));
+  EXPECT_THAT(output, testing::HasSubstr("Remove User"));
+  EXPECT_THAT(output, testing::HasSubstr("Update User"));
+  EXPECT_THAT(output, testing::HasSubstr("Add tag to issue"));
+  EXPECT_THAT(output, testing::HasSubstr("Remove tag from issue"));
   EXPECT_THAT(output, testing::HasSubstr("View issues by status"));
   EXPECT_THAT(output, testing::HasSubstr("Exit"));
 }
@@ -351,7 +351,6 @@ TEST_F(IssueTrackerViewTest, CreateUserSuccess) {
   EXPECT_CALL(*mockController, createUser("newuser", "Developer"))
       .WillOnce(Return(expectedUser));
 
-  // Role "Developer" is option 2 in the view's menu.
   simulateUserInput("newuser\n2\n");
 
   auto output = captureOutput([this]() {
@@ -394,7 +393,6 @@ TEST_F(IssueTrackerViewTest, RemoveUserSuccess) {
 }
 
 TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
-  // Deterministic epoch time in ms.
   const Issue::TimePoint creationTs = 1'700'000'000'000;
   Issue issue(42, "author1", "Detailed View", creationTs);
   issue.addComment(1);
@@ -411,7 +409,6 @@ TEST_F(IssueTrackerViewTest, DisplayIssueShowsStoredTimestamp) {
     view->displayIssue(42);
   });
 
-  // Match what displayIssue actually prints.
   EXPECT_THAT(output, testing::HasSubstr("Id: 42"));
   EXPECT_THAT(output, testing::HasSubstr("Title: Detailed View"));
   EXPECT_THAT(output, testing::HasSubstr("Author: author1"));
@@ -438,8 +435,6 @@ TEST_F(IssueTrackerViewTest,
     view->displayIssue(1);
   });
 
-  // We just assert that both comment texts appear; this is robust
-  // against minor formatting changes in the view.
   EXPECT_THAT(output, testing::HasSubstr("Description text"));
   EXPECT_THAT(output, testing::HasSubstr("User comment"));
 }
