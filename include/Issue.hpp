@@ -13,7 +13,7 @@
 /**
  * @brief Domain model for an issue.
  *
- * functions as aggregate root for Comments:
+ * Functions as aggregate root for Comments:
  *  - New Issue starts with id == 0; repository assigns > 0 via
  *    setIdForPersistence() once.
  *  - author_id_ and title_ are non-empty (validated).
@@ -34,9 +34,9 @@ class Issue {
   std::string title_;      ///< non-empty short summary
 
   // Relationships / metadata
-  int description_comment_id_{0};  ///< 0 => none linked
-  std::string assigned_to_;        ///< assignee user id; empty => none
-  std::string status_{"To Be Done"};  ///< issue status
+  int description_comment_id_{0};        ///< 0 => none linked
+  std::string assigned_to_;              ///< assignee user id; empty => none
+  std::string status_{"To Be Done"};     ///< issue status
 
   // Persistence ids + in-memory objects
   std::vector<int> comment_ids_;   ///< unique attached comment ids
@@ -189,8 +189,12 @@ class Issue {
   /**
    * @brief Set the status of the issue.
    *
-   * Valid values (e.g., "To Be Done", "In Progress", "Done")
-   * are enforced at higher layers (view/controller).
+   * For this project we use:
+   *  - "To Be Done"
+   *  - "In Progress"
+   *  - "Done"
+   *
+   * The view/controller are responsible for passing a sensible value.
    */
   void setStatus(std::string status) { status_ = std::move(status); }
 
@@ -251,17 +255,41 @@ class Issue {
   bool removeCommentById(int id);
 
   /**
-   * @brief Getter method for time of creation sets it to a string
-   * @return String of Time Stamp
+   * @brief Getter method for time of creation.
+   * @return const reference to creation time.
    */
   const TimePoint& getCreatedAt() const { return created_at_; }
 
+  // ---------------------------
+  // tags
+  // ---------------------------
+
+  /**
+   * @brief Add a tag to the issue.
+   * @param tag non-empty tag string
+   * @return true if the tag was newly added, false if it already existed
+   * @throws std::invalid_argument if tag is empty
+   */
   bool addTag(const std::string& tag);
 
+  /**
+   * @brief Remove a tag from the issue.
+   * @param tag tag to remove
+   * @return true if the tag was removed, false if it did not exist
+   */
   bool removeTag(const std::string& tag);
 
+  /**
+   * @brief Check if the issue has a given tag.
+   * @param tag tag to check
+   * @return true if the tag exists on this issue
+   */
   bool hasTag(const std::string& tag) const;
 
+  /**
+   * @brief Get all tags on this issue.
+   * @return set of tags
+   */
   std::set<std::string> getTags() const;
 };
 

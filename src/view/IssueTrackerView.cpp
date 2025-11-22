@@ -1,266 +1,680 @@
 #include "IssueTrackerView.hpp"
-#include <ctime>
-#include <iomanip> // For std::put_time
-IssueTrackerView::IssueTrackerView(IssueTrackerController* controller)
-    : controller(controller) {}
 
-    //Displays all current functions of program pro
-    //-mpting user for input
+#include <limits>
+#include <utility>
+
+// Helper functions for input
+namespace {
+
+int readIntChoice() {
+  int choice{};
+  while (true) {
+    if (std::cin >> choice) {
+      std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      return choice;
+    }
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cout << "Invalid input. Please enter a number: ";
+  }
+}
+
+std::string readLine(const std::string& prompt) {
+  std::cout << prompt;
+  std::string line;
+  std::getline(std::cin, line);
+  return line;
+}
+
+}  // namespace
+
+IssueTrackerView::IssueTrackerView(IssueTrackerController* controller_in)
+    : controller(controller_in) {}
+
 void IssueTrackerView::displayMenu() {
-    std::cout << "\n=== Issue Tracker Menu ===\n";
-    std::cout << "1. Create Issue\n";
-    std::cout << "2. Update Issue Field\n";
-    std::cout << "3. Assign User to Issue\n";
-    std::cout << "4. Unassign User from Issue\n";
-    std::cout << "5. Delete Issue\n";
-    std::cout << "6. List All Issues\n";
-    std::cout << "7. Find Issues by User ID\n";
-    std::cout << "8. Add Comment to Issue\n";
-    std::cout << "9. Update Comment\n";
-    std::cout << "10. Delete Comment\n";
-    std::cout << "11. Create User\n";
-    std::cout << "12. List All Users\n";
-    std::cout << "13. Remove User\n";
-    std::cout << "14. Update User\n";
-    std::cout << "15. List Unassigned Issues\n";
-    std::cout << "16. Add Tag to Issue\n";
-    std::cout << "17. Remove Tag from Issue\n";
-    std::cout << "18. Exit\n";
-    std::cout << "Select an option: ";
+  std::cout << "\n===== Issue Tracker Menu =====\n";
+  std::cout << " 1) Create issue\n";
+  std::cout << " 2) Update issue (title/description/status)\n";
+  std::cout << " 3) Assign user to issue\n";
+  std::cout << " 4) Unassign user from issue\n";
+  std::cout << " 5) Delete issue\n";
+  std::cout << " 6) List all issues\n";
+  std::cout << " 7) List unassigned issues\n";
+  std::cout << " 8) Find issues by user\n";
+  std::cout << " 9) Add comment to issue\n";
+  std::cout << "10) Update comment\n";
+  std::cout << "11) Delete comment\n";
+  std::cout << "12) Create user\n";
+  std::cout << "13) List users\n";
+  std::cout << "14) Remove user\n";
+  std::cout << "15) Update user\n";
+  std::cout << "16) Add tag to issue\n";
+  std::cout << "17) Remove tag from issue\n";
+  std::cout << "18) View issues by status\n";
+  std::cout << " 0) Exit\n";
 }
 
-//Prompts user for input and keeps program
-//running after user inputs
-void IssueTrackerView::run() {
-    int choice = -1;
-    while (choice != 18) {
-        displayMenu();
-        int length_display = 18;
-        choice = getvalidInt(length_display);
+bool IssueTrackerView::ensureIssuesAvailable(const std::string& actionName) {
+  auto issues = controller->listAllIssues();
+  if (!issues.empty()) {
+    return true;
+  }
 
-        switch (choice) {
-        case 1: createIssue(); break;
-        case 2: updateIssue(); break;
-        case 3: assignUser(); break;
-        case 4: unassignUser(); break;
-        case 5: deleteIssue(); break;
-        case 6: listIssues(); break;
-        case 7: findIssuesByUser(); break;
-        case 8: addComIssue(); break;
-        case 9: updateComment(); break;
-        case 10: deleteComment(); break;
-        case 11: createUser(); break;
-        case 12: listUsers(); break;
-        case 13: removeUser(); break;
-        case 14: updateUser(); break;
-        case 15: listUnassignedIssues(); break;
-        case 16: addTag(); break;
-        case 17: removeTag(); break;
-        case 18: std::cout << "Goodbye!\n"; break;
-        }
-    }
+  std::cout << "There are currently no issues. "
+               "You must create an issue before you can "
+            << actionName << ".\n";
+  std::cout << "Would you like to create a new issue now? (y/n): ";
+  char c{};
+  std::cin >> c;
+  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  if (c == 'y' || c == 'Y') {
+    createIssue();
+    issues = controller->listAllIssues();
+    return !issues.empty();
+  }
+  return false;
 }
 
-// Prompts user for integer input and validates it to
-// ensure it's within a range and a number
-int IssueTrackerView::getvalidInt(int num_of_options) {
-    std::string input;
-    int value;
-
-    while (true) {
-        std::getline(std::cin, input);
-        bool isValid = !input.empty() && std::all_of(input.begin(),
-            input.end(), ::isdigit);
-
-        if (isValid) {
-            value = std::stoi(input);
-            if (value >= 1 && value <= num_of_options) {
-                return value;
-            }
-        }
-
-        std::cout << "Invalid input. "
-                  << "Please enter a number between 1 and "
-                  << num_of_options << ": ";
-    }
-}
-
-//allows user to select an existing issue
-//from all issues
-int IssueTrackerView::getissueId() {
-    std::vector<Issue> issues = controller->listAllIssues();
-    if (issues.empty()) {
-        std::cout << "No issues available.\n";
-        return -1;
-    }
-
-    std::cout << "\nAvailable Issues:\n";
-    for (const auto& issue : issues) {
-        std::cout << "ID: " << issue.getId() <<
-        " | Title: " << issue.getTitle() << "\n";
-    }
-
-    std::cout << "Enter Issue ID: ";
-    int issueId;
-    while (true) {
-        std::string input;
-        std::getline(std::cin, input);
-
-        bool isValid = !input.empty() && std::all_of(input.begin(),
-            input.end(), ::isdigit);
-
-        if (isValid) {
-            issueId = std::stoi(input);
-            auto it = std::find_if(issues.begin(), issues.end(),
-                [issueId](const Issue& issue) {
-                    return issue.getId() == issueId;
-                });
-            if (it != issues.end()) {
-                return issueId;
-            }
-        }
-
-        std::cout << "Invalid Issue ID. "
-                  << "Please enter a valid ID: ";
-    }
-}
-
-//allows user to select a user
-std::string IssueTrackerView::getuserId() {
-    std::vector<User> users = controller->listAllUsers();
-    if (users.empty()) {
-        std::cout << "No users available. Please create a user first.\n";
-        createUser();
-        users = controller->listAllUsers();
-        if (users.empty()) {
-            std::cout << "User creation failed.\n";
-            return "";
-        }
-    }
-
-    std::cout << "\nAvailable Users:\n";
-    for (size_t i = 0; i < users.size(); ++i) {
-        std::cout << i + 1 << ". " << users[i].getName()
-                  << " (" << users[i].getRole() << ")\n";
-    }
-
-    std::cout << "Select a user by number: ";
-    int index = getvalidInt(static_cast<int>(users.size()));
-    return users[index - 1].getName();
-}
-
-//prompts user to create an issue
-//assigning title description and who
-// it is assigned to
 void IssueTrackerView::createIssue() {
-    std::string title, desc, assignedTo;
+  std::string title;
+  std::string desc;
+  std::string authorId;
 
-    do {
-        std::cout << "Enter title:\n";
-        std::getline(std::cin, title);
-        if (title.empty()) {
-            std::cout << "Input error: Title cannot be empty. "
-                      << "Please try again.\n";
-        }
-    } while (title.empty());
+  std::cout << "=== Create Issue ===\n";
+  std::cout << "Enter title: ";
+  std::getline(std::cin, title);
+  if (title.empty()) {
+    std::cout << "Title must not be empty. Aborting.\n";
+    return;
+  }
 
-    // description (can be empty)
-    std::cout << "Enter description:\n";
-    std::getline(std::cin, desc);
+  std::cout << "Enter description (optional, can be empty): ";
+  std::getline(std::cin, desc);
 
-    // choose author / assignee
-    std::cout << "Select author of Issue";
-    assignedTo = getuserId();
-    if (assignedTo.empty()) {
-        std::cout << "Issue creation cancelled: no user available.\n";
-        return;
+  std::cout << "Enter author user id: ";
+  std::getline(std::cin, authorId);
+  if (authorId.empty()) {
+    std::cout << "Author id must not be empty. Aborting.\n";
+    return;
+  }
+
+  Issue issue = controller->createIssue(title, desc, authorId);
+  if (issue.getId() <= 0) {
+    std::cout << "Failed to create issue. "
+                 "Ensure title and author id are valid.\n";
+    return;
+  }
+
+  std::cout << "Issue created with id " << issue.getId() << ".\n";
+
+  // Let the user optionally pick an initial status
+  std::string status;
+  std::cout << "Initial status "
+               "(To Be Done / In Progress / Done) "
+               "[leave empty for default 'To Be Done']: ";
+  std::getline(std::cin, status);
+  if (!status.empty()) {
+    if (!controller->updateIssueField(issue.getId(), "status", status)) {
+      std::cout << "Warning: failed to set initial status; "
+                   "keeping default.\n";
+    } else {
+      std::cout << "Status set.\n";
     }
-    std::cout << "Issue assigned to user: " << assignedTo << std::endl;
-    Issue issue = controller->createIssue(title, desc, assignedTo);
+  }
 }
 
-//allows user to update the issues title or desciption or status
 void IssueTrackerView::updateIssue() {
-    int id;
-    std::string field, value;
+  if (!ensureIssuesAvailable("update an issue")) {
+    return;
+  }
 
-    id = getissueId();
-    int num_of_options = 3;
+  std::cout << "=== Update Issue ===\n";
+  int id = getissueId();
+  if (id <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
 
-    std::cout << "Select a field to change\n1) Title\n"
-              << "2) Description\n3) Status\n";
-    int userinput = getvalidInt(num_of_options);
-    switch (userinput) {
-        case 1:
-            field = "title";
-            std::cout << "Enter new value: ";
-            std::getline(std::cin, value);
-            break;
-        case 2:
-            field = "description";
-            std::cout << "Enter new value: ";
-            std::getline(std::cin, value);
-            break;
-        case 3:
-            field = "status";
-            std::cout << "Select new status:\n"
-                      << "1) To Be Done\n"
-                      << "2) In Progress\n"
-                      << "3) Done\n";
-            {
-                int statusChoice = getvalidInt(3);
-                switch (statusChoice) {
-                    case 1: value = "To Be Done"; break;
-                    case 2: value = "In Progress"; break;
-                    case 3: value = "Done"; break;
-                }
-            }
-            break;
-    }
+  std::cout << "What would you like to update?\n";
+  std::cout << " 1) Title\n";
+  std::cout << " 2) Description\n";
+  std::cout << " 3) Status\n";
+  std::cout << "Choice: ";
+  int choice = readIntChoice();
 
-    bool success = controller->updateIssueField(id, field, value);
-    std::cout << (success ? "Updated successfully.\n"
-                          : "Update failed.\n");
+  std::string field;
+  if (choice == 1) {
+    field = "title";
+  } else if (choice == 2) {
+    field = "description";
+  } else if (choice == 3) {
+    field = "status";
+  } else {
+    std::cout << "Unknown choice.\n";
+    return;
+  }
+
+  std::string value;
+  if (field == "description") {
+    std::cout << "Enter new description: ";
+  } else if (field == "status") {
+    std::cout << "Enter new status (To Be Done / In Progress / Done): ";
+  } else {
+    std::cout << "Enter new title: ";
+  }
+  std::getline(std::cin, value);
+
+  if (!controller->updateIssueField(id, field, value)) {
+    std::cout << "Failed to update issue.\n";
+  } else {
+    std::cout << "Issue updated.\n";
+  }
 }
 
-//prompts user to assign an issue to a spec
-//-ific user
 void IssueTrackerView::assignUser() {
-    int issueId;
-    std::string userName;
+  if (!ensureIssuesAvailable("assign a user")) {
+    return;
+  }
 
-    issueId = getissueId();
-    userName = getuserId();
+  std::cout << "=== Assign User to Issue ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
 
-    bool success = controller->assignUserToIssue(issueId, userName);
-    std::cout << (success ? "User assigned.\n" : "Failed to assign.\n");
+  std::string userId = getuserId();
+  if (userId.empty()) {
+    std::cout << "No user selected.\n";
+    return;
+  }
+
+  if (controller->assignUserToIssue(issueId, userId)) {
+    std::cout << "User assigned.\n";
+  } else {
+    std::cout << "Failed to assign user. "
+                 "Ensure both issue and user exist.\n";
+  }
 }
 
-//prompts user to unassign a issue
-//from a specific user
 void IssueTrackerView::unassignUser() {
-    int issueId;
-    issueId = getissueId();
+  if (!ensureIssuesAvailable("unassign a user")) {
+    return;
+  }
 
-    bool success = controller->unassignUserFromIssue(issueId);
-    std::cout << (success ? "User unassigned.\n" : "Failed to unassign.\n");
+  std::cout << "=== Unassign User from Issue ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  if (controller->unassignUserFromIssue(issueId)) {
+    std::cout << "User unassigned.\n";
+  } else {
+    std::cout << "Failed to unassign user.\n";
+  }
 }
 
-//deletes a certain issue and returns true if success-
-//-fully deleted
 void IssueTrackerView::deleteIssue() {
-    int issueid;
-    issueid = getissueId();
+  if (!ensureIssuesAvailable("delete an issue")) {
+    return;
+  }
 
-    bool success = controller->deleteIssue(issueid);
+  std::cout << "=== Delete Issue ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
 
-    // ✅ test expects substring "Deleted successfully"
-    std::cout << (success ? "Deleted successfully.\n" : "Delete failed.\n");
+  if (controller->deleteIssue(issueId)) {
+    std::cout << "Issue deleted.\n";
+  } else {
+    std::cout << "Failed to delete issue.\n";
+  }
 }
-
 
 void IssueTrackerView::listIssues() {
-  std::vector<Issue> issues = controller->listAllIssues();
+  std::cout << "=== All Issues ===\n";
+  auto issues = controller->listAllIssues();
+  if (issues.empty()) {
+    std::cout << "No issues found.\n";
+    return;
+  }
+
+  std::cout << "ID  | Title                      | Status        | Assignee\n";
+  std::cout << "----+----------------------------+---------------+----------------\n";
+  for (const auto& issue : issues) {
+    std::string title = issue.getTitle();
+    if (title.size() > 26) {
+      title = title.substr(0, 23) + "...";
+    }
+    std::string status = issue.getStatus();
+    std::string assignee = issue.hasAssignee() ? issue.getAssignedTo() : "-";
+
+    std::cout << issue.getId() << "   | "
+              << title
+              << std::string(
+                     28 - static_cast<int>(
+                              std::min<std::size_t>(title.size(), 28)),
+                     ' ')
+              << "| " << status
+              << std::string(
+                     15 - static_cast<int>(
+                              std::min<std::size_t>(status.size(), 15)),
+                     ' ')
+              << "| " << assignee << "\n";
+  }
+}
+
+void IssueTrackerView::listUnassignedIssues() {
+  std::cout << "=== Unassigned Issues ===\n";
+  auto issues = controller->listAllUnassignedIssues();
+  if (issues.empty()) {
+    std::cout << "No unassigned issues.\n";
+    return;
+  }
+  for (const auto& issue : issues) {
+    std::cout << "Id: " << issue.getId()
+              << " | Title: " << issue.getTitle()
+              << " | Status: " << issue.getStatus() << "\n";
+  }
+}
+
+void IssueTrackerView::findIssuesByUser() {
+  std::cout << "=== Find Issues by User ===\n";
+  std::string userId = getuserId();
+  if (userId.empty()) {
+    std::cout << "No user selected.\n";
+    return;
+  }
+
+  auto issues = controller->findIssuesByUserId(userId);
+  if (issues.empty()) {
+    std::cout << "No issues found for user " << userId << ".\n";
+    return;
+  }
+
+  for (const auto& issue : issues) {
+    std::cout << "Id: " << issue.getId()
+              << " | Title: " << issue.getTitle()
+              << " | Status: " << issue.getStatus() << "\n";
+  }
+}
+
+void IssueTrackerView::addComment() {
+  if (!ensureIssuesAvailable("add a comment")) {
+    return;
+  }
+
+  std::cout << "=== Add Comment to Issue ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  std::string authorId = getuserId();
+  if (authorId.empty()) {
+    std::cout << "No user selected as author.\n";
+    return;
+  }
+
+  std::string text = readLine("Enter comment text: ");
+  if (text.empty()) {
+    std::cout << "Comment text must not be empty.\n";
+    return;
+  }
+
+  Comment c = controller->createComment(issueId, authorId, text);
+  if (c.getId() < 0) {
+    std::cout << "Failed to create comment.\n";
+  } else {
+    std::cout << "Comment created with id " << c.getId() << ".\n";
+  }
+}
+
+void IssueTrackerView::updateComment() {
+  if (!ensureIssuesAvailable("update a comment")) {
+    return;
+  }
+
+  std::cout << "=== Update Comment ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  auto comments = controller->getAllComments(issueId);
+  if (comments.empty()) {
+    std::cout << "No comments for this issue.\n";
+    return;
+  }
+
+  std::cout << "Comments:\n";
+  for (const auto& c : comments) {
+    std::cout << "  Id: " << c.getId()
+              << " | Author: " << c.getAuthorId()
+              << " | Text: " << c.getText() << "\n";
+  }
+
+  std::cout << "Enter comment id to update: ";
+  int commentId = readIntChoice();
+  std::string newText = readLine("Enter new comment text: ");
+  if (!controller->updateComment(issueId, commentId, newText)) {
+    std::cout << "Failed to update comment.\n";
+  } else {
+    std::cout << "Comment updated.\n";
+  }
+}
+
+void IssueTrackerView::deleteComment() {
+  if (!ensureIssuesAvailable("delete a comment")) {
+    return;
+  }
+
+  std::cout << "=== Delete Comment ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  auto comments = controller->getAllComments(issueId);
+  if (comments.empty()) {
+    std::cout << "No comments for this issue.\n";
+    return;
+  }
+
+  std::cout << "Comments:\n";
+  for (const auto& c : comments) {
+    std::cout << "  Id: " << c.getId()
+              << " | Author: " << c.getAuthorId()
+              << " | Text: " << c.getText() << "\n";
+  }
+
+  std::cout << "Enter comment id to delete: ";
+  int commentId = readIntChoice();
+  if (!controller->deleteComment(issueId, commentId)) {
+    std::cout << "Failed to delete comment.\n";
+  } else {
+    std::cout << "Comment deleted.\n";
+  }
+}
+
+void IssueTrackerView::createUser() {
+  std::cout << "=== Create User ===\n";
+  std::string name = readLine("Enter user name/id: ");
+  std::string role = readLine("Enter role: ");
+
+  User u = controller->createUser(name, role);
+  if (u.getName().empty()) {
+    std::cout << "Failed to create user.\n";
+  } else {
+    std::cout << "User created: " << u.getName()
+              << " (role: " << u.getRole() << ")\n";
+  }
+}
+
+void IssueTrackerView::listUsers() {
+  std::cout << "=== All Users ===\n";
+  auto users = controller->listAllUsers();
+  if (users.empty()) {
+    std::cout << "No users found.\n";
+    return;
+  }
+
+  for (const auto& u : users) {
+    std::cout << "Name: " << u.getName()
+              << " | Role: " << u.getRole() << "\n";
+  }
+}
+
+void IssueTrackerView::removeUser() {
+  std::cout << "=== Remove User ===\n";
+  std::string userId = getuserId();
+  if (userId.empty()) {
+    std::cout << "No user selected.\n";
+    return;
+  }
+
+  if (controller->removeUser(userId)) {
+    std::cout << "User removed.\n";
+  } else {
+    std::cout << "Failed to remove user.\n";
+  }
+}
+
+void IssueTrackerView::updateUser() {
+  std::cout << "=== Update User ===\n";
+  std::string userId = getuserId();
+  if (userId.empty()) {
+    std::cout << "No user selected.\n";
+    return;
+  }
+
+  std::cout << "What would you like to update?\n";
+  std::cout << " 1) Name\n";
+  std::cout << " 2) Role\n";
+  std::cout << "Choice: ";
+  int choice = readIntChoice();
+
+  std::string field;
+  if (choice == 1) {
+    field = "name";
+  } else if (choice == 2) {
+    field = "role";
+  } else {
+    std::cout << "Unknown choice.\n";
+    return;
+  }
+
+  std::string value = readLine("Enter new value: ");
+  if (!controller->updateUser(userId, field, value)) {
+    std::cout << "Failed to update user.\n";
+  } else {
+    std::cout << "User updated.\n";
+  }
+}
+
+void IssueTrackerView::addComIssue() {
+  if (!ensureIssuesAvailable("add a description comment")) {
+    return;
+  }
+
+  std::cout << "=== Add Description Comment ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  std::string desc = readLine("Enter description text: ");
+  controller->createDescriptionComment(issueId, desc);
+  std::cout << "Description comment added.\n";
+}
+
+std::string IssueTrackerView::getuserId() {
+  auto users = controller->listAllUsers();
+  if (users.empty()) {
+    std::cout << "No users exist yet.\n";
+    std::cout << "You need at least one user. "
+                 "Create a user first.\n";
+    return "";
+  }
+
+  std::cout << "Select a user:\n";
+  for (std::size_t i = 0; i < users.size(); ++i) {
+    std::cout << " " << (i + 1) << ") "
+              << users[i].getName()
+              << " (role: " << users[i].getRole() << ")\n";
+  }
+  std::cout << "Choice (1-" << users.size() << "): ";
+  int idx = getvalidInt(static_cast<int>(users.size()));
+  if (idx <= 0 || static_cast<std::size_t>(idx) > users.size()) {
+    return "";
+  }
+  return users[static_cast<std::size_t>(idx - 1)].getName();
+}
+
+int IssueTrackerView::getissueId() {
+  auto issues = controller->listAllIssues();
+  if (issues.empty()) {
+    std::cout << "No issues available.\n";
+    return -1;
+  }
+
+  std::cout << "Select an issue:\n";
+  for (std::size_t i = 0; i < issues.size(); ++i) {
+    std::cout << " " << (i + 1) << ") "
+              << "Id: " << issues[i].getId()
+              << " | Title: " << issues[i].getTitle()
+              << " | Status: " << issues[i].getStatus() << "\n";
+  }
+  std::cout << "Choice (1-" << issues.size() << "): ";
+  int idx = getvalidInt(static_cast<int>(issues.size()));
+  if (idx <= 0 || static_cast<std::size_t>(idx) > issues.size()) {
+    return -1;
+  }
+  return issues[static_cast<std::size_t>(idx - 1)].getId();
+}
+
+int IssueTrackerView::getvalidInt(int bound) {
+  while (true) {
+    int value{};
+    if (std::cin >> value) {
+      std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      if (value >= 1 && value <= bound) {
+        return value;
+      }
+      std::cout << "Please enter a number between 1 and "
+                << bound << ": ";
+    } else {
+      std::cin.clear();
+      std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      std::cout << "Invalid input. Please enter a number: ";
+    }
+  }
+}
+
+std::vector<int> IssueTrackerView::displayIssue(int id) {
+  std::vector<int> commentIdsShown;
+  try {
+    Issue issue = controller->getIssue(id);
+    std::cout << "=== Issue Details ===\n";
+    std::cout << "Id: " << issue.getId() << "\n";
+    std::cout << "Title: " << issue.getTitle() << "\n";
+    std::cout << "Author: " << issue.getAuthorId() << "\n";
+    std::cout << "Status: " << issue.getStatus() << "\n";
+    if (issue.hasAssignee()) {
+      std::cout << "Assignee: " << issue.getAssignedTo() << "\n";
+    } else {
+      std::cout << "Assignee: (unassigned)\n";
+    }
+
+    auto tags = issue.getTags();
+    if (!tags.empty()) {
+      std::cout << "Tags: ";
+      bool first = true;
+      for (const auto& tag : tags) {
+        if (!first) {
+          std::cout << ", ";
+        }
+        std::cout << tag;
+        first = false;
+      }
+      std::cout << "\n";
+    }
+
+    auto comments = controller->getAllComments(id);
+    if (!comments.empty()) {
+      std::cout << "\nComments:\n";
+      int displayIndex = 1;
+      for (const auto& c : comments) {
+        std::cout << "  [" << displayIndex << "] "
+                  << "Id: " << c.getId()
+                  << " | Author: " << c.getAuthorId()
+                  << " | " << c.getText() << "\n";
+        commentIdsShown.push_back(c.getId());
+        ++displayIndex;
+      }
+    } else {
+      std::cout << "No comments.\n";
+    }
+  } catch (const std::out_of_range&) {
+    std::cout << "Issue not found.\n";
+  }
+  return commentIdsShown;
+}
+
+void IssueTrackerView::addTag() {
+  if (!ensureIssuesAvailable("add a tag")) {
+    return;
+  }
+
+  std::cout << "=== Add Tag to Issue ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  std::string tag = readLine("Enter tag: ");
+  if (tag.empty()) {
+    std::cout << "Tag must not be empty.\n";
+    return;
+  }
+
+  if (controller->addTagToIssue(issueId, tag)) {
+    std::cout << "Tag added.\n";
+  } else {
+    std::cout << "Failed to add tag.\n";
+  }
+}
+
+void IssueTrackerView::removeTag() {
+  if (!ensureIssuesAvailable("remove a tag")) {
+    return;
+  }
+
+  std::cout << "=== Remove Tag from Issue ===\n";
+  int issueId = getissueId();
+  if (issueId <= 0) {
+    std::cout << "Invalid issue id.\n";
+    return;
+  }
+
+  Issue issue = controller->getIssue(issueId);
+  auto tags = issue.getTags();
+  if (tags.empty()) {
+    std::cout << "This issue has no tags.\n";
+    return;
+  }
+
+  std::vector<std::string> tagList(tags.begin(), tags.end());
+  std::cout << "Existing tags:\n";
+  for (std::size_t i = 0; i < tagList.size(); ++i) {
+    std::cout << " " << (i + 1) << ") " << tagList[i] << "\n";
+  }
+  std::cout << "Choice (1-" << tagList.size() << "): ";
+  int idx = getvalidInt(static_cast<int>(tagList.size()));
+  if (idx <= 0 || static_cast<std::size_t>(idx) > tagList.size()) {
+    std::cout << "Invalid choice.\n";
+    return;
+  }
+  const std::string& tagToRemove = tagList[static_cast<std::size_t>(idx - 1)];
+  if (controller->removeTagFromIssue(issueId, tagToRemove)) {
+    std::cout << "Tag removed.\n";
+  } else {
+    std::cout << "Failed to remove tag.\n";
+  }
+}
+
+void IssueTrackerView::viewIssuesByStatus() {
+  std::cout << "=== Issues by Status ===\n";
+  auto issues = controller->listAllIssues();
   if (issues.empty()) {
     std::cout << "No issues found.\n";
     return;
@@ -269,299 +683,119 @@ void IssueTrackerView::listIssues() {
   std::vector<Issue> todo;
   std::vector<Issue> inProgress;
   std::vector<Issue> done;
+  std::vector<Issue> other;
 
   for (const auto& issue : issues) {
-    const std::string& status = issue.getStatus();
-    if (status == "In Progress") {
+    const std::string status = issue.getStatus();
+    if (status == "To Be Done") {
+      todo.push_back(issue);
+    } else if (status == "In Progress") {
       inProgress.push_back(issue);
     } else if (status == "Done") {
       done.push_back(issue);
     } else {
-      todo.push_back(issue);
+      other.push_back(issue);
     }
   }
 
-  auto printGroup = [&](const std::string& header,
-                        const std::vector<Issue>& group) {
-    std::cout << "\n[" << header << "]\n";
+  std::cout << "Summary:\n";
+  std::cout << "  To Be Done : " << todo.size() << " issue(s)\n";
+  std::cout << "  In Progress: " << inProgress.size() << " issue(s)\n";
+  std::cout << "  Done       : " << done.size() << " issue(s)\n";
+  if (!other.empty()) {
+    std::cout << "  Other      : " << other.size() << " issue(s)\n";
+  }
+
+  auto printGroup = [](const std::string& label,
+                       const std::vector<Issue>& group) {
     if (group.empty()) {
-      std::cout << "  (none)\n";
       return;
     }
-
+    std::cout << "\n" << label << ":\n";
     for (const auto& issue : group) {
-      std::cout << "ID: " << issue.getId() << "\n";
-      std::cout << "Author: " << issue.getAuthorId() << "\n";
-      std::cout << "Title: " << issue.getTitle() << "\n";
-      std::cout << "Status: " << issue.getStatus() << "\n";
-
-      std::int64_t timestamp = issue.getCreatedAt();
-      std::time_t time_t_value =
-          static_cast<std::time_t>(timestamp / 1000);
-
-      char time_buffer[80];
-      std::strftime(time_buffer, sizeof(time_buffer),
-                    "%Y-%m-%d %H:%M:%S", std::localtime(&time_t_value));
-      std::cout << "Created: " << time_buffer << "\n";
-
-      if (issue.hasDescriptionComment()) {
-        const Comment* desc =
-            issue.findCommentById(issue.getDescriptionCommentId());
-        if (desc) {
-          std::cout << "Description: " << desc->getText() << "\n";
-        } else {
-          std::cout << "Description comment ID: "
-                    << issue.getDescriptionCommentId() << "\n";
-        }
-      } else {
-        std::cout << "Description: (none)\n";
-      }
-
+      std::cout << "  Id: " << issue.getId()
+                << " | Title: " << issue.getTitle();
       if (issue.hasAssignee()) {
-        std::cout << "Assigned To: " << issue.getAssignedTo() << "\n";
-      } else {
-        std::cout << "Assigned To: (unassigned)\n";
-      }
-
-      // ✅ TAG DISPLAY LOGIC (ADDED)
-      std::cout << "Tags: ";
-      const auto& tags = issue.getTags();
-      if (tags.empty()) {
-        std::cout << "(none)";
-      } else {
-        for (const auto& tag : tags) {
-          std::cout << "[" << tag << "] ";
-        }
+        std::cout << " | Assignee: " << issue.getAssignedTo();
       }
       std::cout << "\n";
-
-      std::cout << "Comments: " <<
-      issue.getCommentIds().size() << "\n\n";
     }
   };
 
-  std::cout << "\n--- All Issues ---\n";
   printGroup("To Be Done", todo);
   printGroup("In Progress", inProgress);
   printGroup("Done", done);
+  printGroup("Other / Unknown", other);
 }
 
-
-//prints a list of all the issues that dont
-//have users assigned
-void IssueTrackerView::listUnassignedIssues() {
-  std::vector<Issue> issues = controller->listAllUnassignedIssues();
-  if (issues.empty()) {
-    std::cout << "No unassigned issues.\n";
-    return;
-  }
-
-  std::cout << "\n--- Unassigned Issues ---\n";
-  for (const auto& issue : issues) {
-    std::cout << "ID: " << issue.getId() << "\n";
-    std::cout << "Author: " << issue.getAuthorId() << "\n";
-    std::cout << "Title: " << issue.getTitle() << "\n";
-    std::cout << "Status: " << issue.getStatus() << "\n";
-    std::cout << "Description Comment ID: ";
-    if (issue.hasDescriptionComment()) {
-      std::cout << issue.getDescriptionCommentId() << "\n";
-    } else {
-      std::cout << "(none)\n";
-    }
-    std::cout << "Comments: " << issue.getCommentIds().size() << "\n\n";
-  }
-}
-
-//prompts user to find an issue connected to
-// a specific user id
-void IssueTrackerView::findIssuesByUser() {
-    std::string userId;
-    std::cout << "Enter User ID: ";
-    std::getline(std::cin, userId);
-
-    std::vector<Issue> issues = controller->findIssuesByUserId(userId);
-    for (const auto& i : issues) {
-        std::cout << "ID: " << i.getId()
-                  << " | Title: " << i.getTitle()
-                  << " | Status: " << i.getStatus() << "\n";
-    }
-}
-
-//prompts the creation of user with name
-// and role of user
-void IssueTrackerView::createUser() {
-    std::string name;
-    std::string role;
-
-    do {
-        std::cout << "Enter username: ";
-        std::getline(std::cin, name);
-        if (name.empty()) {
-            std::cout << "Input error: Username cannot be empty. "
-                      << "Please try again.\n";
-        }
-    } while (name.empty());
-
-    int num_of_roles = 3;
-    std::cout << "1) Owner\n2) Developer\n3) Maintainer\n"
-              << "Enter role: ";
-
-    int userinput = getvalidInt(num_of_roles);
-    switch (userinput) {
-        case 1: role = "Owner"; break;
-        case 2: role = "Developer"; break;
-        case 3: role = "Maintainer"; break;
-    }
-
-    User user = controller->createUser(name, role);
-    std::cout << "User created: " << user.getName()
-              << " (" << user.getRole() << ")\n";
-}
-
-//prompts the user asking them to list all users
-//activates all users, and lists them
-void IssueTrackerView::listUsers() {
-    std::vector<User> users = controller->listAllUsers();
-    if (users.empty()) {
-        std::cout << "No users found.\n";
-        return;
-    }
-
-    std::cout << "\n--- All Users ---\n";
-    for (const auto& user : users) {
-        std::cout << "Name: " << user.getName()
-                  << ", Role: " << user.getRole() << "\n";
-    }
-}
-
-//prompts user to remove an existing user
-void IssueTrackerView::removeUser() {
-    std::string userId;
-    std::cout << "Enter User ID to remove: ";
-    std::getline(std::cin, userId);
-
-    bool success = controller->removeUser(userId);
-    std::cout << (success ? "User removed successfully.\n"
-                          : "Failed to remove user.\n");
-}
-
-//updates a user with correct inputs
-void IssueTrackerView::updateUser() {
-    std::string userId, field, value;
-    std::cout << "Enter User ID to update: ";
-    std::getline(std::cin, userId);
-
-    std::cout << "Select field to update:\n1) Name\n2) Role\n";
-    int choice = getvalidInt(2);
+void IssueTrackerView::run() {
+  bool done = false;
+  while (!done) {
+    displayMenu();
+    std::cout << "Enter choice: ";
+    int choice = readIntChoice();
     switch (choice) {
-        case 1:
-            field = "name";
-            break;
-        case 2:
-            field = "role";
-            break;
+      case 1:
+        createIssue();
+        break;
+      case 2:
+        updateIssue();
+        break;
+      case 3:
+        assignUser();
+        break;
+      case 4:
+        unassignUser();
+        break;
+      case 5:
+        deleteIssue();
+        break;
+      case 6:
+        listIssues();
+        break;
+      case 7:
+        listUnassignedIssues();
+        break;
+      case 8:
+        findIssuesByUser();
+        break;
+      case 9:
+        addComment();
+        break;
+      case 10:
+        updateComment();
+        break;
+      case 11:
+        deleteComment();
+        break;
+      case 12:
+        createUser();
+        break;
+      case 13:
+        listUsers();
+        break;
+      case 14:
+        removeUser();
+        break;
+      case 15:
+        updateUser();
+        break;
+      case 16:
+        addTag();
+        break;
+      case 17:
+        removeTag();
+        break;
+      case 18:
+        viewIssuesByStatus();
+        break;
+      case 0:
+        done = true;
+        std::cout << "Exiting Issue Tracker.\n";
+        break;
+      default:
+        std::cout << "Unknown choice. Try again.\n";
+        break;
     }
-
-    std::cout << "Enter new value: ";
-    std::getline(std::cin, value);
-
-    bool success = controller->updateUser(userId, field, value);
-    std::cout << (success ? "User updated successfully.\n"
-                          : "Failed to update user.\n");
-}
-
-//displays specific issue
-// text
-std::vector<int> IssueTrackerView::displayIssue(int id) {
-    std::vector<int> displayedCommentIds;
-
-    time_t now = time(0);
-    char timeStr[26];
-    ctime_r(&now, timeStr);
-
-    Issue iss = controller->getIssue(id);
-    std::vector<Comment> comments = controller->getallComments(id);
-
-    std::cout << "ID: " << iss.getId() << "\n";
-    std::cout << "Author: " << iss.getAuthorId() << "\n";
-    std::cout << "Title: " << iss.getTitle() << "\n";
-    std::cout << "Status: " << iss.getStatus() << "\n";
-    std::cout << "Amount of Comments: "
-              << iss.getCommentIds().size() - 1 << "\n";
-    std::cout << "Time: " << timeStr;
-
-    int i = 1;
-    for (const auto& it : comments) {
-        std::cout << i << " " << it.getText() << std::endl;
-        displayedCommentIds.push_back(it.getId());
-        i++;
-    }
-    return displayedCommentIds;
-}
-
-//add comments to an issue
-void IssueTrackerView:: addComIssue() {
-  int issueId;
-  std::string text, authorId;
-  issueId = getissueId();
-  authorId = getuserId();
-  Comment newcom = controller->addCommentToIssue(issueId, text, authorId);
-  std::cout << "new comment has been added with id "
-            << newcom.getId() << std::endl;
-}
-
-//updates existing comment
-void IssueTrackerView:: updateComment() {
-  int issueId, commentId, i = 1;
-  std::string text;
-  issueId = getissueId();
-  std::vector <Comment> comments = controller->getallComments(issueId);
-  std::cout << "Available Comments:\n";
-  for (auto com : comments) {
-    std::cout << i << ". " << com.getText() <<std::endl;
-    i++;
   }
-  std::cout << "Pick an comment to edit" << std::endl;
-  int choice = getvalidInt(comments.size());
-  commentId = comments[choice].getId();
-  std::cout << "Enter new text: ";
-  std::getline(std::cin, text);
-  controller->updateComment(issueId, commentId, text);
-}
-
-//deletes existing comment
-void IssueTrackerView:: deleteComment() {
-  int issueId, commentId, i = 1;
-  issueId = getissueId();
-  std::vector <Comment> comments = controller->getallComments(issueId);
-  for (auto com : comments) {
-    std::cout << i << ". " << com.getText() <<std::endl;
-    i++;
-  }
-  std::cout << "Pick a comment to delete" << std::endl;
-  int choice = getvalidInt(comments.size());
-  commentId = comments[choice].getId();
-  controller->deleteComment(issueId, commentId);
-}
-
-void IssueTrackerView::addTag() {
-  int issueId = getissueId();
-  std::string tag;
-
-  std::cout << "Enter tag: ";
-  std::getline(std::cin, tag);
-
-  bool success = controller->addTagToIssue(issueId, tag);
-  std::cout << (success ? "Tag added.\n" : "Failed to add tag.\n");
-}
-
-void IssueTrackerView::removeTag() {
-  int issueId = getissueId();
-  std::string tag;
-
-  std::cout << "Enter tag to remove: ";
-  std::getline(std::cin, tag);
-
-  bool success = controller->removeTagFromIssue(issueId, tag);
-  std::cout << (success ? "Tag removed.\n" : "Failed to remove tag.\n");
 }
