@@ -1,3 +1,5 @@
+#include "IssueTrackerView.hpp"
+
 #include <ctime>
 
 #include <functional>
@@ -8,8 +10,6 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "IssueTrackerView.hpp"
 
 using ::testing::_;
 using ::testing::Return;
