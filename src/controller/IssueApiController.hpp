@@ -70,6 +70,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     dto->title = i.getTitle().c_str();
     dto->description = "";
     dto->assignedTo = i.hasAssignee() ? i.getAssignedTo().c_str() : "";
+    dto->status = i.getStatus().c_str();
 
     auto ids = oatpp::List<oatpp::Int32>::createShared();
     for (int cid : i.getCommentIds()) {
@@ -516,6 +517,35 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     dto->active = true;
     return createDtoResponse(Status::CODE_200, dto);
   }
+
+  // ---- Status Endpoints ---
+
+ENDPOINT("PUT", "/issues/{id}/status", updateIssueStatus,
+         PATH(Int32, id),
+         BODY_STRING(String, status)) {
+
+  dbService->getIssueService().updateIssueField(id, "status", asStdString(status));
+  return createResponse(Status::CODE_200, "Status updated");
+}
+
+ENDPOINT("GET", "/issues/status/{status}", getIssuesByStatus,
+         PATH(oatpp::String, status)) {
+
+  std::string statusStr = asStdString(status);
+
+  std::transform(statusStr.begin(), statusStr.end(), statusStr.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+
+  auto results = issues().findIssuesByStatus(statusStr);
+
+  auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+  for (auto& i : results) {
+    list->push_back(issueToDto(i));
+  }
+
+  return createDtoResponse(Status::CODE_200, list);
+}
+
 };
 
 #include OATPP_CODEGEN_END(ApiController)

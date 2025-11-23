@@ -48,6 +48,10 @@ class IssueService {
     return controller_.assignUserToIssue(issueId, userId);
   }
 
+  std::vector<Issue> findIssuesByStatus(const std::string& status) {
+    return controller_.findIssuesByStatus(status);
+  }
+
   bool unassignUserFromIssue(int issueId) {
     return controller_.unassignUserFromIssue(issueId);
   }
