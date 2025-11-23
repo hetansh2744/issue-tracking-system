@@ -186,7 +186,7 @@ class IssueTrackerController {
      * @param user_name The ID of the user to search for
      * @return std::vector<Issue> List of issues assigned to the user
      */
-    virtual std::vector<Issue> findIssuesByUserId(
+    std::vector<Issue> findIssuesByUserId(
         const std::string& user_name);
 
     /**

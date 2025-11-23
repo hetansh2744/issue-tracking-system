@@ -134,8 +134,8 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
     const std::string& text, const std::string& authorId) {
     try {
         if (text.empty() || authorId.empty()) {
-            // invalid input → return "empty" comment
-            return Comment(0, "", "");
+            // invalid input → return placeholder comment
+            return Comment();
         }
 
         // make sure the issue exists
@@ -155,7 +155,7 @@ Comment IssueTrackerController::addCommentToIssue(int issueId,
         return savedComment;
     } catch (const std::out_of_range&) {
         // issue or user not found → behave gracefully
-        return Comment(0, "", "");
+        return Comment();
     }
 }
 
@@ -242,8 +242,19 @@ std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
 //allows view to access issues by userid
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
-    return repo->findIssues(user_name);
+
+    std::string target = user_name;
+    std::transform(target.begin(), target.end(),
+    target.begin(), ::tolower);
+
+    return repo->findIssues([&](const Issue& issue) {
+        std::string author = issue.getAuthorId();
+        std::transform(author.begin(), author.end(),
+        author.begin(), ::tolower);
+        return author == target;
+    });
 }
+
 
 //lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {

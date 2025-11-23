@@ -227,6 +227,74 @@ paths:
         '404':
           description: User not found
 
+  /databases:
+    get:
+      summary: List available databases
+      responses:
+        '200':
+          description: Databases available to the service
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Database'
+    post:
+      summary: Create a new database file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseCreate'
+      responses:
+        '201':
+          description: Database created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Database'
+        '400':
+          description: Invalid database name
+        '409':
+          description: Database already exists
+
+  /databases/{name}:
+    delete:
+      summary: Delete a database file
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Database deleted
+        '404':
+          description: Database not found
+        '409':
+          description: Cannot delete the active database
+
+  /databases/{name}/switch:
+    post:
+      summary: Switch the active database
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Active database changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Database'
+        '404':
+          description: Database not found
+
 components:
   schemas:
 
@@ -272,6 +340,22 @@ components:
         field:
           type: string
         value:
+          type: string
+
+    Database:
+      type: object
+      properties:
+        name:
+          type: string
+        active:
+          type: boolean
+
+    DatabaseCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
           type: string
 
     Comment:

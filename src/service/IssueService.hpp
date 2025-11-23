@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "IssueTrackerController.hpp"
 #include "IssueRepository.hpp"
@@ -18,7 +19,10 @@ class IssueService {
 
  public:
   IssueService()
-      : repo_(createIssueRepository()),
+      : IssueService(std::unique_ptr<IssueRepository>(createIssueRepository())) {}
+
+  explicit IssueService(std::unique_ptr<IssueRepository> repo)
+      : repo_(std::move(repo)),
         controller_(repo_.get()) {}
 
   Issue createIssue(const std::string& title,
@@ -53,6 +57,7 @@ class IssueService {
     return controller_.listAllUnassignedIssues();
   }
 
+  // ✅ KEEP ONLY THIS ONE
   std::vector<Issue> findIssuesByUserId(const std::string& userId) {
     return controller_.findIssuesByUserId(userId);
   }
@@ -93,6 +98,14 @@ class IssueService {
 
   std::vector<User> listAllUsers() {
     return controller_.listAllUsers();
+  }
+
+  bool addTagToIssue(int issueId, const std::string& tag) {
+    return controller_.addTagToIssue(issueId, tag);
+  }
+
+  bool removeTagFromIssue(int issueId, const std::string& tag) {
+    return controller_.removeTagFromIssue(issueId, tag);
   }
 };
 
