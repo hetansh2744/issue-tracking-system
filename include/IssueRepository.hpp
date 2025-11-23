@@ -9,6 +9,7 @@
 #include "Comment.hpp"
 #include "Issue.hpp"
 #include "User.hpp"
+#include "Milestone.hpp"
 
 /**
  * @brief Abstract repository interface for issue tracking data operations
@@ -171,6 +172,13 @@ class IssueRepository {
   /**
    * @brief Virtual destructor for proper inheritance support
    */
+virtual Milestone saveMilestone(const Milestone& milestone) = 0;
+virtual Milestone getMilestone(int milestoneId) const = 0;
+virtual bool deleteMilestone(int milestoneId, bool cascade = false) = 0;
+virtual std::vector<Milestone> listAllMilestones() const = 0;
+virtual bool addIssueToMilestone(int milestoneId, int issueId) = 0;
+virtual bool removeIssueFromMilestone(int milestoneId, int issueId) = 0;
+virtual std::vector<Issue> getIssuesForMilestone(int milestoneId) const = 0;
   virtual ~IssueRepository() = default;
 };
 

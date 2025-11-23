@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <ctime>
 
 namespace {
 class SqliteStmt {
@@ -432,4 +433,222 @@ std::vector<User> SQLiteIssueRepository::listAllUsers() const {
                users.emplace_back(columnText(stmt, 0), columnText(stmt, 1));
              });
   return users;
+}
+
+// ==================== MILESTONE IMPLEMENTATIONS ====================
+
+bool SQLiteIssueRepository::milestoneExists(int milestoneId) const {
+  return exists(
+    "SELECT 1 FROM milestones WHERE id = ? LIMIT 1;",
+    [milestoneId](sqlite3_stmt* stmt) { 
+      sqlite3_bind_int(stmt, 1, milestoneId); 
+    }
+  );
+}
+
+Milestone SQLiteIssueRepository::saveMilestone(const Milestone& milestone) {
+  Milestone stored = milestone;
+  
+  // If milestone doesn't have a persistent ID, INSERT
+  if (!stored.hasPersistentId()) {
+    SqliteStmt stmt(
+      db_,
+      "INSERT INTO milestones (name, description, start_date, end_date, created_at) "
+      "VALUES (?, ?, ?, ?, ?);");
+    
+    sqlite3_bind_text(stmt.get(), 1, stored.getName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 2, stored.getDescription().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 3, stored.getStartDate().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 4, stored.getEndDate().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt.get(), 5, std::time(nullptr)); // Current timestamp
+    
+    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+      throw std::runtime_error("Failed to insert milestone");
+    }
+    
+    int newId = static_cast<int>(sqlite3_last_insert_rowid(db_));
+    stored.setIdForPersistence(newId);
+    
+    // Save all associated issues
+    for (int issueId : stored.getIssueIds()) {
+      addIssueToMilestone(newId, issueId);
+    }
+    
+    return getMilestone(newId);
+  }
+  
+  // UPDATE existing milestone
+  if (!milestoneExists(stored.getId())) {
+    throw std::invalid_argument("Milestone with given ID does not exist: " + 
+                                std::to_string(stored.getId()));
+  }
+  
+  SqliteStmt stmt(
+    db_,
+    "UPDATE milestones SET name = ?, description = ?, start_date = ?, end_date = ? "
+    "WHERE id = ?;");
+  
+  sqlite3_bind_text(stmt.get(), 1, stored.getName().c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt.get(), 2, stored.getDescription().c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt.get(), 3, stored.getStartDate().c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt.get(), 4, stored.getEndDate().c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_int(stmt.get(), 5, stored.getId());
+  
+  if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    throw std::runtime_error("Failed to update milestone");
+  }
+  
+  // Update issue associations (remove all, then re-add)
+  SqliteStmt deleteStmt(db_, "DELETE FROM milestone_issues WHERE milestone_id = ?;");
+  sqlite3_bind_int(deleteStmt.get(), 1, stored.getId());
+  sqlite3_step(deleteStmt.get());
+  
+  for (int issueId : stored.getIssueIds()) {
+    addIssueToMilestone(stored.getId(), issueId);
+  }
+  
+  return getMilestone(stored.getId());
+}
+
+Milestone SQLiteIssueRepository::getMilestone(int milestoneId) const {
+  SqliteStmt stmt(
+    db_,
+    "SELECT id, name, description, start_date, end_date, created_at "
+    "FROM milestones WHERE id = ? LIMIT 1;");
+  
+  sqlite3_bind_int(stmt.get(), 1, milestoneId);
+  
+  if (sqlite3_step(stmt.get()) != SQLITE_ROW) {
+    throw std::invalid_argument("Milestone with given ID does not exist");
+  }
+  
+  int id = sqlite3_column_int(stmt.get(), 0);
+  std::string name = columnText(stmt.get(), 1);
+  std::string description = columnText(stmt.get(), 2);
+  std::string startDate = columnText(stmt.get(), 3);
+  std::string endDate = columnText(stmt.get(), 4);
+  
+  Milestone milestone(id, name, description, startDate, endDate);
+  
+  // Load all associated issues
+  std::vector<Issue> issues = getIssuesForMilestone(milestoneId);
+  for (const auto& issue : issues) {
+    milestone.addIssue(issue.getId());
+  }
+  
+  return milestone;
+}
+
+bool SQLiteIssueRepository::deleteMilestone(int milestoneId, bool cascade) {
+  if (!milestoneExists(milestoneId)) {
+    return false;
+  }
+  
+  if (cascade) {
+    // Delete all issues associated with this milestone
+    std::vector<Issue> issues = getIssuesForMilestone(milestoneId);
+    for (const auto& issue : issues) {
+      deleteIssue(issue.getId());
+    }
+  } else {
+    // Just remove the associations
+    SqliteStmt stmt(db_, "DELETE FROM milestone_issues WHERE milestone_id = ?;");
+    sqlite3_bind_int(stmt.get(), 1, milestoneId);
+    sqlite3_step(stmt.get());
+  }
+  
+  // Delete the milestone itself
+  SqliteStmt stmt(db_, "DELETE FROM milestones WHERE id = ?;");
+  sqlite3_bind_int(stmt.get(), 1, milestoneId);
+  
+  if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    throw std::runtime_error("Failed to delete milestone");
+  }
+  
+  return sqlite3_changes(db_) > 0;
+}
+
+std::vector<Milestone> SQLiteIssueRepository::listAllMilestones() const {
+  std::vector<Milestone> milestones;
+  
+  forEachRow(
+    "SELECT id FROM milestones ORDER BY id ASC;",
+    {},
+    [this, &milestones](sqlite3_stmt* stmt) {
+      int id = sqlite3_column_int(stmt, 0);
+      milestones.push_back(getMilestone(id));
+    }
+  );
+  
+  return milestones;
+}
+
+bool SQLiteIssueRepository::addIssueToMilestone(int milestoneId, int issueId) {
+  if (!milestoneExists(milestoneId)) {
+    throw std::invalid_argument("Milestone does not exist");
+  }
+  
+  if (!issueExists(issueId)) {
+    throw std::invalid_argument("Issue does not exist");
+  }
+  
+  // Check if already associated
+  if (exists(
+    "SELECT 1 FROM milestone_issues WHERE milestone_id = ? AND issue_id = ? LIMIT 1;",
+    [milestoneId, issueId](sqlite3_stmt* stmt) {
+      sqlite3_bind_int(stmt, 1, milestoneId);
+      sqlite3_bind_int(stmt, 2, issueId);
+    }
+  )) {
+    return true; // Already exists, no error
+  }
+  
+  SqliteStmt stmt(
+    db_,
+    "INSERT INTO milestone_issues (milestone_id, issue_id) VALUES (?, ?);");
+  
+  sqlite3_bind_int(stmt.get(), 1, milestoneId);
+  sqlite3_bind_int(stmt.get(), 2, issueId);
+  
+  if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    throw std::runtime_error("Failed to add issue to milestone");
+  }
+  
+  return true;
+}
+
+bool SQLiteIssueRepository::removeIssueFromMilestone(int milestoneId, int issueId) {
+  SqliteStmt stmt(
+    db_,
+    "DELETE FROM milestone_issues WHERE milestone_id = ? AND issue_id = ?;");
+  
+  sqlite3_bind_int(stmt.get(), 1, milestoneId);
+  sqlite3_bind_int(stmt.get(), 2, issueId);
+  
+  if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    throw std::runtime_error("Failed to remove issue from milestone");
+  }
+  
+  return sqlite3_changes(db_) > 0;
+}
+
+std::vector<Issue> SQLiteIssueRepository::getIssuesForMilestone(int milestoneId) const {
+  std::vector<Issue> issues;
+  
+  forEachRow(
+    "SELECT issue_id FROM milestone_issues WHERE milestone_id = ? ORDER BY issue_id ASC;",
+    [milestoneId](sqlite3_stmt* stmt) {
+      sqlite3_bind_int(stmt, 1, milestoneId);
+    },
+    [this, &issues](sqlite3_stmt* stmt) {
+      int issueId = sqlite3_column_int(stmt, 0);
+      try {
+        issues.push_back(getIssue(issueId));
+      } catch (const std::invalid_argument&) {
+        // Issue was deleted but junction table entry remains (shouldn't happen with CASCADE)
+      }
+    }
+  );
+  
+  return issues;
 }

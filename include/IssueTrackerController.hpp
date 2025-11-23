@@ -9,6 +9,7 @@
 #include "User.hpp"
 #include "Issue.hpp"
 #include "Comment.hpp"
+#include "Milestone.hpp"
 
 /**
  * @brief Main controller for the issue tracking system
@@ -198,6 +199,96 @@ class IssueTrackerController {
     bool addTagToIssue(int issueId, const std::string& tag);
 
     bool removeTagFromIssue(int issueId, const std::string& tag);
+ Milestone createMilestone(const std::string& name,
+                           const std::string& desc,
+                           const std::string& start_date,
+                           const std::string& end_date);
+  
+  /**
+   * Get a milestone by its ID
+   * @param milestoneId - The milestone ID
+   * @return Milestone object with all associated issues
+   * @throws std::invalid_argument if milestone doesn't exist
+   */
+  Milestone getMilestone(int milestoneId);
+  
+  /**
+   * Update a milestone's information
+   * @param milestoneId - The milestone ID
+   * @param field - Field to update ("name", "description", "start_date", "end_date")
+   * @param value - New value for the field
+   * @return true if successful, false otherwise
+   */
+  bool updateMilestoneField(int milestoneId,
+                           const std::string& field,
+                           const std::string& value);
+  
+  /**
+   * Delete a milestone
+   * @param milestoneId - The milestone ID to delete
+   * @param cascade - If true, also delete all associated issues
+   * @return true if successfully deleted, false otherwise
+   */
+  bool deleteMilestone(int milestoneId, bool cascade = false);
+  
+  /**
+   * List all milestones in the system
+   * @return Vector of all Milestone objects
+   */
+  std::vector<Milestone> listAllMilestones();
+  
+  /**
+   * Add an existing issue to a milestone
+   * @param milestoneId - The milestone ID
+   * @param issueId - The issue ID to add
+   * @return true if successful, false otherwise
+   */
+  bool addIssueToMilestone(int milestoneId, int issueId);
+  
+  /**
+   * Remove an issue from a milestone
+   * @param milestoneId - The milestone ID
+   * @param issueId - The issue ID to remove
+   * @return true if successful, false otherwise
+   */
+  bool removeIssueFromMilestone(int milestoneId, int issueId);
+  
+  /**
+   * Get all issues belonging to a specific milestone
+   * @param milestoneId - The milestone ID
+   * @return Vector of Issue objects in this milestone
+   */
+  std::vector<Issue> getIssuesForMilestone(int milestoneId);
+  
+  /**
+   * Get milestone statistics (issue count, completion percentage, etc.)
+   * @param milestoneId - The milestone ID
+   * @return Statistics as formatted string or structured data
+   */
+  std::string getMilestoneStatistics(int milestoneId);
+  
+  /**
+   * Find milestones by date range
+   * @param startDate - Start date filter (optional, empty for no filter)
+   * @param endDate - End date filter (optional, empty for no filter)
+   * @return Vector of Milestone objects within the date range
+   */
+  std::vector<Milestone> findMilestonesByDateRange(
+      const std::string& startDate,
+      const std::string& endDate);
+  
+  /**
+   * Get active milestones (current date is between start and end date)
+   * @return Vector of currently active Milestone objects
+   */
+  std::vector<Milestone> getActiveMilestones();
+  
+  /**
+   * Get completed milestones (all issues closed)
+   * @return Vector of completed Milestone objects
+   */
+  std::vector<Milestone> getCompletedMilestones();
 };
+
 
 #endif  // ISSUE_TRACKER_CONTROLLER_H
