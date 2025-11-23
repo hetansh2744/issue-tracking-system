@@ -1,3 +1,4 @@
+// src/controller/IssueTrackerController.cpp
 #include "IssueTrackerController.hpp"
 
 #include <algorithm>
@@ -70,7 +71,8 @@ bool IssueTrackerController::updateIssueField(int id,
 
     } else if (field == "status") {
       // Normalize possible numeric input ("1"/"2"/"3") to status text,
-      // in case the view ever passes the numeric choice instead of the label.
+      // in case the view or API ever passes the numeric choice instead of
+      // the label.
       std::string normalized = value;
 
       if (normalized == "1") {
@@ -137,7 +139,7 @@ std::vector<Comment> IssueTrackerController::getallComments(int issueId) {
   return repo->getAllComments(issueId);
 }
 
-// allows the view to display a single comment
+// allows the view / API to display a single comment
 Comment IssueTrackerController::getComment(int issueId, int commentId) {
   return repo->getComment(issueId, commentId);
 }
@@ -172,7 +174,7 @@ Comment IssueTrackerController::addCommentToIssue(
   }
 }
 
-// allows the view to update a comment
+// allows the view / API to update a comment
 bool IssueTrackerController::updateComment(int issueId,
                                            int commentId,
                                            const std::string& newText) {
@@ -205,7 +207,7 @@ bool IssueTrackerController::deleteComment(int issueId, int commentId) {
   }
 }
 
-// takes input from view and creates a new user
+// takes input (from view / API) and creates a new user
 User IssueTrackerController::createUser(const std::string& name,
                                         const std::string& role) {
   if (name.empty() || role.empty()) {
@@ -215,7 +217,7 @@ User IssueTrackerController::createUser(const std::string& name,
   return repo->saveUser(newUser);
 }
 
-// allows the view to change user name/role
+// allows the view / API to change user name/role
 bool IssueTrackerController::updateUser(const std::string& userId,
                                         const std::string& field,
                                         const std::string& value) {
@@ -254,6 +256,20 @@ std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
   return repo->findIssues(user_name);
+}
+
+// NEW: returns issues filtered by exact status text ("To Be Done", etc.)
+std::vector<Issue> IssueTrackerController::findIssuesByStatus(
+    const std::string& status) {
+  std::vector<Issue> all = repo->listIssues();
+  std::vector<Issue> filtered;
+
+  for (const auto& issue : all) {
+    if (issue.getStatus() == status) {
+      filtered.push_back(issue);
+    }
+  }
+  return filtered;
 }
 
 // lists all the users created
