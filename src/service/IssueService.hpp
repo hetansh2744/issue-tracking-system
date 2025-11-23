@@ -53,6 +53,7 @@ class IssueService {
     return controller_.listAllUnassignedIssues();
   }
 
+  // ✅ KEEP ONLY THIS ONE
   std::vector<Issue> findIssuesByUserId(const std::string& userId) {
     return controller_.findIssuesByUserId(userId);
   }

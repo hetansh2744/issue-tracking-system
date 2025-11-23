@@ -242,8 +242,19 @@ std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
 //allows view to access issues by userid
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
-    return repo->findIssues(user_name);
+
+    std::string target = user_name;
+    std::transform(target.begin(), target.end(),
+    target.begin(), ::tolower);
+
+    return repo->findIssues([&](const Issue& issue) {
+        std::string author = issue.getAuthorId();
+        std::transform(author.begin(), author.end(),
+        author.begin(), ::tolower);
+        return author == target;
+    });
 }
+
 
 //lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {

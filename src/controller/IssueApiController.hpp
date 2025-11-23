@@ -296,6 +296,36 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
               : createResponse(Status::CODE_404, "Not found");
   }
 
+    ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
+           PATH(oatpp::String, id)) {
+
+    // case-insensitive lookup of the user
+    std::string input = toLower(asStdString(id));
+    std::string realId;
+    bool found = false;
+
+    for (const auto& user : service->listAllUsers()) {
+      if (toLower(user.getName()) == input) {
+        realId = user.getName();
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return createResponse(Status::CODE_404, "User not found");
+    }
+
+    // get issues for that user
+    auto issues = service->findIssuesByUserId(realId);
+    auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+    for (auto& issue : issues) {
+      list->push_back(issueToDto(issue));
+    }
+
+    return createDtoResponse(Status::CODE_200, list);
+  }
+
   // ---- Tag endpoints ----
 
 ENDPOINT("POST", "/issues/{id}/tags", addTag,
