@@ -16,6 +16,11 @@ class MockIssueRepository : public IssueRepository {
               (const, override));
   MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
+  MOCK_METHOD(bool, addTagToIssue,
+            (int issueId, const std::string& tag), (override));
+  MOCK_METHOD(bool, removeTagFromIssue,
+            (int issueId, const std::string& tag), (override));
+
   MOCK_METHOD(Comment, saveComment, (int issueId, const Comment& comment),
               (override));
   MOCK_METHOD(Comment, getComment, (int issueId, int commentId),
