@@ -1,9 +1,9 @@
 #include "SQLiteIssueRepository.hpp"
 
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <functional>
 
 namespace {
 
@@ -66,23 +66,30 @@ void SQLiteIssueRepository::execOrThrow(const std::string& sql) const {
 }
 
 void SQLiteIssueRepository::initializeSchema() {
-  // NOTE: we add a status column for issues so that issue status can
-  // be persisted. Tags are NOT changed here.
+  // Add a status column so issue status can be persisted.
+  // Tags are NOT persisted here.
   const char* statements[] = {
-      "CREATE TABLE IF NOT EXISTS issues (id INTEGER PRIMARY KEY "
-      "AUTOINCREMENT, author_id TEXT NOT NULL, title TEXT NOT NULL, "
+      "CREATE TABLE IF NOT EXISTS issues ("
+      "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+      "author_id TEXT NOT NULL, "
+      "title TEXT NOT NULL, "
       "description_comment_id INTEGER NOT NULL DEFAULT -1, "
       "assigned_to TEXT, "
       "status TEXT NOT NULL DEFAULT 'To Be Done', "
       "created_at INTEGER DEFAULT 0);",
-      "CREATE TABLE IF NOT EXISTS comments (id INTEGER NOT NULL, "
-      "issue_id INTEGER NOT NULL, author_id TEXT NOT NULL, "
+      "CREATE TABLE IF NOT EXISTS comments ("
+      "id INTEGER NOT NULL, "
+      "issue_id INTEGER NOT NULL, "
+      "author_id TEXT NOT NULL, "
       "text TEXT NOT NULL, "
-      "timestamp INTEGER DEFAULT 0, PRIMARY KEY(issue_id, id), "
+      "timestamp INTEGER DEFAULT 0, "
+      "PRIMARY KEY(issue_id, id), "
       "FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE);",
-      "CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, role TEXT NOT "
-      "NULL);",
-      "CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments(issue_id);"};
+      "CREATE TABLE IF NOT EXISTS users ("
+      "name TEXT PRIMARY KEY, "
+      "role TEXT NOT NULL);",
+      "CREATE INDEX IF NOT EXISTS idx_comments_issue "
+      "ON comments(issue_id);"};
 
   for (const char* sql : statements) {
     execOrThrow(sql);
@@ -127,9 +134,10 @@ void SQLiteIssueRepository::forEachRow(
   }
 }
 
-Comment SQLiteIssueRepository::insertCommentRow(int issueId,
-                                                const Comment& comment,
-                                                int commentId) {
+Comment SQLiteIssueRepository::insertCommentRow(
+    int issueId,
+    const Comment& comment,
+    int commentId) {
   SqliteStmt stmt(
       db_,
       "INSERT INTO comments (id, issue_id, author_id, text, timestamp) "
@@ -206,7 +214,8 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
   SqliteStmt stmt(
       db_,
       "SELECT id, author_id, title, description_comment_id, assigned_to, "
-      "status, created_at FROM issues WHERE id = ? LIMIT 1;");
+      "status, created_at "
+      "FROM issues WHERE id = ? LIMIT 1;");
   sqlite3_bind_int(stmt.get(), 1, issueId);
 
   if (sqlite3_step(stmt.get()) != SQLITE_ROW) {
@@ -326,6 +335,7 @@ std::vector<Issue> SQLiteIssueRepository::listIssues() const {
   return issues;
 }
 
+// Helper: generic filter used by the specific find/list methods.
 std::vector<Issue> SQLiteIssueRepository::findIssues(
     std::function<bool(const Issue&)> criteria) const {
   std::vector<Issue> all = listIssues();
@@ -337,6 +347,42 @@ std::vector<Issue> SQLiteIssueRepository::findIssues(
   }
   return filtered;
 }
+
+// --- Required overrides matching IssueRepository interface ---
+
+std::vector<Issue> SQLiteIssueRepository::findIssues(
+    const std::string& userId) const {
+  // Match in-memory semantics: issues by author or assignee.
+  return findIssues(
+      [&userId](const Issue& issue) {
+        if (issue.getAuthorId() == userId) {
+          return true;
+        }
+        return issue.hasAssignee()
+               && issue.getAssignedTo() == userId;
+      });
+}
+
+std::vector<Issue> SQLiteIssueRepository::listAllUnassigned() const {
+  return findIssues(
+      [](const Issue& issue) {
+        return !issue.hasAssignee();
+      });
+}
+
+// Tags are not persisted in the SQLite-backed repository.
+// We keep behaviour as "unsupported" (controller will see false).
+bool SQLiteIssueRepository::addTagToIssue(
+    int /*issueId*/, const std::string& /*tag*/) {
+  return false;
+}
+
+bool SQLiteIssueRepository::removeTagFromIssue(
+    int /*issueId*/, const std::string& /*tag*/) {
+  return false;
+}
+
+// --- Comments ---
 
 Comment SQLiteIssueRepository::getComment(int issueId,
                                           int commentId) const {
@@ -423,7 +469,8 @@ bool SQLiteIssueRepository::deleteComment(int issueId, int commentId) {
   sqlite3_step(clearDesc.get());
 
   SqliteStmt stmt(
-      db_, "DELETE FROM comments WHERE issue_id = ? AND id = ?;");
+      db_,
+      "DELETE FROM comments WHERE issue_id = ? AND id = ?;");
   sqlite3_bind_int(stmt.get(), 1, issueId);
   sqlite3_bind_int(stmt.get(), 2, commentId);
   if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
@@ -431,6 +478,8 @@ bool SQLiteIssueRepository::deleteComment(int issueId, int commentId) {
   }
   return sqlite3_changes(db_) > 0;
 }
+
+// --- Users ---
 
 User SQLiteIssueRepository::getUser(const std::string& userId) const {
   SqliteStmt stmt(
@@ -442,7 +491,6 @@ User SQLiteIssueRepository::getUser(const std::string& userId) const {
     throw std::invalid_argument("User with given ID does not exist");
   }
 
-  // FIX: pass stmt.get() into columnText
   std::string name = columnText(stmt.get(), 0);
   std::string role = columnText(stmt.get(), 1);
   return User(name, role);
