@@ -5,9 +5,9 @@
 #include <utility>
 
 namespace {
-void ensureUnique(std::vector<int>& ids) {
-  std::sort(ids.begin(), ids.end());
-  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+void ensureUnique(std::vector<int>* ids) {
+  std::sort(ids->begin(), ids->end());
+  ids->erase(std::unique(ids->begin(), ids->end()), ids->end());
 }
 }  // namespace
 
@@ -78,7 +78,7 @@ void Milestone::replaceIssues(std::vector<int> issueIds) {
   for (int id : issueIds) {
     validateIssueId(id);
   }
-  ensureUnique(issueIds);
+  ensureUnique(&issueIds);
   issue_ids_ = std::move(issueIds);
 }
 

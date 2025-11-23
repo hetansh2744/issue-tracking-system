@@ -312,7 +312,7 @@ Milestone IssueTrackerController::createMilestone(
     const std::string& desc,
     const std::string& start_date,
     const std::string& end_date) {
-    
+
     if (name.empty()) {
         throw std::invalid_argument("Milestone name is required");
     }

@@ -1,17 +1,19 @@
 #ifndef SQLITEISSUEREPOSITORY_HPP
 #define SQLITEISSUEREPOSITORY_HPP
 
-#include "IssueRepository.hpp"
-#include "Milestone.hpp"  // Add this
 #include <sqlite3.h>
+
+#include <functional>
 #include <string>
 #include <vector>
-#include <functional>
-#include "sqlite3.h"
+
+#include "IssueRepository.hpp"
+#include "Milestone.hpp"
+
 
 // Concrete IssueRepository implementation backed by SQLite.
 class SQLiteIssueRepository : public IssueRepository {
-private:
+ private:
   sqlite3* db_;
 
   void execOrThrow(const std::string& sql) const;
@@ -32,7 +34,7 @@ private:
   std::vector<int> loadMilestoneIssueIds(int milestoneId) const;
   bool milestoneExists(int milestoneId) const;
 
-public:
+ public:
   explicit SQLiteIssueRepository(const std::string& dbPath);
   ~SQLiteIssueRepository() override;
 
@@ -122,7 +124,6 @@ public:
    * @return Vector of issues belonging to this milestone
    */
   std::vector<Issue> getIssuesForMilestone(int milestoneId) const override;
-
 };
 
 #endif  // TEXT_BASED_ITS_SQLITEISSUEREPOSITORY_HPP_

@@ -167,6 +167,7 @@ coverage: clean
 static:
 	${STATIC_ANALYSIS} --verbose --enable=all ${SRC_DIR} \
 	${SRC_INCLUDE} --suppress=missingInclude \
+	--suppress=missingIncludeSystem \
 	--error-exitcode=1
 
 style:
