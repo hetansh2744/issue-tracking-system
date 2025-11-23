@@ -35,7 +35,8 @@ class MockIssueRepository : public IssueRepository {
         (const, override));
     MOCK_METHOD(bool, deleteMilestone, (int milestoneId, bool cascade),
         (override));
-    MOCK_METHOD(std::vector<Milestone>, listAllMilestones, (), (const, override));
+    MOCK_METHOD(std::vector<Milestone>, listAllMilestones, (), 
+    (const, override));
     MOCK_METHOD(bool, addIssueToMilestone, (int milestoneId, int issueId),
         (override));
     MOCK_METHOD(bool, removeIssueFromMilestone, (int milestoneId, int issueId),
