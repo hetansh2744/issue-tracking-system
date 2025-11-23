@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <chrono>
 
 namespace {
 class SqliteStmt {
@@ -35,7 +34,8 @@ std::string columnText(sqlite3_stmt* stmt, int index) {
 }
 
 Comment::TimePoint currentTimeMillis() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
       .count();
 }
 }  // namespace
@@ -92,7 +92,6 @@ void SQLiteIssueRepository::initializeSchema() {
     execOrThrow(sql);
   }
 }
-
 
 bool SQLiteIssueRepository::exists(
     const std::string& sql,
@@ -221,21 +220,20 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
   if (descriptionId >= 0) {
     issue.setDescriptionCommentId(descriptionId);
   }
-for (const auto& comment : loadComments(issueId)) {
-  issue.addComment(comment);
-}
+  for (const auto& comment : loadComments(issueId)) {
+    issue.addComment(comment);
+  }
 
-forEachRow(
-    "SELECT tag FROM issue_tags WHERE issue_id = ?;",
-    [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt,
-      1, issueId); },
-    [&issue](sqlite3_stmt* stmt) {
-      std::string tag = columnText(stmt, 0);
-      if (!tag.empty()) {
-        issue.addTag(tag);
-      }
-    });
-return issue;
+  forEachRow(
+      "SELECT tag FROM issue_tags WHERE issue_id = ?;",
+      [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); },
+      [&issue](sqlite3_stmt* stmt) {
+        std::string tag = columnText(stmt, 0);
+        if (!tag.empty()) {
+          issue.addTag(tag);
+        }
+      });
+  return issue;
 }
 
 Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
@@ -307,8 +305,8 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
   }
 
   for (const auto& tag : stored.getTags()) {
-    SqliteStmt stmt(
-        db_, "INSERT INTO issue_tags (issue_id, tag) VALUES (?, ?);");
+    SqliteStmt stmt(db_,
+                    "INSERT INTO issue_tags (issue_id, tag) VALUES (?, ?);");
     sqlite3_bind_int(stmt.get(), 1, stored.getId());
     sqlite3_bind_text(stmt.get(), 2, tag.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_step(stmt.get());
@@ -316,7 +314,6 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
 
   return getIssue(stored.getId());
 }
-
 
 bool SQLiteIssueRepository::deleteIssue(int issueId) {
   SqliteStmt stmt(db_, "DELETE FROM issues WHERE id = ?;");
