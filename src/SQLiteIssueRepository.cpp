@@ -289,104 +289,111 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
 Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
   Issue stored = issue;
 
+  // ---- INSERT NEW ISSUE ----
   if (!stored.hasPersistentId()) {
     if (stored.getTimestamp() == 0) {
       stored.setTimestamp(currentTimeMillis());
     }
-    SqliteStmt stmt(
+
+    SqliteStmt insertStmt(
         db_,
         "INSERT INTO issues (author_id, title, description_comment_id, "
         "assigned_to, status, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?);");
-    sqlite3_bind_text(stmt.get(), 1, stored.getAuthorId().c_str(), -1,
+
+    sqlite3_bind_text(insertStmt.get(), 1, stored.getAuthorId().c_str(), -1,
                       SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt.get(), 2, stored.getTitle().c_str(), -1,
+    sqlite3_bind_text(insertStmt.get(), 2, stored.getTitle().c_str(), -1,
                       SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt.get(), 3, stored.getDescriptionCommentId());
+    sqlite3_bind_int(insertStmt.get(), 3,
+                     stored.getDescriptionCommentId());
+
     if (stored.hasAssignee()) {
-      sqlite3_bind_text(stmt.get(), 4, stored.getAssignedTo().c_str(), -1,
+      sqlite3_bind_text(insertStmt.get(), 4,
+                        stored.getAssignedTo().c_str(), -1,
                         SQLITE_TRANSIENT);
     } else {
-      sqlite3_bind_null(stmt.get(), 4);
+      sqlite3_bind_null(insertStmt.get(), 4);
     }
-    sqlite3_bind_text(stmt.get(), 5, stored.getStatus().c_str(), -1,
-                      SQLITE_TRANSIENT);
-    sqlite3_bind_int64(stmt.get(), 6, stored.getTimestamp());
 
-    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    sqlite3_bind_text(insertStmt.get(), 5,
+                      stored.getStatus().c_str(), -1,
+                      SQLITE_TRANSIENT);
+    sqlite3_bind_int64(insertStmt.get(), 6,
+                       stored.getTimestamp());
+
+    if (sqlite3_step(insertStmt.get()) != SQLITE_DONE) {
       throw std::runtime_error("Failed to insert issue");
     }
 
     int newId = static_cast<int>(sqlite3_last_insert_rowid(db_));
     stored.setIdForPersistence(newId);
+
     return getIssue(newId);
   }
 
+  // ---- UPDATE EXISTING ISSUE ----
   if (!issueExists(stored.getId())) {
     throw std::invalid_argument(
         "Issue with given ID does not exist: "
         + std::to_string(stored.getId()));
   }
 
-  SqliteStmt stmt(
-      db_,
-      "UPDATE issues SET author_id = ?, title = ?, "
-      "description_comment_id = ?, assigned_to = ?, "
-      "status = ?, created_at = ? WHERE id = ?;");
-  sqlite3_bind_text(stmt.get(), 1, stored.getAuthorId().c_str(), -1,
-                    SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt.get(), 2, stored.getTitle().c_str(), -1,
-                    SQLITE_TRANSIENT);
-  sqlite3_bind_int(stmt.get(), 3, stored.getDescriptionCommentId());
-  if (stored.hasAssignee()) {
-    sqlite3_bind_text(stmt.get(), 4, stored.getAssignedTo().c_str(), -1,
-                      SQLITE_TRANSIENT);
-  } else {
-    sqlite3_bind_null(stmt.get(), 4);
+  if (stored.getTimestamp() == 0) {
+    stored.setTimestamp(currentTimeMillis());
   }
-  sqlite3_bind_text(stmt.get(), 5, stored.getStatus().c_str(), -1,
-                    SQLITE_TRANSIENT);
-  sqlite3_bind_int64(stmt.get(), 6, stored.getTimestamp());
-  sqlite3_bind_int(stmt.get(), 7, stored.getId());
 
-    if (stored.getTimestamp() == 0) {
-      stored.setTimestamp(currentTimeMillis());
-    }
-    SqliteStmt stmt(db_,
-                    "UPDATE issues SET author_id = ?, title = ?, "
-                    "description_comment_id = ?, assigned_to = ?, "
-                    "created_at = ? WHERE id = ?;");
-    sqlite3_bind_text(stmt.get(), 1, stored.getAuthorId().c_str(), -1,
+  {
+    SqliteStmt updateStmt(
+        db_,
+        "UPDATE issues SET author_id = ?, title = ?, "
+        "description_comment_id = ?, assigned_to = ?, "
+        "status = ?, created_at = ? WHERE id = ?;");
+
+    sqlite3_bind_text(updateStmt.get(), 1, stored.getAuthorId().c_str(), -1,
                       SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt.get(), 2, stored.getTitle().c_str(), -1,
+    sqlite3_bind_text(updateStmt.get(), 2, stored.getTitle().c_str(), -1,
                       SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt.get(), 3, stored.getDescriptionCommentId());
+    sqlite3_bind_int(updateStmt.get(), 3,
+                     stored.getDescriptionCommentId());
+
     if (stored.hasAssignee()) {
-      sqlite3_bind_text(stmt.get(), 4, stored.getAssignedTo().c_str(), -1,
+      sqlite3_bind_text(updateStmt.get(), 4,
+                        stored.getAssignedTo().c_str(), -1,
                         SQLITE_TRANSIENT);
     } else {
-      sqlite3_bind_null(stmt.get(), 4);
+      sqlite3_bind_null(updateStmt.get(), 4);
     }
-    sqlite3_bind_int64(stmt.get(), 5, stored.getTimestamp());
-    sqlite3_bind_int(stmt.get(), 6, stored.getId());
 
-    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    sqlite3_bind_text(updateStmt.get(), 5,
+                      stored.getStatus().c_str(), -1,
+                      SQLITE_TRANSIENT);
+    sqlite3_bind_int64(updateStmt.get(), 6,
+                       stored.getTimestamp());
+    sqlite3_bind_int(updateStmt.get(), 7, stored.getId());
+
+    if (sqlite3_step(updateStmt.get()) != SQLITE_DONE) {
       throw std::runtime_error("Failed to update issue");
     }
   }
 
+  // ---- DELETE OLD TAGS ----
   {
-    SqliteStmt stmt(db_, "DELETE FROM issue_tags WHERE issue_id = ?;");
-    sqlite3_bind_int(stmt.get(), 1, stored.getId());
-    sqlite3_step(stmt.get());
+    SqliteStmt deleteStmt(
+        db_, "DELETE FROM issue_tags WHERE issue_id = ?;");
+    sqlite3_bind_int(deleteStmt.get(), 1, stored.getId());
+    sqlite3_step(deleteStmt.get());
   }
 
+  // ---- INSERT NEW TAGS ----
   for (const auto& tag : stored.getTags()) {
-    SqliteStmt stmt(db_,
-                    "INSERT INTO issue_tags (issue_id, tag) VALUES (?, ?);");
-    sqlite3_bind_int(stmt.get(), 1, stored.getId());
-    sqlite3_bind_text(stmt.get(), 2, tag.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_step(stmt.get());
+    SqliteStmt tagStmt(
+        db_,
+        "INSERT INTO issue_tags (issue_id, tag) VALUES (?, ?);");
+    sqlite3_bind_int(tagStmt.get(), 1, stored.getId());
+    sqlite3_bind_text(tagStmt.get(), 2, tag.c_str(), -1,
+                      SQLITE_TRANSIENT);
+    sqlite3_step(tagStmt.get());
   }
 
   return getIssue(stored.getId());
@@ -509,11 +516,14 @@ Comment SQLiteIssueRepository::saveComment(int issueId,
     throw std::invalid_argument("Comment with given ID does not exist");
   }
 
+  Comment updated = comment;
+
   SqliteStmt stmt(
       db_,
       "UPDATE comments SET author_id = ?, text = ?, timestamp = ? "
       "WHERE issue_id = ? AND id = ?;");
-  sqlite3_bind_text(stmt.get(), 1, comment.getAuthor().c_str(), -1,
+
+  sqlite3_bind_text(stmt.get(), 1, updated.getAuthor().c_str(), -1,
                     SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt.get(), 2, updated.getText().c_str(), -1,
                     SQLITE_TRANSIENT);

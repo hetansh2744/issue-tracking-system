@@ -146,52 +146,34 @@ Comment IssueTrackerController::getComment(int issueId, int commentId) {
 
 //adds comments to certain issues and makes user inut the au-
 //-thor of comments
-Comment IssueTrackerController::addCommentToIssue(int issueId,
-    const std::string& text, const std::string& authorId) {
-    try {
-        if (text.empty() || authorId.empty()) {
-            // invalid input → return placeholder comment
-            return Comment();
-        }
+Comment IssueTrackerController::addCommentToIssue(
+    int issueId,
+    const std::string& text,
+    const std::string& authorId) {
 
-        // make sure the issue exists
-        Issue issue = repo->getIssue(issueId);
-
-        // ✅ this satisfies EXPECT_CALL(mockRepo, getUser("author"))
-        repo->getUser(authorId);
-
-        // create and save the new comment
-        Comment newComment(-1, authorId, text, 0);
-        Comment savedComment = repo->saveComment(issueId, newComment);
-
-        // link comment id to issue and save issue
-        issue.addComment(savedComment.getId());
-        repo->saveIssue(issue);
-
-        return savedComment;
-    } catch (const std::out_of_range&) {
-        // issue or user not found → behave gracefully
-        return Comment();
+  try {
+    if (text.empty() || authorId.empty()) {
+      return Comment();
     }
 
-    // make sure the issue exists
+    // Ensure the issue exists
     Issue issue = repo->getIssue(issueId);
 
-    // ensure the user exists
+    // Ensure the user exists
     repo->getUser(authorId);
 
-    // create and save the new comment
+    // Create and save the new comment
     Comment newComment(0, authorId, text, 0);
     Comment savedComment = repo->saveComment(issueId, newComment);
 
-    // link comment id to issue and save issue
+    // Link comment to issue and save
     issue.addComment(savedComment.getId());
     repo->saveIssue(issue);
 
     return savedComment;
+
   } catch (const std::out_of_range&) {
-    // issue or user not found → behave gracefully
-    return Comment(0, "", "");
+    return Comment();
   }
 }
 
@@ -289,6 +271,18 @@ std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     });
 }
 
+std::vector<Issue> IssueTrackerController::findIssuesByStatus(
+    const std::string& status) {
+  std::vector<Issue> all = repo->listIssues();
+  std::vector<Issue> filtered;
+
+  for (const auto& issue : all) {
+    if (issue.getStatus() == status) {
+      filtered.push_back(issue);
+    }
+  }
+  return filtered;
+}
 
 //lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {

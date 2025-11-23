@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <cctype>
 
 #include "Comment.hpp"
 #include "CommentDto.hpp"
@@ -13,9 +14,11 @@
 #include "TagDto.hpp"
 #include "User.hpp"
 #include "UserDto.hpp"
+
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/web/server/api/ApiController.hpp"
+
 #include "service/DatabaseService.hpp"
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
@@ -23,15 +26,27 @@
 class IssueApiController : public oatpp::web::server::api::ApiController {
  private:
   std::shared_ptr<DatabaseService> dbService;
+
   static std::string asStdString(const oatpp::String& value) {
     return value ? *value : std::string();
   }
-  IssueService& issues() const { return dbService->getIssueService(); }
+
+  IssueService& issues() const {
+    return dbService->getIssueService();
+  }
+
   static std::string withDbExtension(const std::string& name) {
     if (name.size() >= 3 && name.substr(name.size() - 3) == ".db") {
       return name;
     }
     return name + ".db";
+  }
+
+  static std::string toLower(const std::string& str) {
+    std::string out = str;
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return out;
   }
 
  public:
@@ -171,9 +186,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   ENDPOINT("GET", "/users", listUsers) {
-    auto users = issues().listAllUsers();
+    auto usersList = issues().listAllUsers();
     auto list = oatpp::List<oatpp::Object<UserDto>>::createShared();
-    for (auto& u : users) {
+    for (auto& u : usersList) {
       list->push_back(userToDto(u));
     }
     return createDtoResponse(Status::CODE_200, list);
@@ -200,7 +215,8 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     std::string realId;
     bool found = false;
 
-    for (const auto& user : service->listAllUsers()) {
+    auto allUsers = issues().listAllUsers();
+    for (const auto& user : allUsers) {
       if (toLower(user.getName()) == input) {
         realId = user.getName();
         found = true;
@@ -213,9 +229,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
 
     // get issues for that user
-    auto issues = service->findIssuesByUserId(realId);
+    auto userIssues = issues().findIssuesByUserId(realId);
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-    for (auto& issue : issues) {
+    for (auto& issue : userIssues) {
       list->push_back(issueToDto(issue));
     }
 
@@ -356,4 +372,4 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
 #include OATPP_CODEGEN_END(ApiController)
 
-#endif
+#endif  // ISSUE_API_CONTROLLER_HPP_
