@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <chrono>
 
 namespace {
 class SqliteStmt {
@@ -34,8 +35,7 @@ std::string columnText(sqlite3_stmt* stmt, int index) {
 }
 
 Comment::TimePoint currentTimeMillis() {
-  using namespace std::chrono;
-  return duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
       .count();
 }
 }  // namespace
@@ -236,7 +236,6 @@ forEachRow(
       }
     });
 return issue;
-
 }
 
 Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
