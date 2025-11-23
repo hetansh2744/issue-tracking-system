@@ -45,7 +45,8 @@ Comment::TimePoint currentTimeMillis() {
 }
 }  // namespace
 
-SQLiteIssueRepository::SQLiteIssueRepository(const std::string& dbPath)
+SQLiteIssueRepository::SQLiteIssueRepository(
+  const std::string& dbPath)
     : db_(nullptr) {
   if (sqlite3_open(dbPath.c_str(), &db_) != SQLITE_OK) {
     throw std::runtime_error("Failed to open SQLite database: " + dbPath);

@@ -171,7 +171,6 @@ Comment IssueTrackerController::addCommentToIssue(
     repo->saveIssue(issue);
 
     return savedComment;
-
   } catch (const std::out_of_range&) {
     return Comment();
   }
