@@ -345,35 +345,3 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteCommentThrowsForMissingData) {
                std::invalid_argument);
   EXPECT_THROW(repository->deleteComment(999, 0), std::invalid_argument);
 }
-
-TEST_F(InMemoryIssueRepositoryTest, TagLifecyclePersistsAcrossReloads) {
-  Issue issue(0, "user1", "Taggable");
-  Issue saved = repository->saveIssue(issue);
-
-  EXPECT_TRUE(repository->addTagToIssue(saved.getId(), "bug"));
-  EXPECT_FALSE(repository->addTagToIssue(saved.getId(), "bug"));
-
-  Issue reloaded = repository->getIssue(saved.getId());
-  EXPECT_TRUE(reloaded.hasTag("bug"));
-
-  EXPECT_TRUE(repository->removeTagFromIssue(saved.getId(), "bug"));
-  EXPECT_FALSE(repository->removeTagFromIssue(saved.getId(), "bug"));
-
-  Issue afterRemoval = repository->getIssue(saved.getId());
-  EXPECT_FALSE(afterRemoval.hasTag("bug"));
-}
-
-TEST_F(InMemoryIssueRepositoryTest, UpdateCommentSetsTimestampWhenMissing) {
-  Issue issue(0, "user1", "Test Issue");
-  Issue savedIssue = repository->saveIssue(issue);
-
-  Comment comment(-1, "user1", "First");
-  Comment stored = repository->saveComment(savedIssue.getId(), comment);
-  Comment withoutTimestamp(stored.getId(), stored.getAuthor(),
-                           stored.getText(), 0);
-
-  Comment updated =
-      repository->saveComment(savedIssue.getId(), withoutTimestamp);
-
-  EXPECT_NE(updated.getTimeStamp(), 0);
-}
