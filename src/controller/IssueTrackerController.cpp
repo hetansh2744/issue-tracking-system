@@ -144,33 +144,35 @@ Comment IssueTrackerController::getComment(int issueId, int commentId) {
   return repo->getComment(issueId, commentId);
 }
 
-// adds comments to certain issues and makes user input the author of comments
+//adds comments to certain issues and makes user inut the au-
+//-thor of comments
 Comment IssueTrackerController::addCommentToIssue(
-    int issueId, const std::string& text, const std::string& authorId) {
+    int issueId,
+    const std::string& text,
+    const std::string& authorId) {
+
   try {
     if (text.empty() || authorId.empty()) {
-      // invalid input → return "empty" comment
-      return Comment(0, "", "");
+      return Comment();
     }
 
-    // make sure the issue exists
+    // Ensure the issue exists
     Issue issue = repo->getIssue(issueId);
 
-    // ensure the user exists
+    // Ensure the user exists
     repo->getUser(authorId);
 
-    // create and save the new comment
+    // Create and save the new comment
     Comment newComment(0, authorId, text, 0);
     Comment savedComment = repo->saveComment(issueId, newComment);
 
-    // link comment id to issue and save issue
+    // Link comment to issue and save
     issue.addComment(savedComment.getId());
     repo->saveIssue(issue);
 
     return savedComment;
   } catch (const std::out_of_range&) {
-    // issue or user not found → behave gracefully
-    return Comment(0, "", "");
+    return Comment();
   }
 }
 
@@ -255,10 +257,19 @@ std::vector<Issue> IssueTrackerController::listAllUnassignedIssues() {
 // returns issues by username inputted
 std::vector<Issue> IssueTrackerController::findIssuesByUserId(
     const std::string& user_name) {
-  return repo->findIssues(user_name);
+
+    std::string target = user_name;
+    std::transform(target.begin(), target.end(),
+    target.begin(), ::tolower);
+
+    return repo->findIssues([&](const Issue& issue) {
+        std::string author = issue.getAuthorId();
+        std::transform(author.begin(), author.end(),
+        author.begin(), ::tolower);
+        return author == target;
+    });
 }
 
-// NEW: returns issues filtered by exact status text ("To Be Done", etc.)
 std::vector<Issue> IssueTrackerController::findIssuesByStatus(
     const std::string& status) {
   std::vector<Issue> all = repo->listIssues();
@@ -272,7 +283,7 @@ std::vector<Issue> IssueTrackerController::findIssuesByStatus(
   return filtered;
 }
 
-// lists all the users created
+//lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {
   return repo->listAllUsers();
 }

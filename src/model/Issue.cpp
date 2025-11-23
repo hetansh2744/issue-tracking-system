@@ -41,6 +41,13 @@ void Issue::setIdForPersistence(int new_id) {
 // mutators / rules
 // ---------------------------
 
+void Issue::setTimestamp(TimePoint ts) {
+  if (ts < 0) {
+    throw std::invalid_argument("timestamp must be >= 0");
+  }
+  created_at_ = ts;
+}
+
 void Issue::setTitle(std::string new_title) {
   if (new_title.empty()) {
     throw std::invalid_argument("title must not be empty");

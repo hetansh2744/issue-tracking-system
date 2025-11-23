@@ -183,14 +183,14 @@ class IssueTrackerController {
    */
   virtual std::vector<Issue> listAllUnassignedIssues();
 
-  /**
-   * @brief Finds issues assigned to a specific user
-   *
-   * @param user_name The ID of the user to search for
-   * @return std::vector<Issue> List of issues assigned to the user
-   */
-  virtual std::vector<Issue> findIssuesByUserId(
-      const std::string& user_name);
+    /**
+     * @brief Finds issues assigned to a specific user
+     *
+     * @param user_name The ID of the user to search for
+     * @return std::vector<Issue> List of issues assigned to the user
+     */
+    std::vector<Issue> findIssuesByUserId(
+        const std::string& user_name);
 
   /**
    * @brief Finds issues that have a specific status.

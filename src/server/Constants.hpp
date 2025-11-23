@@ -1,10 +1,10 @@
-
-#ifndef calculator_Constants_hpp
-#define calculator_Constants_hpp
+#ifndef ISSUE_Constants_hpp
+#define ISSUE_Constants_hpp
 
 class Qualifiers {
  public:
-  static constexpr const char* SERVICE_CALC = "calc-service";
-  static constexpr const char* SERVICE_CALC_VH = "calc-service.virtualhost";
+  static constexpr const char* SERVICE_ISSUE = "issue-service";
+  static constexpr const char* SERVICE_ISSUE_VH = "issue-service.virtualhost";
 };
-#endif // calculator_Constants_hpp
+
+#endif  // ISSUE_Constants_hpp

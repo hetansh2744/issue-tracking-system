@@ -158,6 +158,13 @@ class Issue {
    */
   TimePoint getTimestamp() const noexcept { return created_at_; }
 
+  /**
+   * @brief Set creation timestamp.
+   * @param ts epoch ms (>= 0)
+   * @throws std::invalid_argument if ts < 0
+   */
+  void setTimestamp(TimePoint ts);
+
   // ---------------------------
   // mutators / rules
   // ---------------------------

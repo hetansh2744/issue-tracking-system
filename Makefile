@@ -15,14 +15,21 @@ CXXVERSION = -std=c++17
 CXXFLAGS = ${CXXVERSION} -g
 CXXWITHCOVERAGEFLAGS = ${CXXFLAGS} -fprofile-arcs -ftest-coverage
 
+################################################################################
 # SQLite
+################################################################################
+
 SQLITE_PREFIX = third_party/sqlite-build
 
-# Libraries
-LINKFLAGS = -lgtest -lgmock -pthread \
-	-L $(SQLITE_PREFIX)/lib \
-	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
-	-lsqlite3
+################################################################################
+# OATPP (FIXED DEPTH)
+################################################################################
+
+OATPP_INCLUDE_LIB = /usr/local/include/oatpp-1.3.0/oatpp
+OATPP_SWAGGER_INCLUDE = /usr/local/include/oatpp-1.3.0/oatpp-swagger
+OATPP_LIB_DIR = /usr/local/lib/oatpp-1.3.0
+
+OATPP_INCLUDE = -I $(OATPP_INCLUDE_LIB) -I $(OATPP_SWAGGER_INCLUDE)
 
 ################################################################################
 # Directories
@@ -30,16 +37,41 @@ LINKFLAGS = -lgtest -lgmock -pthread \
 
 SRC_DIR = src
 MODEL_DIR = src/model
-REPO_DIR = src/repo
+REPO_DIR = src/repository
 VIEW_DIR = src/view
 CONTROLLER_DIR = src/controller
 SERVER_DIR = src/server
 PROJECT_SRC_DIR = src/project
+DTO_DIR = src/dto
 
 GTEST_DIR = test
 SRC_INCLUDE = include
 
-INCLUDE = -I ${SRC_INCLUDE} -I ${SQLITE_PREFIX}/include
+################################################################################
+# Include Paths
+################################################################################
+
+BASE_INCLUDE = \
+	-I include \
+	-I src \
+	-I src/dto \
+	-I third_party/sqlite-build/include
+
+REST_INCLUDE = $(BASE_INCLUDE) $(OATPP_INCLUDE)
+
+################################################################################
+# Link Flags
+################################################################################
+
+BASE_LINKFLAGS = -lgtest -lgmock -pthread \
+	-L $(SQLITE_PREFIX)/lib \
+	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
+	-lsqlite3
+
+OATPP_LINKFLAGS = \
+	-L $(OATPP_LIB_DIR) \
+	-Wl,-rpath,$(OATPP_LIB_DIR) \
+	-loatpp-swagger -loatpp
 
 ################################################################################
 # Tools
@@ -52,10 +84,9 @@ COVERAGE_DIR = coverage
 STATIC_ANALYSIS = cppcheck
 STYLE_CHECK = cpplint
 DOXY_DIR = docs/code
-DESIGN_DIR = docs/design
 
 ################################################################################
-# Source Groups
+# Sources
 ################################################################################
 
 CORE_SRCS = \
@@ -69,7 +100,7 @@ REST_SRCS = ${CORE_SRCS} \
 	$(wildcard ${SERVER_DIR}/*.cpp)
 
 ################################################################################
-# Default Target
+# Default target
 ################################################################################
 
 .DEFAULT_GOAL := compileProject
@@ -82,68 +113,56 @@ REST_SRCS = ${CORE_SRCS} \
 clean:
 	rm -rf *.gcov *.gcda *.gcno ${COVERAGE_RESULTS} ${COVERAGE_DIR}
 	rm -rf docs/code/html
-	rm -rf ${PROJECT} ${GTEST} ${REST} \
-	       ${PROJECT}.exe ${GTEST}.exe ${REST}.exe
-	rm -rf src/*.o src/model/*.o src/repo/*.o \
+	rm -rf ${PROJECT} ${GTEST} ${REST}
+	rm -rf src/*.o src/model/*.o src/repository/*.o \
 	       src/view/*.o src/controller/*.o \
 	       src/server/*.o src/project/*.o
-	rm -rf *~ \#* .\#* \
-	src/*~ src/\#* src/.\#* \
-	test/*~ test/\#* test/.\#* \
-	include/*~ include/\#* include/.\#* \
-	docs/design/*~ docs/design/\#* docs/design/.\#* \
-	*.gcov *.gcda *.gcno
+	rm -rf *~ \#* .\#* src/*~ test/*~ include/*~
 
 ################################################################################
-# Object Rule
+# Object rule
 ################################################################################
 
 %.o: %.cpp
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
 ################################################################################
-# Build Targets
+# Build
 ################################################################################
 
-# Tests
+# Tests: no oatpp
 ${GTEST}: clean
-	${CXX} ${CXXFLAGS} -o ./${GTEST} ${INCLUDE} \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
+	${CXX} ${CXXFLAGS} -o ./${GTEST} ${BASE_INCLUDE} \
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
 
-# Project build
+# Main project: core only (no oatpp unless you really need it here)
 compileProject: clean
-	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${LINKFLAGS}
+	${CXX} ${CXXVERSION} -o ${PROJECT} ${BASE_INCLUDE} \
+	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${BASE_LINKFLAGS}
 
-# REST server build
+# REST server: this is where oatpp is required
 rest: clean
-	${CXX} ${CXXVERSION} -o ${REST} ${INCLUDE} \
-	${REST_SRCS} ${LINKFLAGS}
+	${CXX} ${CXXVERSION} -o ${REST} ${REST_INCLUDE} \
+	${REST_SRCS} ${BASE_LINKFLAGS} ${OATPP_LINKFLAGS}
 
 ################################################################################
-# Test Targets
+# Extra
 ################################################################################
-
-all: ${GTEST} memcheck coverage docs static style
 
 memcheck: ${GTEST}
 	valgrind --tool=memcheck --leak-check=yes \
 	--error-exitcode=1 ./${GTEST}
 
 coverage: clean
-	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${INCLUDE} \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
+	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${BASE_INCLUDE} \
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
 	./${GTEST}
 	${LCOV} --capture --gcov-tool ${GCOV} \
-	--directory . --output-file ${COVERAGE_RESULTS} \
-	--rc lcov_branch_coverage=1
+		--directory . --output-file ${COVERAGE_RESULTS} \
+		--rc lcov_branch_coverage=1
 	${LCOV} --extract ${COVERAGE_RESULTS} */*/*/${SRC_DIR}/* \
-	-o ${COVERAGE_RESULTS}
+		-o ${COVERAGE_RESULTS}
 	genhtml ${COVERAGE_RESULTS} --output-directory ${COVERAGE_DIR}
-
-################################################################################
-# Analysis + Style
-################################################################################
 
 static:
 	${STATIC_ANALYSIS} --verbose --enable=all ${SRC_DIR} \
@@ -157,16 +176,8 @@ style:
 	${CONTROLLER_DIR}/* ${SERVER_DIR}/* \
 	${PROJECT_SRC_DIR}/*
 
-################################################################################
-# Docs
-################################################################################
-
 docs:
 	doxygen ${DOXY_DIR}/doxyfile
-
-################################################################################
-# Run Targets
-################################################################################
 
 run:
 	./${PROJECT}
@@ -175,7 +186,7 @@ run-rest:
 	./${REST}
 
 ################################################################################
-# Version Target (required for GitLab CI)
+# Required by CI
 ################################################################################
 
 .PHONY: version

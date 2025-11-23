@@ -1,38 +1,32 @@
+// SPDX-License-Identifier: MIT
+// Entry point helper that wires the HTTP router, controllers, and server.
 #include "Runner.hpp"
 
-#include "oatpp/web/server/HttpConnectionHandler.hpp"
-#include "oatpp/web/server/HttpRouter.hpp"
-#include "oatpp/network/Server.hpp"
-#include "oatpp/parser/json/mapping/ObjectMapper.hpp"
-
-#include "controller/IssueApiController.hpp"
-#include "SwaggerComponent.hpp"
-
 void Runner::run() {
+  // Pull shared components configured in AppComponent/SwaggerComponent.
+  OATPP_COMPONENT(std::shared_ptr<oatpp::data::mapping::ObjectMapper>,
+                  objectMapper);
+  OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::DocumentInfo>, docInfo,
+                  Qualifiers::SERVICE_ISSUE);
+  OATPP_COMPONENT(std::shared_ptr<oatpp::swagger::Resources>, resources,
+                  Qualifiers::SERVICE_ISSUE);
+
   auto router = oatpp::web::server::HttpRouter::createShared();
 
-  auto objectMapper =
-      oatpp::parser::json::mapping::ObjectMapper::createShared();
+  // Register REST API endpoints.
+  auto issueController =
+      std::make_shared<IssueApiController>(objectMapper);
+  router->addController(issueController);
 
-  // Register API controller
-  auto endpoints = router
-      ->addController(IssueApiController::createShared(objectMapper))
-      ->getEndpoints();
+  // Register Swagger UI/JSON docs.
+  auto swaggerController =
+      oatpp::swagger::Controller::createShared(issueController->getEndpoints(),
+                                               docInfo, resources);
+  router->addController(swaggerController);
 
-  // Swagger
-  SwaggerComponent swagger;
-
-  router->addController(
-      oatpp::swagger::Controller::createShared(
-          endpoints,
-          swagger.m_documentInfo,
-          swagger.m_resources));
-
-  auto handler =
+  auto connectionHandler =
       oatpp::web::server::HttpConnectionHandler::createShared(router);
 
-  oatpp::network::Server server(
-      m_tcpConnectionProvider, handler);
-
+  oatpp::network::Server server(m_tcpConnectionProvider, connectionHandler);
   server.run();
 }

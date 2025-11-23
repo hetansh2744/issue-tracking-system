@@ -1,9 +1,10 @@
 #ifndef ISSUE_DTO_HPP_
 #define ISSUE_DTO_HPP_
 
+#include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
-#include "oatpp/core/mapping/type/Object.hpp"
 
+#include OATPP_CODEGEN_BEGIN(DTO)
 class IssueDto : public oatpp::DTO {
   DTO_INIT(IssueDto, DTO)
 
@@ -14,6 +15,7 @@ class IssueDto : public oatpp::DTO {
   DTO_FIELD(oatpp::String, assignedTo, "assigned_to");
   DTO_FIELD(oatpp::List<oatpp::Int32>, commentIds, "comment_ids");
   DTO_FIELD(oatpp::Int64, createdAt, "created_at");
+  DTO_FIELD(oatpp::List<oatpp::String>, tags);
 };
 
 class IssueCreateDto : public oatpp::DTO {
@@ -30,5 +32,5 @@ class IssueUpdateFieldDto : public oatpp::DTO {
   DTO_FIELD(oatpp::String, field);
   DTO_FIELD(oatpp::String, value);
 };
-
+#include OATPP_CODEGEN_END(DTO)
 #endif
