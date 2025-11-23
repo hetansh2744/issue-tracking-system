@@ -28,6 +28,10 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
     MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
     MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
+    MOCK_METHOD(bool, addTagToIssue,
+        (int issueId, const std::string& tag), (override));
+    MOCK_METHOD(bool, removeTagFromIssue,
+        (int issueId, const std::string& tag), (override));
 };
 
 TEST(IssueTrackerControllerTest, CreateIssueValid) {
@@ -191,17 +195,37 @@ TEST(IssueTrackerControllerTest, ListAllIssues) {
     EXPECT_EQ(result.size(), 2);
 }
 
-TEST(IssueTrackerControllerTest, FindIssuesByUserId) {
-    MockIssueRepository mockRepo;
-    std::vector<Issue> issues = { Issue(1, "u1", "t1", 0) };
+// TEST(IssueTrackerControllerTest, FindIssuesByUserId) {
+//     MockIssueRepository mockRepo;
+//     std::vector<Issue> issues = { Issue(1, "u1", "t1", 0) };
 
-    EXPECT_CALL(mockRepo, findIssues("u1"))
-        .WillOnce(testing::Return(issues));
+//     EXPECT_CALL(mockRepo, findIssues("u1"))
+//         .WillOnce(testing::Return(issues));
+
+//     IssueTrackerController controller(&mockRepo);
+//     std::vector<Issue> result = controller.findIssuesByUserId("u1");
+
+//     EXPECT_EQ(result.size(), 1);
+// }
+
+TEST(IssueTrackerControllerTest, FindIssuesByUserIdUsesCaseInsensitiveMatch) {
+    MockIssueRepository mockRepo;
+    EXPECT_CALL(mockRepo,
+        findIssues(testing::A<std::function<bool(const Issue&)>>()))
+        .WillOnce(testing::Invoke([](std::function<bool(const Issue&)> filter) {
+            Issue issue(5, "UserX", "t1", 0);
+            std::vector<Issue> matches;
+            if (filter(issue)) {
+                matches.push_back(issue);
+            }
+            return matches;
+        }));
 
     IssueTrackerController controller(&mockRepo);
-    std::vector<Issue> result = controller.findIssuesByUserId("u1");
+    auto result = controller.findIssuesByUserId("userx");
 
-    EXPECT_EQ(result.size(), 1);
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0].getAuthorId(), "UserX");
 }
 
 TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
@@ -383,4 +407,122 @@ TEST(IssueTrackerControllerTest, ListAllUnassignedIssues) {
     std::vector<Issue> result = controller.listAllUnassignedIssues();
 
     EXPECT_EQ(result.size(), 1);
+}
+
+TEST(IssueTrackerControllerTest, CreateIssueInvalidInputReturnsEmptyIssue) {
+    MockIssueRepository mockRepo;
+    EXPECT_CALL(mockRepo, saveIssue(testing::_)).Times(0);
+
+    IssueTrackerController controller(&mockRepo);
+    Issue result = controller.createIssue("", "desc", "user123");
+
+    EXPECT_EQ(result.getId(), 0);
+    EXPECT_EQ(result.getTitle(), "");
+}
+
+TEST(IssueTrackerControllerTest, UpdateIssueFieldCreatesDescriptionWhenMissing) {
+    MockIssueRepository mockRepo;
+    Issue issue(1, "user", "title", 0);
+
+    testing::InSequence seq;
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(issue));
+    EXPECT_CALL(mockRepo, saveComment(1, testing::_))
+        .WillOnce(testing::Return(Comment(2, "user", "newDesc", 1)));
+    EXPECT_CALL(mockRepo, saveIssue(testing::_))
+        .Times(1);
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateIssueField(1, "description", "newDesc");
+
+    EXPECT_TRUE(result);
+}
+
+TEST(IssueTrackerControllerTest, UpdateIssueFieldStatusPersists) {
+    MockIssueRepository mockRepo;
+    Issue issue(1, "user", "title", 0);
+
+    EXPECT_CALL(mockRepo, getIssue(1))
+        .WillOnce(testing::Return(issue));
+    EXPECT_CALL(
+        mockRepo,
+        saveIssue(testing::Truly([](const Issue& i) {
+            return i.getStatus() == "In Progress";
+        })));
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.updateIssueField(1, "status", "In Progress");
+
+    EXPECT_TRUE(result);
+}
+
+TEST(IssueTrackerControllerTest, AddCommentToIssueRejectsEmptyFields) {
+    MockIssueRepository mockRepo;
+    EXPECT_CALL(mockRepo, getIssue(testing::_)).Times(0);
+    EXPECT_CALL(mockRepo, getUser(testing::_)).Times(0);
+
+    IssueTrackerController controller(&mockRepo);
+    Comment result = controller.addCommentToIssue(1, "", "author");
+
+    EXPECT_FALSE(result.hasPersistentId());
+    EXPECT_EQ(result.getAuthor(), "");
+}
+
+TEST(IssueTrackerControllerTest, AddCommentToIssueHandlesMissingIssue) {
+    MockIssueRepository mockRepo;
+    EXPECT_CALL(mockRepo, getIssue(99))
+        .WillOnce(testing::Throw(std::out_of_range("no issue")));
+
+    IssueTrackerController controller(&mockRepo);
+    Comment result = controller.addCommentToIssue(99, "text", "author");
+
+    EXPECT_FALSE(result.hasPersistentId());
+}
+
+TEST(IssueTrackerControllerTest, DeleteCommentReturnsFalseWhenRepoRefuses) {
+    MockIssueRepository mockRepo;
+    Comment comment(5, "author", "text", 1);
+
+    EXPECT_CALL(mockRepo, getComment(1, 5))
+        .WillOnce(testing::Return(comment));
+    EXPECT_CALL(mockRepo, deleteComment(1, 5))
+        .WillOnce(testing::Return(false));
+    EXPECT_CALL(mockRepo, getIssue(testing::_)).Times(0);
+
+    IssueTrackerController controller(&mockRepo);
+    bool result = controller.deleteComment(1, 5);
+
+    EXPECT_FALSE(result);
+}
+
+TEST(IssueTrackerControllerTest, TagOperationsPropagateToRepository) {
+    MockIssueRepository mockRepo;
+
+    EXPECT_CALL(mockRepo, addTagToIssue(4, "bug"))
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(mockRepo, removeTagFromIssue(4, "bug"))
+        .WillOnce(testing::Throw(std::runtime_error("db failure")));
+
+    IssueTrackerController controller(&mockRepo);
+    EXPECT_TRUE(controller.addTagToIssue(4, "bug"));
+    EXPECT_FALSE(controller.removeTagFromIssue(4, "bug"));
+}
+
+TEST(IssueTrackerControllerTest, GetWrappersDelegateToRepository) {
+    MockIssueRepository mockRepo;
+    Issue issue(7, "author", "t", 0);
+    Comment comment(1, "author", "txt", 1);
+    std::vector<Comment> comments{comment};
+
+    EXPECT_CALL(mockRepo, getIssue(7))
+        .WillOnce(testing::Return(issue));
+    EXPECT_CALL(mockRepo, getComment(7, 1))
+        .WillOnce(testing::Return(comment));
+    EXPECT_CALL(mockRepo, getAllComments(7))
+        .WillOnce(testing::Return(comments));
+
+    IssueTrackerController controller(&mockRepo);
+    EXPECT_EQ(controller.getIssue(7).getId(), 7);
+    EXPECT_EQ(controller.getComment(7, 1).getId(), 1);
+    EXPECT_EQ(controller.getallComments(7).size(), 1u);
 }
