@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <cctype>
 
 #include "Comment.hpp"
 #include "CommentDto.hpp"
@@ -13,6 +14,8 @@
 #include "TagDto.hpp"
 #include "User.hpp"
 #include "UserDto.hpp"
+#include "Milestone.hpp"
+#include "MilestoneDto.hpp"
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/web/server/api/ApiController.hpp"
@@ -80,6 +83,23 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     dto->role = u.getRole().c_str();
     return dto;
   }
+
+  static oatpp::Object<MilestoneDto> milestoneToDto(const Milestone& m) {
+  auto dto = MilestoneDto::createShared();
+  dto->id = m.getId();
+  dto->name = m.getName().c_str();
+  dto->description = m.getDescription().c_str();
+  dto->startDate = m.getStartDate().c_str();
+  dto->endDate = m.getEndDate().c_str();
+  return dto;
+}
+
+static std::string toLower(const std::string& s) {
+  std::string out = s;
+  std::transform(out.begin(), out.end(), out.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return out;
+}
 
   // ---- Issue endpoints ----
 
@@ -193,34 +213,35 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
               : createResponse(Status::CODE_404, "Not found");
   }
 
-  ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
-           PATH(oatpp::String, id)) {
-    // case-insensitive lookup of the user
-    std::string input = toLower(asStdString(id));
-    std::string realId;
-    bool found = false;
+ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
+         PATH(oatpp::String, id)) {
+  // case-insensitive lookup of the user
+  std::string input = toLower(asStdString(id));
+  std::string realId;
+  bool found = false;
 
-    for (const auto& user : service->listAllUsers()) {
-      if (toLower(user.getName()) == input) {
-        realId = user.getName();
-        found = true;
-        break;
-      }
+  for (const auto& user : issues().listAllUsers()) {
+    if (toLower(user.getName()) == input) {
+      realId = user.getName();
+      found = true;
+      break;
     }
-
-    if (!found) {
-      return createResponse(Status::CODE_404, "User not found");
-    }
-
-    // get issues for that user
-    auto issues = service->findIssuesByUserId(realId);
-    auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-    for (auto& issue : issues) {
-      list->push_back(issueToDto(issue));
-    }
-
-    return createDtoResponse(Status::CODE_200, list);
   }
+
+  if (!found) {
+    return createResponse(Status::CODE_404, "User not found");
+  }
+
+  // get issues for that user
+  auto userIssues = issues().findIssuesByUserId(realId);
+  auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+  for (auto& issue : userIssues) {
+    list->push_back(issueToDto(issue));
+  }
+
+  return createDtoResponse(Status::CODE_200, list);
+}
+
 
   // ---- Tag endpoints ----
 
@@ -247,7 +268,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
-
+ 
   ENDPOINT("GET", "/issues/{id}/tags", listTags, PATH(oatpp::Int32, id)) {
     try {
       Issue issue = issues().getIssue(id);
@@ -262,6 +283,75 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       return createResponse(Status::CODE_404, "Issue not found");
     }
   }
+
+  // ---- Milestone endpoints ----
+
+ENDPOINT("POST", "/milestones", createMilestone,
+         BODY_DTO(oatpp::Object<MilestoneDto>, body)) {
+
+  if (!body || !body->name) {
+    return createResponse(Status::CODE_400, "Missing name");
+  }
+
+  Milestone m = issues().createMilestone(
+      asStdString(body->name),
+      asStdString(body->description),
+      asStdString(body->startDate),
+      asStdString(body->endDate));
+
+  return createDtoResponse(Status::CODE_201, milestoneToDto(m));
+}
+
+ENDPOINT("GET", "/milestones", listMilestones) {
+  auto list = issues().listAllMilestones();
+
+  auto dtoList = oatpp::List<oatpp::Object<MilestoneDto>>::createShared();
+  for (auto& m : list) {
+    dtoList->push_back(milestoneToDto(m));
+  }
+
+  return createDtoResponse(Status::CODE_200, dtoList);
+}
+
+ENDPOINT("GET", "/milestones/{id}", getMilestone,
+         PATH(oatpp::Int32, id)) {
+  auto m = issues().getMilestone(id);
+  return createDtoResponse(Status::CODE_200, milestoneToDto(m));
+}
+
+ENDPOINT("DELETE", "/milestones/{id}", deleteMilestone,
+         PATH(oatpp::Int32, id),
+         QUERY(oatpp::Boolean, cascade)) {
+  bool ok = issues().deleteMilestone(id, cascade);
+  return createResponse(Status::CODE_200, ok ? "Deleted" : "Failed");
+}
+
+ENDPOINT("POST", "/milestones/{id}/issues/{issueId}", addIssueToMilestone,
+         PATH(oatpp::Int32, id),
+         PATH(oatpp::Int32, issueId)) {
+  bool ok = issues().addIssueToMilestone(id, issueId);
+  return createResponse(Status::CODE_200, ok ? "Linked" : "Failed");
+}
+
+ENDPOINT("DELETE", "/milestones/{id}/issues/{issueId}", removeIssueFromMilestone,
+         PATH(oatpp::Int32, id),
+         PATH(oatpp::Int32, issueId)) {
+  bool ok = issues().removeIssueFromMilestone(id, issueId);
+  return createResponse(Status::CODE_200, ok ? "Unlinked" : "Failed");
+}
+
+ENDPOINT("GET", "/milestones/{id}/issues", getMilestoneIssues,
+         PATH(oatpp::Int32, id)) {
+
+  auto list = issues().getIssuesForMilestone(id);
+
+  auto dtoList = oatpp::Vector<oatpp::Object<IssueDto>>::createShared();
+  for (auto& i : list) {
+    dtoList->push_back(issueToDto(i));
+  }
+
+  return createDtoResponse(Status::CODE_200, dtoList);
+}
 
   // ---- Database endpoints ----
 

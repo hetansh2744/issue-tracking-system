@@ -278,55 +278,72 @@ bool IssueTrackerController::removeTagFromIssue(
     return false;
   }
 }
+
 Milestone IssueTrackerController::createMilestone(
     const std::string& name,
     const std::string& desc,
     const std::string& start_date,
     const std::string& end_date) {
-  
-  if (name.empty() || start_date.empty() || end_date.empty()) {
-    return Milestone(); // Return invalid milestone
-  }
 
-  // Create new milestone (ID = -1 means not yet persisted)
-  Milestone newMilestone(-1, name, desc, start_date, end_date);
-  
-  // Save to repository
-  Milestone savedMilestone = repo->saveMilestone(newMilestone);
-  
-  return savedMilestone;
+    if (name.empty()) {
+        throw std::invalid_argument("Milestone name is required");
+    }
+
+    Milestone m(0, name, desc, start_date, end_date);
+    return repo->saveMilestone(m);
 }
 
 // Add these additional controller methods for milestone management
 
-bool IssueTrackerController::addIssueToMilestone(int milestoneId, int issueId) {
-  try {
-    return repo->addIssueToMilestone(milestoneId, issueId);
-  } catch (...) {
-    return false;
-  }
+bool IssueTrackerController::addIssueToMilestone(
+    int milestoneId, int issueId) {
+    try {
+        repo->getMilestone(milestoneId);
+        repo->getIssue(issueId);
+        return repo->addIssueToMilestone(milestoneId, issueId);
+    } catch (...) {
+        return false;
+    }
 }
 
-bool IssueTrackerController::removeIssueFromMilestone(int milestoneId, int issueId) {
-  try {
-    return repo->removeIssueFromMilestone(milestoneId, issueId);
-  } catch (...) {
-    return false;
-  }
+
+bool IssueTrackerController::removeIssueFromMilestone(
+    int milestoneId, int issueId) {
+    try {
+        repo->getMilestone(milestoneId);
+        repo->getIssue(issueId);
+        return repo->removeIssueFromMilestone(milestoneId, issueId);
+    } catch (...) {
+        return false;
+    }
 }
 
 Milestone IssueTrackerController::getMilestone(int milestoneId) {
-  return repo->getMilestone(milestoneId);
+    return repo->getMilestone(milestoneId);
 }
 
-bool IssueTrackerController::deleteMilestone(int milestoneId, bool cascade) {
-  return repo->deleteMilestone(milestoneId, cascade);
+
+bool IssueTrackerController::deleteMilestone(
+    int milestoneId, bool cascade) {
+    try {
+        return repo->deleteMilestone(milestoneId, cascade);
+    } catch (...) {
+        return false;
+    }
 }
+
 
 std::vector<Milestone> IssueTrackerController::listAllMilestones() {
-  return repo->listAllMilestones();
+    return repo->listAllMilestones();
 }
 
-std::vector<Issue> IssueTrackerController::getIssuesForMilestone(int milestoneId) {
-  return repo->getIssuesForMilestone(milestoneId);
+
+
+std::vector<Issue> IssueTrackerController::getIssuesForMilestone(
+    int milestoneId) {
+    try {
+        return repo->getIssuesForMilestone(milestoneId);
+    } catch (...) {
+        return {};
+    }
 }

@@ -11,6 +11,7 @@
 #include "Issue.hpp"
 #include "Comment.hpp"
 #include "User.hpp"
+#include "Milestone.hpp"
 
 class IssueService {
  private:
@@ -107,6 +108,39 @@ class IssueService {
   bool removeTagFromIssue(int issueId, const std::string& tag) {
     return controller_.removeTagFromIssue(issueId, tag);
   }
+
+  Milestone createMilestone(
+    const std::string& name,
+    const std::string& desc,
+    const std::string& start,
+    const std::string& end) {
+  return controller_.createMilestone(name, desc, start, end);
+}
+
+std::vector<Milestone> listAllMilestones() {
+  return controller_.listAllMilestones();
+}
+
+Milestone getMilestone(int id) {
+  return controller_.getMilestone(id);
+}
+
+bool deleteMilestone(int id, bool cascade) {
+  return controller_.deleteMilestone(id, cascade);
+}
+
+bool addIssueToMilestone(int mId, int issueId) {
+  return controller_.addIssueToMilestone(mId, issueId);
+}
+
+bool removeIssueFromMilestone(int mId, int issueId) {
+  return controller_.removeIssueFromMilestone(mId, issueId);
+}
+
+std::vector<Issue> getIssuesForMilestone(int mId) {
+  return controller_.getIssuesForMilestone(mId);
+}
+
 };
 
 #endif
