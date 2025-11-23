@@ -1,3 +1,4 @@
+// include/IssueTrackerController.hpp
 #ifndef ISSUE_TRACKER_CONTROLLER_H
 #define ISSUE_TRACKER_CONTROLLER_H
 
@@ -9,6 +10,9 @@
 
 #include "Comment.hpp"
 #include "Issue.hpp"
+
+#include "Comment.hpp"
+#include "Issue.hpp"
 #include "IssueRepository.hpp"
 #include "Milestone.hpp"
 #include "User.hpp"
@@ -17,11 +21,12 @@
  * @brief Main controller for the issue tracking system
  *
  * The IssueTrackerController acts as the intermediary between the view
- * and the data layer. It handles business logic and coordinates operations
- * between issues, comments, and users in the system.
+ * (or REST layer) and the data layer. It handles business logic and
+ * coordinates operations between issues, comments, and users in the system.
  */
 class IssueTrackerController {
  private:
+  IssueRepository* repo;  ///< Repository for data persistence operations
   IssueRepository* repo;  ///< Repository for data persistence operations
 
  public:
@@ -32,6 +37,10 @@ class IssueTrackerController {
    */
   IssueTrackerController(IssueRepository* repository);
 
+  /**
+   * @brief Virtual destructor for proper inheritance support
+   */
+  virtual ~IssueTrackerController() = default;
   /**
    * @brief Virtual destructor for proper inheritance support
    */
@@ -48,6 +57,13 @@ class IssueTrackerController {
   virtual Issue createIssue(const std::string& title, const std::string& desc,
                             const std::string& assignedTo);
 
+  /**
+   * @brief Retrieves an issue by its ID
+   *
+   * @param issueId The unique identifier of the issue
+   * @return Issue The requested issue object
+   */
+  virtual Issue getIssue(const int issueId);
   /**
    * @brief Retrieves an issue by its ID
    *
@@ -75,7 +91,22 @@ class IssueTrackerController {
    * @return bool True if assignment was successful, false otherwise
    */
   virtual bool assignUserToIssue(int issueId, const std::string& user);
+  /**
+   * @brief Assigns a user to an existing issue
+   *
+   * @param issueId The ID of the issue to assign
+   * @param user The user ID to assign to the issue
+   * @return bool True if assignment was successful, false otherwise
+   */
+  virtual bool assignUserToIssue(int issueId, const std::string& user);
 
+  /**
+   * @brief Removes assignment from an issue
+   *
+   * @param issueId The ID of the issue to unassign
+   * @return bool True if unassignment was successful, false otherwise
+   */
+  virtual bool unassignUserFromIssue(int issueId);
   /**
    * @brief Removes assignment from an issue
    *
@@ -91,7 +122,21 @@ class IssueTrackerController {
    * @return bool True if deletion was successful, false otherwise
    */
   virtual bool deleteIssue(int id);
+  /**
+   * @brief Deletes an issue from the system
+   *
+   * @param id The ID of the issue to delete
+   * @return bool True if deletion was successful, false otherwise
+   */
+  virtual bool deleteIssue(int id);
 
+  /**
+   * @brief Gets all comments for a specific issue
+   *
+   * @param issueId The ID of the issue
+   * @return std::vector<Comment> List of all comments on the issue
+   */
+  virtual std::vector<Comment> getallComments(int issueId);
   /**
    * @brief Gets all comments for a specific issue
    *
@@ -108,7 +153,25 @@ class IssueTrackerController {
    * @return Comment The requested comment object
    */
   virtual Comment getComment(int issueId, int commentId);
+  /**
+   * @brief Retrieves a specific comment from an issue
+   *
+   * @param issueId The ID of the issue containing the comment
+   * @param commentId The ID of the comment to retrieve
+   * @return Comment The requested comment object
+   */
+  virtual Comment getComment(int issueId, int commentId);
 
+  /**
+   * @brief Adds a new comment to an issue
+   *
+   * @param issueId The ID of the issue to comment on
+   * @param text The content of the comment
+   * @param authorId The ID of the user creating the comment
+   * @return Comment The newly created comment object
+   */
+  virtual Comment addCommentToIssue(int issueId, const std::string& text,
+                                    const std::string& authorId);
   /**
    * @brief Adds a new comment to an issue
    *
@@ -130,6 +193,16 @@ class IssueTrackerController {
    */
   virtual bool updateComment(int issueId, int commentId,
                              const std::string& newText);
+  /**
+   * @brief Updates the text of an existing comment
+   *
+   * @param issueId The ID of the issue containing the comment
+   * @param commentId The ID of the comment to update
+   * @param newText The new text content for the comment
+   * @return bool True if update was successful, false otherwise
+   */
+  virtual bool updateComment(int issueId, int commentId,
+                             const std::string& newText);
 
   /**
    * @brief Deletes a comment from an issue
@@ -139,7 +212,23 @@ class IssueTrackerController {
    * @return bool True if deletion was successful, false otherwise
    */
   virtual bool deleteComment(int issueId, int commentId);
+  /**
+   * @brief Deletes a comment from an issue
+   *
+   * @param issueId The ID of the issue containing the comment
+   * @param commentId The ID of the comment to delete
+   * @return bool True if deletion was successful, false otherwise
+   */
+  virtual bool deleteComment(int issueId, int commentId);
 
+  /**
+   * @brief Creates a new user in the system
+   *
+   * @param name The unique name/identifier for the user
+   * @param role The role assigned to the user
+   * @return User The newly created user object
+   */
+  virtual User createUser(const std::string& name, const std::string& role);
   /**
    * @brief Creates a new user in the system
    *
@@ -159,7 +248,24 @@ class IssueTrackerController {
    */
   virtual bool updateUser(const std::string& user, const std::string& field,
                           const std::string& value);
+  /**
+   * @brief Updates a user's information
+   *
+   * @param user The ID of the user to update
+   * @param field The field to update ("name" or "role")
+   * @param value The new value for the field
+   * @return bool True if update was successful, false otherwise
+   */
+  virtual bool updateUser(const std::string& user, const std::string& field,
+                          const std::string& value);
 
+  /**
+   * @brief Removes a user from the system
+   *
+   * @param user_name The ID of the user to remove
+   * @return bool True if removal was successful, false otherwise
+   */
+  virtual bool removeUser(const std::string& user_name);
   /**
    * @brief Removes a user from the system
    *
@@ -174,7 +280,19 @@ class IssueTrackerController {
    * @return std::vector<Issue> List of all issues
    */
   virtual std::vector<Issue> listAllIssues();
+  /**
+   * @brief Gets all issues in the system
+   *
+   * @return std::vector<Issue> List of all issues
+   */
+  virtual std::vector<Issue> listAllIssues();
 
+  /**
+   * @brief Gets all unassigned issues
+   *
+   * @return std::vector<Issue> List of issues with no assignee
+   */
+  virtual std::vector<Issue> listAllUnassignedIssues();
   /**
    * @brief Gets all unassigned issues
    *

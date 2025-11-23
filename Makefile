@@ -29,7 +29,7 @@ OATPP_INCLUDE_LIB = /usr/local/include/oatpp-1.3.0/oatpp
 OATPP_SWAGGER_INCLUDE = /usr/local/include/oatpp-1.3.0/oatpp-swagger
 OATPP_LIB_DIR = /usr/local/lib/oatpp-1.3.0
 
-OATPP_INCLUDE = -I src -I $(OATPP_INCLUDE_LIB) -I $(OATPP_SWAGGER_INCLUDE)
+OATPP_INCLUDE = -I $(OATPP_INCLUDE_LIB) -I $(OATPP_SWAGGER_INCLUDE)
 
 ################################################################################
 # Directories
@@ -51,23 +51,27 @@ SRC_INCLUDE = include
 # Include Paths
 ################################################################################
 
-INCLUDE = $(OATPP_INCLUDE) \
+BASE_INCLUDE = \
 	-I include \
 	-I src \
 	-I src/dto \
 	-I third_party/sqlite-build/include
 
+REST_INCLUDE = $(BASE_INCLUDE) $(OATPP_INCLUDE)
+
 ################################################################################
 # Link Flags
 ################################################################################
 
-LINKFLAGS = -lgtest -lgmock -pthread \
+BASE_LINKFLAGS = -lgtest -lgmock -pthread \
 	-L $(SQLITE_PREFIX)/lib \
 	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
+	-lsqlite3
+
+OATPP_LINKFLAGS = \
 	-L $(OATPP_LIB_DIR) \
 	-Wl,-rpath,$(OATPP_LIB_DIR) \
-	-loatpp-swagger -loatpp \
-	-lsqlite3
+	-loatpp-swagger -loatpp
 
 ################################################################################
 # Tools
@@ -126,17 +130,20 @@ clean:
 # Build
 ################################################################################
 
+# Tests: no oatpp
 ${GTEST}: clean
-	${CXX} ${CXXFLAGS} -o ./${GTEST} ${INCLUDE} \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
+	${CXX} ${CXXFLAGS} -o ./${GTEST} ${BASE_INCLUDE} \
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
 
+# Main project: core only (no oatpp unless you really need it here)
 compileProject: clean
-	${CXX} ${CXXVERSION} -o ${PROJECT} ${INCLUDE} \
-	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${LINKFLAGS}
+	${CXX} ${CXXVERSION} -o ${PROJECT} ${BASE_INCLUDE} \
+	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${BASE_LINKFLAGS}
 
+# REST server: this is where oatpp is required
 rest: clean
-	${CXX} ${CXXVERSION} -o ${REST} ${INCLUDE} \
-	${REST_SRCS} ${LINKFLAGS}
+	${CXX} ${CXXVERSION} -o ${REST} ${REST_INCLUDE} \
+	${REST_SRCS} ${BASE_LINKFLAGS} ${OATPP_LINKFLAGS}
 
 ################################################################################
 # Extra
@@ -147,14 +154,14 @@ memcheck: ${GTEST}
 	--error-exitcode=1 ./${GTEST}
 
 coverage: clean
-	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${INCLUDE} \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${LINKFLAGS}
+	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${BASE_INCLUDE} \
+	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
 	./${GTEST}
 	${LCOV} --capture --gcov-tool ${GCOV} \
-	--directory . --output-file ${COVERAGE_RESULTS} \
-	--rc lcov_branch_coverage=1
+		--directory . --output-file ${COVERAGE_RESULTS} \
+		--rc lcov_branch_coverage=1
 	${LCOV} --extract ${COVERAGE_RESULTS} */*/*/${SRC_DIR}/* \
-	-o ${COVERAGE_RESULTS}
+		-o ${COVERAGE_RESULTS}
 	genhtml ${COVERAGE_RESULTS} --output-directory ${COVERAGE_DIR}
 
 static:

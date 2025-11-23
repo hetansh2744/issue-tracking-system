@@ -324,3 +324,24 @@ TEST_F(InMemoryIssueRepositoryTest, UserRoleManagement) {
   retrieved = repository->getUser("testuser");
   EXPECT_EQ(retrieved.getRole(), "developer");
 }
+
+TEST_F(InMemoryIssueRepositoryTest, SaveCommentWithExplicitZeroId) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue saved = repository->saveIssue(issue);
+
+  Comment desc(0, "user1", "Description");
+  Comment stored = repository->saveComment(saved.getId(), desc);
+  EXPECT_EQ(stored.getId(), 0);
+
+  Comment fetched = repository->getComment(saved.getId(), 0);
+  EXPECT_EQ(fetched.getText(), "Description");
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteCommentThrowsForMissingData) {
+  Issue issue(0, "user1", "Test Issue");
+  Issue saved = repository->saveIssue(issue);
+
+  EXPECT_THROW(repository->deleteComment(saved.getId(), 999),
+               std::invalid_argument);
+  EXPECT_THROW(repository->deleteComment(999, 0), std::invalid_argument);
+}

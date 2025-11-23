@@ -179,3 +179,41 @@ TEST(IssueModel, AddCommentObject_RvaluePath_Covered) {
   EXPECT_EQ(is.getComments()[0].getId(), 101);
   EXPECT_EQ(is.getCommentIds().size(), 1u);
 }
+
+TEST(IssueModel, RemoveCommentByIdRemovesObjectsAndIds) {
+  Issue is{0, "u1", "T", 0};
+  Comment desc{1, "u2", "desc", 0};
+  is.addComment(desc);
+  is.setDescriptionCommentId(1);
+
+  ASSERT_TRUE(is.hasDescriptionComment());
+  ASSERT_EQ(is.getComments().size(), 1u);
+  ASSERT_EQ(is.getCommentIds().size(), 1u);
+
+  EXPECT_TRUE(is.removeCommentById(1));
+  EXPECT_FALSE(is.hasDescriptionComment());
+  EXPECT_TRUE(is.getComments().empty());
+  EXPECT_TRUE(is.getCommentIds().empty());
+  EXPECT_FALSE(is.removeCommentById(1));
+}
+
+TEST(IssueModel, TagLifecycleAndValidation) {
+  Issue is{0, "u1", "T", 0};
+
+  EXPECT_TRUE(is.addTag("backend"));
+  EXPECT_FALSE(is.addTag("backend"));
+  EXPECT_TRUE(is.hasTag("backend"));
+  EXPECT_EQ(is.getTags().count("backend"), 1u);
+
+  EXPECT_TRUE(is.removeTag("backend"));
+  EXPECT_FALSE(is.hasTag("backend"));
+  EXPECT_FALSE(is.removeTag("backend"));
+  EXPECT_THROW(is.addTag(""), std::invalid_argument);
+}
+
+TEST(IssueModel, TimestampRejectsNegativeValues) {
+  Issue is{0, "u1", "T", 0};
+  EXPECT_THROW(is.setTimestamp(-5), std::invalid_argument);
+  is.setTimestamp(123);
+  EXPECT_EQ(is.getTimestamp(), 123);
+}

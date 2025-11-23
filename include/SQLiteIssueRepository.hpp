@@ -7,7 +7,9 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include "sqlite3.h"
 
+// Concrete IssueRepository implementation backed by SQLite.
 class SQLiteIssueRepository : public IssueRepository {
 private:
   sqlite3* db_;
@@ -34,20 +36,31 @@ public:
   explicit SQLiteIssueRepository(const std::string& dbPath);
   ~SQLiteIssueRepository() override;
 
-  // Existing Issue methods...
+  // ---- Issue operations ----
   Issue getIssue(int issueId) const override;
   Issue saveIssue(const Issue& issue) override;
   bool deleteIssue(int issueId) override;
-  std::vector<Issue> listIssues() const override;
-  std::vector<Issue> findIssues(std::function<bool(const Issue&)> criteria) const override;
 
-  // Existing Comment methods...
+  std::vector<Issue> listIssues() const override;
+
+  // Generic predicate-based search (used by some tests/tools).
+  std::vector<Issue> findIssues(
+      std::function<bool(const Issue&)> criteria) const override;
+
+  // Milestone helpers:
+  //  - all issues with no assignee
+  std::vector<Issue> listAllUnassigned() const override;
+  //  - all issues assigned to a particular user
+  std::vector<Issue> findIssues(
+      const std::string& userId) const override;
+
+  // ---- Comment operations ----
   Comment getComment(int issueId, int commentId) const override;
   std::vector<Comment> getAllComments(int issueId) const override;
   Comment saveComment(int issueId, const Comment& comment) override;
   bool deleteComment(int issueId, int commentId) override;
 
-  // Existing User methods...
+  // ---- User operations ----
   User getUser(const std::string& userId) const override;
   User saveUser(const User& user) override;
   bool deleteUser(const std::string& userId) override;
@@ -108,4 +121,4 @@ public:
 
 };
 
-#endif
+#endif  // TEXT_BASED_ITS_SQLITEISSUEREPOSITORY_HPP_
