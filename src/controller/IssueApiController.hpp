@@ -387,9 +387,12 @@ ENDPOINT("POST", "/milestones/{id}/issues/{issueId}", addIssueToMilestone,
          PATH(oatpp::Int32, id),
          PATH(oatpp::Int32, issueId)) {
   try {
-    bool ok = issues().addIssueToMilestone(id, issueId);
-    return ok ? createResponse(Status::CODE_201, "Issue added")
-              : createResponse(Status::CODE_400, "Issue already linked");
+    bool linked = issues().addIssueToMilestone(id, issueId);
+    if (!linked) {
+      return createResponse(Status::CODE_400, "Issue already linked");
+    }
+    auto milestone = issues().getMilestone(id);
+    return createDtoResponse(Status::CODE_200, milestoneToDto(milestone));
   } catch (const std::out_of_range&) {
     return createResponse(Status::CODE_404, "Milestone not found");
   } catch (const std::invalid_argument& ex) {
