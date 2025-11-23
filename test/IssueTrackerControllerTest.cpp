@@ -1,4 +1,5 @@
 #include "IssueTrackerController.hpp"
+#include "SQLiteIssueRepository.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -325,16 +326,16 @@ TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
   EXPECT_EQ(result.getName(), "");
 }
 
-TEST(IssueTrackerControllerTest, UpdateUserSuccess) {
+TEST(IssueTrackerControllerTest, UpdateUserRoleSuccess) {
   MockIssueRepository mockRepo;
   User user("oldName", "role");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
   EXPECT_CALL(mockRepo, saveUser(testing::_))
-      .WillOnce(testing::Return(User("newName", "role")));
+      .WillOnce(testing::Return(User("oldName", "newRole")));
 
   IssueTrackerController controller(&mockRepo);
-  bool result = controller.updateUser("user123", "name", "newName");
+  bool result = controller.updateUser("user123", "role", "newRole");
 
   EXPECT_TRUE(result);
 }
@@ -361,6 +362,33 @@ TEST(IssueTrackerControllerTest, UpdateUserThrows) {
   bool result = controller.updateUser("user123", "name", "newName");
 
   EXPECT_FALSE(result);
+}
+
+TEST(IssueTrackerControllerTest, UpdateUserNameRenamesInPlace) {
+  SQLiteIssueRepository repo(":memory:");
+  IssueTrackerController controller(&repo);
+
+  repo.saveUser(User("old", "role"));
+  Issue created = controller.createIssue("title", "desc", "old");
+  EXPECT_TRUE(controller.assignUserToIssue(created.getId(), "old"));
+  controller.addCommentToIssue(created.getId(), "comment", "old");
+
+  EXPECT_TRUE(controller.updateUser("old", "name", "new"));
+
+  EXPECT_THROW(repo.getUser("old"), std::invalid_argument);
+  User renamed = repo.getUser("new");
+  EXPECT_EQ(renamed.getRole(), "role");
+
+  Issue reloaded = repo.getIssue(created.getId());
+  EXPECT_EQ(reloaded.getAuthorId(), "new");
+  ASSERT_TRUE(reloaded.hasAssignee());
+  EXPECT_EQ(reloaded.getAssignedTo(), "new");
+
+  auto comments = repo.getAllComments(created.getId());
+  ASSERT_FALSE(comments.empty());
+  for (const auto& c : comments) {
+    EXPECT_EQ(c.getAuthor(), "new");
+  }
 }
 
 TEST(IssueTrackerControllerTest, RemoveUser) {

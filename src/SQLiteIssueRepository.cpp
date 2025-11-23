@@ -312,15 +312,17 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
   if (!assigned.empty()) {
     issue.assignTo(assigned);
   }
-  if (descriptionId >= 0) {
-    issue.setDescriptionCommentId(descriptionId);
-  }
   if (!status.empty()) {
     issue.setStatus(status);
   }
 
   for (const auto& comment : loadComments(issueId)) {
     issue.addComment(comment);
+  }
+
+  if (descriptionId >= 0
+      && issue.findCommentById(descriptionId) != nullptr) {
+    issue.setDescriptionCommentId(descriptionId);
   }
 
   forEachRow(
