@@ -66,8 +66,8 @@ void SQLiteIssueRepository::execOrThrow(const std::string& sql) const {
 }
 
 void SQLiteIssueRepository::initializeSchema() {
-  // Add a status column so issue status can be persisted.
-  // Tags are NOT persisted here.
+  // Base schema. For a brand-new DB this will create the issues table
+  // including the status column. For an existing DB, this has no effect.
   const char* statements[] = {
       "CREATE TABLE IF NOT EXISTS issues ("
       "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -84,7 +84,8 @@ void SQLiteIssueRepository::initializeSchema() {
       "text TEXT NOT NULL, "
       "timestamp INTEGER DEFAULT 0, "
       "PRIMARY KEY(issue_id, id), "
-      "FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE);",
+      "FOREIGN KEY(issue_id) REFERENCES issues(id) "
+      "ON DELETE CASCADE);",
       "CREATE TABLE IF NOT EXISTS users ("
       "name TEXT PRIMARY KEY, "
       "role TEXT NOT NULL);",
@@ -93,6 +94,22 @@ void SQLiteIssueRepository::initializeSchema() {
 
   for (const char* sql : statements) {
     execOrThrow(sql);
+  }
+
+  // Migration for older DBs that were created BEFORE the status column
+  // existed. Older schema had no 'status' column, so we add it here.
+  try {
+    execOrThrow(
+        "ALTER TABLE issues "
+        "ADD COLUMN status TEXT NOT NULL "
+        "DEFAULT 'To Be Done';");
+  } catch (const std::runtime_error& e) {
+    const std::string msg = e.what();
+    // If the column already exists, SQLite will say something like
+    // "duplicate column name: status". That is safe to ignore.
+    if (msg.find("duplicate column name") == std::string::npos) {
+      throw;
+    }
   }
 }
 
@@ -335,7 +352,7 @@ std::vector<Issue> SQLiteIssueRepository::listIssues() const {
   return issues;
 }
 
-// Helper: generic filter used by the specific find/list methods.
+// Generic filter used by specific find/list methods.
 std::vector<Issue> SQLiteIssueRepository::findIssues(
     std::function<bool(const Issue&)> criteria) const {
   std::vector<Issue> all = listIssues();
@@ -348,11 +365,11 @@ std::vector<Issue> SQLiteIssueRepository::findIssues(
   return filtered;
 }
 
-// --- Required overrides matching IssueRepository interface ---
+// --- Interface overrides that your controller uses ---
 
 std::vector<Issue> SQLiteIssueRepository::findIssues(
     const std::string& userId) const {
-  // Match in-memory semantics: issues by author or assignee.
+  // Same semantics as in-memory repo: match author or assignee.
   return findIssues(
       [&userId](const Issue& issue) {
         if (issue.getAuthorId() == userId) {
@@ -370,8 +387,7 @@ std::vector<Issue> SQLiteIssueRepository::listAllUnassigned() const {
       });
 }
 
-// Tags are not persisted in the SQLite-backed repository.
-// We keep behaviour as "unsupported" (controller will see false).
+// Tags are not persisted in SQLite. Keep behaviour as "unsupported".
 bool SQLiteIssueRepository::addTagToIssue(
     int /*issueId*/, const std::string& /*tag*/) {
   return false;
