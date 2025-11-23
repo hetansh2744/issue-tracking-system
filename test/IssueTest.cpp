@@ -74,6 +74,13 @@ TEST(IssueModel, SetDescription_AddsIdIfMissing) {
   EXPECT_EQ(is.getCommentIds()[0], 42);
 }
 
+TEST(IssueModel, DescriptionIdZeroIsValid) {
+  Issue is{0, "u1", "T", 0};
+  is.setDescriptionCommentId(0);
+  EXPECT_TRUE(is.hasDescriptionComment());
+  EXPECT_EQ(is.getDescriptionCommentId(), 0);
+}
+
 TEST(IssueModel, RemoveComment_ClearsDescriptionIfThatId) {
   Issue is{0, "u1", "T", 0};
   is.addComment(7);

@@ -17,7 +17,7 @@
  *  - New Issue starts with id == 0; repository assigns > 0 via
  *    setIdForPersistence() once.
  *  - author_id_ and title_ are non-empty (validated).
- *  - description_comment_id_ == 0 => no description linked.
+ *  - description_comment_id_ == -1 => no description linked.
  *  - assigned_to_ empty => unassigned.
  *  - We keep both comment id list (persistence) and Comment objects
  *    (in-memory lookups/edits).
@@ -34,7 +34,7 @@ class Issue {
   std::string title_;      ///< non-empty short summary
 
   // Relationships / metadata
-  int description_comment_id_{0};        ///< 0 => none linked
+  int description_comment_id_{-1};       ///< -1 => none linked
   std::string assigned_to_;              ///< assignee user id; empty => none
   std::string status_{"To Be Done"};     ///< issue status
 
@@ -104,10 +104,10 @@ class Issue {
 
   /**
    * @brief Whether description comment is linked.
-   * @return true if description_comment_id_ > 0.
+   * @return true if description_comment_id_ >= 0.
    */
   bool hasDescriptionComment() const noexcept {
-    return description_comment_id_ > 0;
+    return description_comment_id_ >= 0;
   }
 
   /**
@@ -179,8 +179,8 @@ class Issue {
   /**
    * @brief Link description to a comment id and ensure it is tracked
    *        in comment_ids_.
-   * @param comment_id  > 0
-   * @throws std::invalid_argument if comment_id <= 0
+   * @param comment_id  >= 0
+   * @throws std::invalid_argument if comment_id < 0
    */
   void setDescriptionCommentId(int comment_id);
 
@@ -207,8 +207,8 @@ class Issue {
 
   /**
    * @brief Add a comment id to comment_ids_ (de-duplicated).
-   * @param comment_id  > 0
-   * @throws std::invalid_argument if comment_id <= 0
+   * @param comment_id  >= 0
+   * @throws std::invalid_argument if comment_id < 0
    */
   void addComment(int comment_id);
 
@@ -227,16 +227,16 @@ class Issue {
   /**
    * @brief Upsert a Comment (copy) by id into comments_. Ensures its id
    *        is in comment_ids_.
-   * @param comment  Comment with id > 0
-   * @throws std::invalid_argument if comment id <= 0
+   * @param comment  Comment with id >= 0
+   * @throws std::invalid_argument if comment id < 0
    */
   void addComment(const Comment& comment);
 
   /**
    * @brief Upsert a Comment (move) by id into comments_. Ensures its id
    *        is in comment_ids_.
-   * @param comment  rvalue Comment with id > 0
-   * @throws std::invalid_argument if comment id <= 0
+   * @param comment  rvalue Comment with id >= 0
+   * @throws std::invalid_argument if comment id < 0
    */
   void addComment(Comment&& comment);
 
