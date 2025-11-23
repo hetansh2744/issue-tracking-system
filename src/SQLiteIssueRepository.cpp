@@ -1,10 +1,10 @@
 #include "SQLiteIssueRepository.hpp"
 
 #include <chrono>
+#include <ctime>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <ctime>
 
 namespace {
 class SqliteStmt {
@@ -138,8 +138,7 @@ void SQLiteIssueRepository::initializeSchema() {
       "FOREIGN KEY(milestone_id) REFERENCES milestones(id) ON DELETE CASCADE,"
       "FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE);",
 
-      "CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments(issue_id);"
-  };
+      "CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments(issue_id);"};
 
   for (const char* sql : statements) {
     execOrThrow(sql);
@@ -559,8 +558,7 @@ std::vector<int> SQLiteIssueRepository::loadMilestoneIssueIds(
 }
 
 bool SQLiteIssueRepository::milestoneExists(int milestoneId) const {
-  SqliteStmt stmt(
-      db_, "SELECT 1 FROM milestones WHERE id = ? LIMIT 1;");
+  SqliteStmt stmt(db_, "SELECT 1 FROM milestones WHERE id = ? LIMIT 1;");
   sqlite3_bind_int(stmt.get(), 1, milestoneId);
   int rc = sqlite3_step(stmt.get());
   if (rc == SQLITE_ROW) {
@@ -671,15 +669,14 @@ std::vector<Milestone> SQLiteIssueRepository::listAllMilestones() const {
   forEachRow(
       "SELECT id, name, description, start_date, end_date FROM milestones "
       "ORDER BY start_date ASC, id ASC;",
-      {},
-      [this, &list](sqlite3_stmt* stmt) {
+      {}, [this, &list](sqlite3_stmt* stmt) {
         int id = sqlite3_column_int(stmt, 0);
         std::string name = columnText(stmt, 1);
         std::string desc = columnText(stmt, 2);
         std::string start = columnText(stmt, 3);
         std::string end = columnText(stmt, 4);
-        list.emplace_back(
-            id, name, desc, start, end, loadMilestoneIssueIds(id));
+        list.emplace_back(id, name, desc, start, end,
+                          loadMilestoneIssueIds(id));
       });
   return list;
 }
