@@ -73,6 +73,13 @@ class Comment {
   const std::string& getAuthor() const noexcept;
 
   /**
+   * @brief Set the author user id.
+   * @param author_id non-empty user id
+   * @throws std::invalid_argument if empty
+   */
+  void setAuthor(std::string author_id);
+
+  /**
    * @brief Get the body text.
    * @return reference to non-empty text string.
    */

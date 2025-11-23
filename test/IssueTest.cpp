@@ -46,6 +46,13 @@ TEST(IssueModel, SetTitle_RejectsEmpty) {
   EXPECT_THROW(is.setTitle(""), std::invalid_argument);
 }
 
+TEST(IssueModel, SetAuthorId_RejectsEmpty) {
+  Issue is{0, "u1", "T", 0};
+  is.setAuthorId("u2");
+  EXPECT_EQ(is.getAuthorId(), "u2");
+  EXPECT_THROW(is.setAuthorId(""), std::invalid_argument);
+}
+
 // -------------------------------
 // ID-only comment list behavior
 // -------------------------------

@@ -227,14 +227,58 @@ bool IssueTrackerController::updateUser(const std::string& userId,
   try {
     User userObj = repo->getUser(userId);
     if (field == "name") {
+      if (value.empty()) {
+        return false;
+      }
+      if (value == userId) {
+        return true;  // nothing to change
+      }
+
+      // Do not clobber another existing user.
+      try {
+        if (repo->getUser(value).getName() == value) {
+          return false;
+        }
+      } catch (...) {
+        // ok, target id not in use
+      }
+
+      // Propagate the rename to all issues and comments.
+      for (Issue issue : repo->listIssues()) {
+        bool issueChanged = false;
+        if (issue.getAuthorId() == userId) {
+          issue.setAuthorId(value);
+          issueChanged = true;
+        }
+        if (issue.hasAssignee() && issue.getAssignedTo() == userId) {
+          issue.assignTo(value);
+          issueChanged = true;
+        }
+
+        for (Comment c : repo->getAllComments(issue.getId())) {
+          if (c.getAuthor() == userId) {
+            c.setAuthor(value);
+            repo->saveComment(issue.getId(), c);
+          }
+        }
+
+        if (issueChanged) {
+          repo->saveIssue(issue);
+        }
+      }
+
+      // Replace user record with new id.
       userObj.setName(value);
+      repo->saveUser(userObj);
+      repo->deleteUser(userId);
+      return true;
+
     } else if (field == "role") {
       userObj.setRole(value);
-    } else {
-      return false;
+      repo->saveUser(userObj);
+      return true;
     }
-    repo->saveUser(userObj);
-    return true;
+    return false;
   } catch (...) {
     return false;
   }

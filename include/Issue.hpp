@@ -97,6 +97,13 @@ class Issue {
   const std::string& getAuthorId() const noexcept { return author_id_; }
 
   /**
+   * @brief Update creator user id.
+   * @param author_id non-empty author id
+   * @throws std::invalid_argument if empty
+   */
+  void setAuthorId(std::string author_id);
+
+  /**
    * @brief Get title.
    * @return non-empty title.
    */

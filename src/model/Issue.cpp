@@ -55,6 +55,13 @@ void Issue::setTitle(std::string new_title) {
   title_ = std::move(new_title);
 }
 
+void Issue::setAuthorId(std::string author_id) {
+  if (author_id.empty()) {
+    throw std::invalid_argument("authorId must not be empty");
+  }
+  author_id_ = std::move(author_id);
+}
+
 void Issue::addComment(int comment_id) {
   if (comment_id < 0) {
     throw std::invalid_argument("comment_id must be >= 0 but was "
