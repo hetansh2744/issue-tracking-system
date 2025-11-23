@@ -27,6 +27,8 @@ private:
   bool issueExists(int issueId) const;
   bool commentExists(int issueId, int commentId) const;
   int nextCommentIdForIssue(int issueId) const;
+  std::vector<int> loadMilestoneIssueIds(int milestoneId) const;
+  bool milestoneExists(int milestoneId) const;
 
 public:
   explicit SQLiteIssueRepository(const std::string& dbPath);
@@ -58,14 +60,14 @@ public:
    * @param milestone - The milestone to save
    * @return The saved milestone with generated ID if new
    */
-  Milestone saveMilestone(const Milestone& milestone);
+  Milestone saveMilestone(const Milestone& milestone) override;
   
   /**
    * Get a milestone by ID
    * @param milestoneId - The milestone ID
    * @return The milestone with all associated issues
    */
-  Milestone getMilestone(int milestoneId) const;
+  Milestone getMilestone(int milestoneId) const override;
   
   /**
    * Delete a milestone
@@ -73,13 +75,13 @@ public:
    * @param cascade - If true, also delete associated issues
    * @return true if deleted successfully
    */
-  bool deleteMilestone(int milestoneId, bool cascade = false);
+  bool deleteMilestone(int milestoneId, bool cascade = false) override;
   
   /**
    * List all milestones
    * @return Vector of all milestones
    */
-  std::vector<Milestone> listAllMilestones() const;
+  std::vector<Milestone> listAllMilestones() const override;
   
   /**
    * Add an issue to a milestone
@@ -87,7 +89,7 @@ public:
    * @param issueId - The issue ID to add
    * @return true if successful
    */
-  bool addIssueToMilestone(int milestoneId, int issueId);
+  bool addIssueToMilestone(int milestoneId, int issueId) override;
   
   /**
    * Remove an issue from a milestone
@@ -95,22 +97,14 @@ public:
    * @param issueId - The issue ID to remove
    * @return true if successful
    */
-  bool removeIssueFromMilestone(int milestoneId, int issueId);
+  bool removeIssueFromMilestone(int milestoneId, int issueId) override;
   
   /**
    * Get all issues for a specific milestone
    * @param milestoneId - The milestone ID
    * @return Vector of issues belonging to this milestone
    */
-  std::vector<Issue> getIssuesForMilestone(int milestoneId) const;
-  
-  /**
-   * Check if a milestone exists
-   * @param milestoneId - The milestone ID
-   * @return true if exists
-   */
-  bool milestoneExists(int milestoneId) const;
-
+  std::vector<Issue> getIssuesForMilestone(int milestoneId) const override;
   
 };
 

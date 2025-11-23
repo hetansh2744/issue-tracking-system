@@ -2,6 +2,7 @@
 #define ISSUE_TRACKER_CONTROLLER_H
 
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -186,7 +187,7 @@ class IssueTrackerController {
      * @param user_name The ID of the user to search for
      * @return std::vector<Issue> List of issues assigned to the user
      */
-    std::vector<Issue> findIssuesByUserId(
+    virtual std::vector<Issue> findIssuesByUserId(
         const std::string& user_name);
 
     /**
@@ -199,10 +200,10 @@ class IssueTrackerController {
     bool addTagToIssue(int issueId, const std::string& tag);
 
     bool removeTagFromIssue(int issueId, const std::string& tag);
- Milestone createMilestone(const std::string& name,
-                           const std::string& desc,
-                           const std::string& start_date,
-                           const std::string& end_date);
+  Milestone createMilestone(const std::string& name,
+                            const std::string& desc,
+                            const std::string& start_date,
+                            const std::string& end_date);
   
   /**
    * Get a milestone by its ID
@@ -220,8 +221,24 @@ class IssueTrackerController {
    * @return true if successful, false otherwise
    */
   bool updateMilestoneField(int milestoneId,
-                           const std::string& field,
-                           const std::string& value);
+                            const std::string& field,
+                            const std::string& value);
+
+  /**
+   * @brief Partially update milestone data.
+   *
+   * @param milestoneId The milestone id to patch.
+   * @param name Optional new name (non-empty when provided).
+   * @param description Optional description text.
+   * @param startDate Optional new start date (non-empty when provided).
+   * @param endDate Optional new end date (non-empty when provided).
+   * @return Updated milestone.
+   */
+  Milestone updateMilestone(int milestoneId,
+                            const std::optional<std::string>& name,
+                            const std::optional<std::string>& description,
+                            const std::optional<std::string>& startDate,
+                            const std::optional<std::string>& endDate);
   
   /**
    * Delete a milestone

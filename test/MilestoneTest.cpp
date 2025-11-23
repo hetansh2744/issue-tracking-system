@@ -1,105 +1,79 @@
 #include <gtest/gtest.h>
+
 #include "Milestone.hpp"
 
-// Constructor Tests
-TEST(MilestoneTests, ConstructorValid) {
-    Milestone milestone(1, "Milestone 1", "Description of milestone", "2023-01-01", "2023-12-31");
-    EXPECT_EQ(milestone.getId(), 1);
-    EXPECT_EQ(milestone.getName(), "Milestone 1");
-    EXPECT_EQ(milestone.getDescription(), "Description of milestone");
-    EXPECT_EQ(milestone.getStartDate(), "2023-01-01");
-    EXPECT_EQ(milestone.getEndDate(), "2023-12-31");
+TEST(MilestoneTests, ConstructWithValidData) {
+  Milestone milestone(5,
+                      "Sprint 1",
+                      "Stabilize MVP",
+                      "2024-01-01",
+                      "2024-02-01",
+                      {1, 2});
+  EXPECT_EQ(milestone.getId(), 5);
+  EXPECT_EQ(milestone.getName(), "Sprint 1");
+  EXPECT_EQ(milestone.getDescription(), "Stabilize MVP");
+  EXPECT_EQ(milestone.getStartDate(), "2024-01-01");
+  EXPECT_EQ(milestone.getEndDate(), "2024-02-01");
+  EXPECT_EQ(milestone.getIssueIds().size(), 2U);
 }
 
-TEST(MilestoneTests, ConstructorInvalidName) {
-    EXPECT_THROW(Milestone milestone(1, "", "Description", "2023-01-01", "2023-12-31"), std::invalid_argument);
+TEST(MilestoneTests, ConstructorRejectsMissingFields) {
+  EXPECT_THROW(Milestone(-1, "", "desc", "2024-01-01", "2024-02-01"),
+               std::invalid_argument);
+  EXPECT_THROW(Milestone(-1, "name", "desc", "", "2024-02-01"),
+               std::invalid_argument);
+  EXPECT_THROW(Milestone(-1, "name", "desc", "2024-01-01", ""),
+               std::invalid_argument);
 }
 
-TEST(MilestoneTests, ConstructorInvalidStartDate) {
-    EXPECT_THROW(Milestone milestone(1, "Milestone", "Description", "", "2023-12-31"), std::invalid_argument);
+TEST(MilestoneTests, DescriptionCanBeUpdated) {
+  Milestone milestone(-1, "Sprint", "initial", "2024-01-01", "2024-02-01");
+  milestone.setDescription("refined scope");
+  EXPECT_EQ(milestone.getDescription(), "refined scope");
 }
 
-TEST(MilestoneTests, ConstructorInvalidEndDate) {
-    EXPECT_THROW(Milestone milestone(1, "Milestone", "Description", "2023-01-01", ""), std::invalid_argument);
+TEST(MilestoneTests, ScheduleUpdatesEnforceRequiredValues) {
+  Milestone milestone(-1, "Sprint", "desc", "2024-01-01", "2024-02-01");
+  milestone.setSchedule("2024-02-05", "2024-03-01");
+  EXPECT_EQ(milestone.getStartDate(), "2024-02-05");
+  EXPECT_EQ(milestone.getEndDate(), "2024-03-01");
+  EXPECT_THROW(milestone.setStartDate(""), std::invalid_argument);
+  EXPECT_THROW(milestone.setEndDate(""), std::invalid_argument);
 }
 
-TEST(MilestoneTests, ConstructorNegativeID) {
-    Milestone milestone(-1, "", "", "", "");
-    EXPECT_EQ(milestone.getId(), -1);
+TEST(MilestoneTests, PersistentIdCanOnlyBeSetOnce) {
+  Milestone milestone(-1, "Sprint", "desc", "2024-01-01", "2024-02-01");
+  milestone.setIdForPersistence(10);
+  EXPECT_TRUE(milestone.hasPersistentId());
+  EXPECT_EQ(milestone.getId(), 10);
+  EXPECT_THROW(milestone.setIdForPersistence(11), std::logic_error);
 }
 
-// Setter Tests
-TEST(MilestoneTests, SetNameValid) {
-    Milestone milestone(1, "Initial", "Description", "2023-01-01", "2023-12-31");
-    milestone.setName("Updated Name");
-    EXPECT_EQ(milestone.getName(), "Updated Name");
+TEST(MilestoneTests, AddIssueAvoidsDuplicates) {
+  Milestone milestone(-1, "Sprint", "desc", "2024-01-01", "2024-02-01");
+  milestone.addIssue(42);
+  milestone.addIssue(42);
+  milestone.addIssue(51);
+  EXPECT_EQ(milestone.getIssueCount(), 2U);
+  EXPECT_TRUE(milestone.hasIssue(42));
+  EXPECT_TRUE(milestone.hasIssue(51));
+  EXPECT_FALSE(milestone.hasIssue(100));
 }
 
-TEST(MilestoneTests, SetNameInvalid) {
-    Milestone milestone(1, "Initial", "Description", "2023-01-01", "2023-12-31");
-    EXPECT_THROW(milestone.setName(""), std::invalid_argument);
+TEST(MilestoneTests, RemoveIssueIsIdempotent) {
+  Milestone milestone(-1, "Sprint", "desc", "2024-01-01", "2024-02-01");
+  milestone.addIssue(7);
+  milestone.removeIssue(7);
+  milestone.removeIssue(7);
+  EXPECT_EQ(milestone.getIssueCount(), 0U);
 }
 
-TEST(MilestoneTests, SetDescription) {
-    Milestone milestone(1, "Milestone", "Old Description", "2023-01-01", "2023-12-31");
-    milestone.setDescription("New Description");
-    EXPECT_EQ(milestone.getDescription(), "New Description");
-}
-
-TEST(MilestoneTests, SetStartDateValid) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    milestone.setDateStart("2024-01-01");
-    EXPECT_EQ(milestone.getStartDate(), "2024-01-01");
-}
-
-TEST(MilestoneTests, SetStartDateInvalid) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    EXPECT_THROW(milestone.setDateStart(""), std::invalid_argument);
-}
-
-TEST(MilestoneTests, SetEndDateValid) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    milestone.setDateEnd("2024-01-01");
-    EXPECT_EQ(milestone.getEndDate(), "2024-01-01");
-}
-
-TEST(MilestoneTests, SetEndDateInvalid) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    EXPECT_THROW(milestone.setDateEnd(""), std::invalid_argument);
-}
-
-// Issue Management Tests
-TEST(MilestoneTests, AddIssue) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    milestone.addIssue(1001);
-    EXPECT_EQ(milestone.getIssueCount(), 1);
-    EXPECT_TRUE(milestone.hasIssue(1001));
-}
-
-TEST(MilestoneTests, AddDuplicateIssue) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    milestone.addIssue(1001);
-    milestone.addIssue(1001);  // Duplicate
-    EXPECT_EQ(milestone.getIssueCount(), 1);
-}
-
-TEST(MilestoneTests, RemoveIssue) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    milestone.addIssue(1001);
-    milestone.removeIssue(1001);
-    EXPECT_EQ(milestone.getIssueCount(), 0);
-}
-
-TEST(MilestoneTests, HasIssue) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    milestone.addIssue(1001);
-    EXPECT_TRUE(milestone.hasIssue(1001));
-    EXPECT_FALSE(milestone.hasIssue(1002));
-}
-
-TEST(MilestoneTests, GetIssueCount) {
-    Milestone milestone(1, "Milestone", "Description", "2023-01-01", "2023-12-31");
-    EXPECT_EQ(milestone.getIssueCount(), 0);
-    milestone.addIssue(1001);
-    EXPECT_EQ(milestone.getIssueCount(), 1);
+TEST(MilestoneTests, ReplaceIssuesDeduplicatesIds) {
+  Milestone milestone(-1, "Sprint", "desc", "2024-01-01", "2024-02-01");
+  milestone.replaceIssues({5, 5, 7, 6, 7});
+  const auto& ids = milestone.getIssueIds();
+  EXPECT_EQ(ids.size(), 3U);
+  EXPECT_EQ(ids[0], 5);
+  EXPECT_EQ(ids[1], 6);
+  EXPECT_EQ(ids[2], 7);
 }

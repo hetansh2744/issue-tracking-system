@@ -1,52 +1,102 @@
 #include "Milestone.hpp"
+
 #include <algorithm>
+#include <stdexcept>
+#include <utility>
 
-Milestone::Milestone(int mID_,
-                     std::string name_,
-                     std::string descrip_,
-                     std::string start_date,
-                     std::string end_date)
-  : mID_{mID_}, 
-    name_{std::move(name_)},
-    descrip_{std::move(descrip_)},
-    start_date{std::move(start_date)},
-    end_date{std::move(end_date)} {
-  
-  // Only validate if trying to create a "real" milestone
-  if (mID_ >= 0) {
-    if (name_.empty()) {
-      throw std::invalid_argument("Must fill name");
-    }
-    if (start_date.empty()) {
-      throw std::invalid_argument("Must fill start date");
-    }
-    if (end_date.empty()) {
-      throw std::invalid_argument("Must fill end date");
-    }
+namespace {
+void ensureUnique(std::vector<int>& ids) {
+  std::sort(ids.begin(), ids.end());
+  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+}
+}  // namespace
+
+Milestone::Milestone(int id,
+                     std::string name,
+                     std::string description,
+                     std::string startDate,
+                     std::string endDate,
+                     std::vector<int> issueIds)
+    : id_{id}, description_{std::move(description)} {
+  if (id < -1) {
+    throw std::invalid_argument("Milestone id must be >= -1");
+  }
+  setName(std::move(name));
+  setStartDate(std::move(startDate));
+  setEndDate(std::move(endDate));
+  replaceIssues(std::move(issueIds));
+}
+
+void Milestone::validateRequiredField(const std::string& value,
+                                      const char* field) {
+  if (value.empty()) {
+    throw std::invalid_argument(std::string(field) + " cannot be empty");
   }
 }
 
-void Milestone::setName(std::string newname_) {
-  if (newname_.empty()) {
-    throw std::invalid_argument("Name cannot be empty");
+void Milestone::validateIssueId(int issueId) {
+  if (issueId <= 0) {
+    throw std::invalid_argument("Issue id must be positive");
   }
-  name_ = std::move(newname_);
 }
 
-void Milestone::setDescription(std::string newdescrip_) {
-  descrip_ = std::move(newdescrip_);
+void Milestone::setIdForPersistence(int id) {
+  if (hasPersistentId()) {
+    throw std::logic_error("Milestone already has a persistent id");
+  }
+  if (id < 0) {
+    throw std::invalid_argument("Persistent id must be >= 0");
+  }
+  id_ = id;
 }
 
-void Milestone::setDateEnd(std::string newend_date_) {
-  if (newend_date_.empty()) {
-    throw std::invalid_argument("End date cannot be empty");
-  }
-  end_date = std::move(newend_date_);
+void Milestone::setName(std::string name) {
+  validateRequiredField(name, "name");
+  name_ = std::move(name);
 }
 
-void Milestone::setDateStart(std::string newstart_date_) {
-  if (newstart_date_.empty()) {
-    throw std::invalid_argument("Start date cannot be empty");
+void Milestone::setDescription(std::string description) noexcept {
+  description_ = std::move(description);
+}
+
+void Milestone::setStartDate(std::string startDate) {
+  validateRequiredField(startDate, "start date");
+  start_date_ = std::move(startDate);
+}
+
+void Milestone::setEndDate(std::string endDate) {
+  validateRequiredField(endDate, "end date");
+  end_date_ = std::move(endDate);
+}
+
+void Milestone::setSchedule(std::string startDate, std::string endDate) {
+  setStartDate(std::move(startDate));
+  setEndDate(std::move(endDate));
+}
+
+void Milestone::replaceIssues(std::vector<int> issueIds) {
+  for (int id : issueIds) {
+    validateIssueId(id);
   }
-  start_date = std::move(newstart_date_);
+  ensureUnique(issueIds);
+  issue_ids_ = std::move(issueIds);
+}
+
+void Milestone::addIssue(int issueId) {
+  validateIssueId(issueId);
+  if (!hasIssue(issueId)) {
+    issue_ids_.push_back(issueId);
+  }
+}
+
+void Milestone::removeIssue(int issueId) {
+  auto it = std::remove(issue_ids_.begin(), issue_ids_.end(), issueId);
+  if (it != issue_ids_.end()) {
+    issue_ids_.erase(it, issue_ids_.end());
+  }
+}
+
+bool Milestone::hasIssue(int issueId) const noexcept {
+  return std::find(issue_ids_.begin(), issue_ids_.end(), issueId) !=
+         issue_ids_.end();
 }

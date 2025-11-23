@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <optional>
 #include <stdexcept>
 
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
@@ -284,38 +285,93 @@ Milestone IssueTrackerController::createMilestone(
     const std::string& desc,
     const std::string& start_date,
     const std::string& end_date) {
-
+    
     if (name.empty()) {
         throw std::invalid_argument("Milestone name is required");
     }
+    if (start_date.empty()) {
+        throw std::invalid_argument("Milestone start date is required");
+    }
+    if (end_date.empty()) {
+        throw std::invalid_argument("Milestone end date is required");
+    }
 
-    Milestone m(0, name, desc, start_date, end_date);
-    return repo->saveMilestone(m);
+    Milestone milestone(-1, name, desc, start_date, end_date);
+    return repo->saveMilestone(milestone);
 }
 
-// Add these additional controller methods for milestone management
-
-bool IssueTrackerController::addIssueToMilestone(
-    int milestoneId, int issueId) {
+bool IssueTrackerController::updateMilestoneField(int milestoneId,
+    const std::string& field,
+    const std::string& value) {
     try {
-        repo->getMilestone(milestoneId);
-        repo->getIssue(issueId);
-        return repo->addIssueToMilestone(milestoneId, issueId);
+        if (field.empty()) {
+            return false;
+        }
+
+        std::optional<std::string> name;
+        std::optional<std::string> desc;
+        std::optional<std::string> start;
+        std::optional<std::string> end;
+
+        if (field == "name") {
+            name = value;
+        } else if (field == "description") {
+            desc = value;
+        } else if (field == "startDate" || field == "start_date") {
+            start = value;
+        } else if (field == "endDate" || field == "end_date") {
+            end = value;
+        } else {
+            return false;
+        }
+
+        updateMilestone(milestoneId, name, desc, start, end);
+        return true;
     } catch (...) {
         return false;
     }
+}
+
+Milestone IssueTrackerController::updateMilestone(int milestoneId,
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& description,
+    const std::optional<std::string>& startDate,
+    const std::optional<std::string>& endDate) {
+    if (!name && !description && !startDate && !endDate) {
+        throw std::invalid_argument("No milestone fields provided");
+    }
+
+    Milestone milestone = repo->getMilestone(milestoneId);
+
+    if (name) {
+        milestone.setName(*name);
+    }
+    if (description) {
+        milestone.setDescription(*description);
+    }
+    if (startDate) {
+        milestone.setStartDate(*startDate);
+    }
+    if (endDate) {
+        milestone.setEndDate(*endDate);
+    }
+
+    return repo->saveMilestone(milestone);
+}
+
+bool IssueTrackerController::addIssueToMilestone(
+    int milestoneId, int issueId) {
+    repo->getMilestone(milestoneId);
+    repo->getIssue(issueId);
+    return repo->addIssueToMilestone(milestoneId, issueId);
 }
 
 
 bool IssueTrackerController::removeIssueFromMilestone(
     int milestoneId, int issueId) {
-    try {
-        repo->getMilestone(milestoneId);
-        repo->getIssue(issueId);
-        return repo->removeIssueFromMilestone(milestoneId, issueId);
-    } catch (...) {
-        return false;
-    }
+    repo->getMilestone(milestoneId);
+    repo->getIssue(issueId);
+    return repo->removeIssueFromMilestone(milestoneId, issueId);
 }
 
 Milestone IssueTrackerController::getMilestone(int milestoneId) {
@@ -325,11 +381,7 @@ Milestone IssueTrackerController::getMilestone(int milestoneId) {
 
 bool IssueTrackerController::deleteMilestone(
     int milestoneId, bool cascade) {
-    try {
-        return repo->deleteMilestone(milestoneId, cascade);
-    } catch (...) {
-        return false;
-    }
+    return repo->deleteMilestone(milestoneId, cascade);
 }
 
 
@@ -341,9 +393,5 @@ std::vector<Milestone> IssueTrackerController::listAllMilestones() {
 
 std::vector<Issue> IssueTrackerController::getIssuesForMilestone(
     int milestoneId) {
-    try {
-        return repo->getIssuesForMilestone(milestoneId);
-    } catch (...) {
-        return {};
-    }
+    return repo->getIssuesForMilestone(milestoneId);
 }

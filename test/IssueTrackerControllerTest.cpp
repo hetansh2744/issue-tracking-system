@@ -28,6 +28,20 @@ class MockIssueRepository : public IssueRepository {
     MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
     MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
     MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
+
+    MOCK_METHOD(Milestone, saveMilestone,
+        (const Milestone& milestone), (override));
+    MOCK_METHOD(Milestone, getMilestone, (int milestoneId),
+        (const, override));
+    MOCK_METHOD(bool, deleteMilestone, (int milestoneId, bool cascade),
+        (override));
+    MOCK_METHOD(std::vector<Milestone>, listAllMilestones, (), (const, override));
+    MOCK_METHOD(bool, addIssueToMilestone, (int milestoneId, int issueId),
+        (override));
+    MOCK_METHOD(bool, removeIssueFromMilestone, (int milestoneId, int issueId),
+        (override));
+    MOCK_METHOD(std::vector<Issue>, getIssuesForMilestone,
+        (int milestoneId), (const, override));
 };
 
 TEST(IssueTrackerControllerTest, CreateIssueValid) {

@@ -2,9 +2,10 @@
 #define ISSUE_API_CONTROLLER_HPP_
 
 #include <algorithm>
-#include <memory>
-#include <string>
 #include <cctype>
+#include <memory>
+#include <optional>
+#include <string>
 
 #include "Comment.hpp"
 #include "CommentDto.hpp"
@@ -28,6 +29,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   std::shared_ptr<DatabaseService> dbService;
   static std::string asStdString(const oatpp::String& value) {
     return value ? *value : std::string();
+  }
+  static std::optional<std::string> asOptionalStdString(
+      const oatpp::String& value) {
+    if (!value) {
+      return std::nullopt;
+    }
+    return std::optional<std::string>(*value);
   }
   IssueService& issues() const { return dbService->getIssueService(); }
   static std::string withDbExtension(const std::string& name) {
@@ -85,14 +93,19 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   static oatpp::Object<MilestoneDto> milestoneToDto(const Milestone& m) {
-  auto dto = MilestoneDto::createShared();
-  dto->id = m.getId();
-  dto->name = m.getName().c_str();
-  dto->description = m.getDescription().c_str();
-  dto->startDate = m.getStartDate().c_str();
-  dto->endDate = m.getEndDate().c_str();
-  return dto;
-}
+    auto dto = MilestoneDto::createShared();
+    dto->id = m.getId();
+    dto->name = m.getName().c_str();
+    dto->description = m.getDescription().c_str();
+    dto->startDate = m.getStartDate().c_str();
+    dto->endDate = m.getEndDate().c_str();
+    auto issueIds = oatpp::List<oatpp::Int32>::createShared();
+    for (int id : m.getIssueIds()) {
+      issueIds->push_back(id);
+    }
+    dto->issueIds = issueIds;
+    return dto;
+  }
 
 static std::string toLower(const std::string& s) {
   std::string out = s;
@@ -287,19 +300,29 @@ ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
   // ---- Milestone endpoints ----
 
 ENDPOINT("POST", "/milestones", createMilestone,
-         BODY_DTO(oatpp::Object<MilestoneDto>, body)) {
+         BODY_DTO(oatpp::Object<MilestoneCreateDto>, body)) {
 
-  if (!body || !body->name) {
-    return createResponse(Status::CODE_400, "Missing name");
+  if (!body) {
+    return createResponse(Status::CODE_400, "Missing payload");
   }
 
-  Milestone m = issues().createMilestone(
-      asStdString(body->name),
-      asStdString(body->description),
-      asStdString(body->startDate),
-      asStdString(body->endDate));
+  const std::string name = asStdString(body->name);
+  const std::string start = asStdString(body->startDate);
+  const std::string end = asStdString(body->endDate);
 
-  return createDtoResponse(Status::CODE_201, milestoneToDto(m));
+  if (name.empty() || start.empty() || end.empty()) {
+    return createResponse(Status::CODE_400,
+                          "name, startDate, and endDate are required");
+  }
+
+  const std::string desc = asStdString(body->description);
+
+  try {
+    Milestone m = issues().createMilestone(name, desc, start, end);
+    return createDtoResponse(Status::CODE_201, milestoneToDto(m));
+  } catch (const std::invalid_argument& ex) {
+    return createResponse(Status::CODE_400, ex.what());
+  }
 }
 
 ENDPOINT("GET", "/milestones", listMilestones) {
@@ -315,42 +338,92 @@ ENDPOINT("GET", "/milestones", listMilestones) {
 
 ENDPOINT("GET", "/milestones/{id}", getMilestone,
          PATH(oatpp::Int32, id)) {
-  auto m = issues().getMilestone(id);
-  return createDtoResponse(Status::CODE_200, milestoneToDto(m));
+  try {
+    auto m = issues().getMilestone(id);
+    return createDtoResponse(Status::CODE_200, milestoneToDto(m));
+  } catch (const std::out_of_range&) {
+    return createResponse(Status::CODE_404, "Milestone not found");
+  }
+}
+
+ENDPOINT("PATCH", "/milestones/{id}", updateMilestone,
+         PATH(oatpp::Int32, id),
+         BODY_DTO(oatpp::Object<MilestoneUpdateDto>, body)) {
+  if (!body) {
+    return createResponse(Status::CODE_400, "Missing payload");
+  }
+
+  if (!body->name && !body->description && !body->startDate && !body->endDate) {
+    return createResponse(Status::CODE_400, "No fields to update");
+  }
+
+  try {
+    auto updated = issues().updateMilestone(
+        id,
+        asOptionalStdString(body->name),
+        asOptionalStdString(body->description),
+        asOptionalStdString(body->startDate),
+        asOptionalStdString(body->endDate));
+    return createDtoResponse(Status::CODE_200, milestoneToDto(updated));
+  } catch (const std::out_of_range&) {
+    return createResponse(Status::CODE_404, "Milestone not found");
+  } catch (const std::invalid_argument& ex) {
+    return createResponse(Status::CODE_400, ex.what());
+  }
 }
 
 ENDPOINT("DELETE", "/milestones/{id}", deleteMilestone,
          PATH(oatpp::Int32, id),
          QUERY(oatpp::Boolean, cascade)) {
-  bool ok = issues().deleteMilestone(id, cascade);
-  return createResponse(Status::CODE_200, ok ? "Deleted" : "Failed");
+  try {
+    bool ok = issues().deleteMilestone(id, cascade);
+    return createResponse(Status::CODE_200, ok ? "Deleted" : "Failed");
+  } catch (const std::out_of_range&) {
+    return createResponse(Status::CODE_404, "Milestone not found");
+  }
 }
 
 ENDPOINT("POST", "/milestones/{id}/issues/{issueId}", addIssueToMilestone,
          PATH(oatpp::Int32, id),
          PATH(oatpp::Int32, issueId)) {
-  bool ok = issues().addIssueToMilestone(id, issueId);
-  return createResponse(Status::CODE_200, ok ? "Linked" : "Failed");
+  try {
+    bool ok = issues().addIssueToMilestone(id, issueId);
+    return ok ? createResponse(Status::CODE_201, "Issue added")
+              : createResponse(Status::CODE_400, "Issue already linked");
+  } catch (const std::out_of_range&) {
+    return createResponse(Status::CODE_404, "Milestone not found");
+  } catch (const std::invalid_argument& ex) {
+    return createResponse(Status::CODE_400, ex.what());
+  }
 }
 
 ENDPOINT("DELETE", "/milestones/{id}/issues/{issueId}", removeIssueFromMilestone,
          PATH(oatpp::Int32, id),
          PATH(oatpp::Int32, issueId)) {
-  bool ok = issues().removeIssueFromMilestone(id, issueId);
-  return createResponse(Status::CODE_200, ok ? "Unlinked" : "Failed");
+  try {
+    bool ok = issues().removeIssueFromMilestone(id, issueId);
+    return ok ? createResponse(Status::CODE_204, "")
+              : createResponse(Status::CODE_404, "Issue not linked");
+  } catch (const std::out_of_range&) {
+    return createResponse(Status::CODE_404, "Milestone not found");
+  }
 }
 
 ENDPOINT("GET", "/milestones/{id}/issues", getMilestoneIssues,
          PATH(oatpp::Int32, id)) {
 
-  auto list = issues().getIssuesForMilestone(id);
+  try {
+    auto list = issues().getIssuesForMilestone(id);
 
-  auto dtoList = oatpp::Vector<oatpp::Object<IssueDto>>::createShared();
-  for (auto& i : list) {
-    dtoList->push_back(issueToDto(i));
+    auto dtoList = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+    for (auto& i : list) {
+      dtoList->push_back(issueToDto(i));
+    }
+
+    return createDtoResponse(Status::CODE_200, dtoList);
+  } catch (const std::out_of_range&) {
+    return createResponse(Status::CODE_404, "Milestone not found");
   }
-
-  return createDtoResponse(Status::CODE_200, dtoList);
 }
 
   // ---- Database endpoints ----

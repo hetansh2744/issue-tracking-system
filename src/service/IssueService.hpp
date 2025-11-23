@@ -2,9 +2,11 @@
 #define ISSUE_SERVICE_HPP_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <utility>
+#include <iostream>
 
 #include "IssueTrackerController.hpp"
 #include "IssueRepository.hpp"
@@ -114,6 +116,7 @@ class IssueService {
     const std::string& desc,
     const std::string& start,
     const std::string& end) {
+  std::cout << "Creating milestone: " << name << std::endl;
   return controller_.createMilestone(name, desc, start, end);
 }
 
@@ -123,6 +126,14 @@ std::vector<Milestone> listAllMilestones() {
 
 Milestone getMilestone(int id) {
   return controller_.getMilestone(id);
+}
+
+Milestone updateMilestone(int id,
+                          const std::optional<std::string>& name,
+                          const std::optional<std::string>& desc,
+                          const std::optional<std::string>& start,
+                          const std::optional<std::string>& end) {
+  return controller_.updateMilestone(id, name, desc, start, end);
 }
 
 bool deleteMilestone(int id, bool cascade) {

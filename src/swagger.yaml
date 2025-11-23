@@ -227,6 +227,163 @@ paths:
         '404':
           description: User not found
 
+  /milestones:
+    post:
+      summary: Create a new milestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestoneCreate'
+      responses:
+        '201':
+          description: Milestone created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+        '400':
+          description: Invalid milestone payload
+
+    get:
+      summary: List all milestones
+      responses:
+        '200':
+          description: List of milestones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Milestone'
+
+  /milestones/{id}:
+    get:
+      summary: Get a milestone by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Milestone found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+        '404':
+          description: Milestone not found
+
+    patch:
+      summary: Update milestone fields
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestoneUpdate'
+      responses:
+        '200':
+          description: Updated milestone
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+        '400':
+          description: Invalid update payload
+        '404':
+          description: Milestone not found
+
+    delete:
+      summary: Delete a milestone
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: cascade
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Milestone deleted
+        '404':
+          description: Milestone not found
+
+  /milestones/{id}/issues:
+    get:
+      summary: List issues for a milestone
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of issues in the milestone
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+        '404':
+          description: Milestone not found
+
+  /milestones/{id}/issues/{issueId}:
+    post:
+      summary: Add an issue to a milestone
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Issue added to milestone
+        '400':
+          description: Issue already linked or invalid request
+        '404':
+          description: Milestone or issue not found
+
+    delete:
+      summary: Remove an issue from a milestone
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Issue removed from milestone
+        '404':
+          description: Milestone or issue not found
+
   /databases:
     get:
       summary: List available databases
@@ -387,6 +544,52 @@ components:
         - text
       properties:
         text:
+          type: string
+
+    Milestone:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        issueIds:
+          type: array
+          items:
+            type: integer
+
+    MilestoneCreate:
+      type: object
+      required:
+        - name
+        - startDate
+        - endDate
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+
+    MilestoneUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        startDate:
+          type: string
+        endDate:
           type: string
 
     User:
