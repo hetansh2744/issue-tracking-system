@@ -6,7 +6,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <cctype>
 
 #include "Comment.hpp"
 #include "CommentDto.hpp"
@@ -117,13 +116,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
     dto->issueIds = issueIds;
     return dto;
-  }
-
-  static std::string toLower(const std::string& s) {
-    std::string out = s;
-    std::transform(out.begin(), out.end(), out.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    return out;
   }
 
   // ---- Issue endpoints ----
@@ -260,9 +252,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
     // get issues for that user
     auto userIssues = issues().findIssuesByUserId(realId);
-    auto userIssues = issues().findIssuesByUserId(realId);
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-    for (auto& issue : userIssues) {
     for (auto& issue : userIssues) {
       list->push_back(issueToDto(issue));
     }

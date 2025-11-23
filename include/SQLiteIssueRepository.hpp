@@ -54,6 +54,10 @@ public:
   std::vector<Issue> findIssues(
       const std::string& userId) const override;
 
+  // ---- Tag operations ----
+  bool addTagToIssue(int issueId, const std::string& tag) override;
+  bool removeTagFromIssue(int issueId, const std::string& tag) override;
+
   // ---- Comment operations ----
   Comment getComment(int issueId, int commentId) const override;
   std::vector<Comment> getAllComments(int issueId) const override;
