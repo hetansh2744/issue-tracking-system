@@ -50,7 +50,7 @@ void IssueTrackerView::displayMenu() {
   std::cout << "15) Update User\n";
   std::cout << "16) Add tag to issue\n";
   std::cout << "17) Remove tag from issue\n";
-  std::cout << "18) View issues by status\n";
+  std::cout << "18) Search issues by status\n";
   std::cout << " 0) Exit\n";
 }
 
@@ -153,7 +153,8 @@ void IssueTrackerView::updateIssue() {
   if (field == "description") {
     value = readLine("Enter new description: ");
   } else if (field == "status") {
-    value = readLine("Enter new status (To Be Done / In Progress / Done): ");
+    value = readLine(
+        "Enter new status (To Be Done / In Progress / Done): ");
   } else {
     value = readLine("Enter new title: ");
   }
@@ -688,59 +689,54 @@ void IssueTrackerView::removeTag() {
 }
 
 void IssueTrackerView::viewIssuesByStatus() {
-  std::cout << "=== Issues by Status ===\n";
-  auto issues = controller->listAllIssues();
-  if (issues.empty()) {
+  std::cout << "=== Search Issues by Status ===\n";
+  auto allIssues = controller->listAllIssues();
+  if (allIssues.empty()) {
     std::cout << "No issues found.\n";
     return;
   }
 
-  std::vector<Issue> todo;
-  std::vector<Issue> inProgress;
-  std::vector<Issue> done;
-  std::vector<Issue> other;
+  std::cout << "Select status to search:\n";
+  std::cout << " 1) To Be Done\n";
+  std::cout << " 2) In Progress\n";
+  std::cout << " 3) Done\n";
+  std::cout << "Choice: ";
+  int choice = readIntChoice();
 
-  for (const auto& issue : issues) {
-    const std::string status = issue.getStatus();
-    if (status == "To Be Done") {
-      todo.push_back(issue);
-    } else if (status == "In Progress") {
-      inProgress.push_back(issue);
-    } else if (status == "Done") {
-      done.push_back(issue);
-    } else {
-      other.push_back(issue);
+  std::string targetStatus;
+  if (choice == 1) {
+    targetStatus = "To Be Done";
+  } else if (choice == 2) {
+    targetStatus = "In Progress";
+  } else if (choice == 3) {
+    targetStatus = "Done";
+  } else {
+    std::cout << "Unknown choice.\n";
+    return;
+  }
+
+  std::vector<Issue> matches;
+  for (const auto& issue : allIssues) {
+    if (issue.getStatus() == targetStatus) {
+      matches.push_back(issue);
     }
   }
 
-  std::cout << "Summary:\n";
-  std::cout << "  To Be Done : " << todo.size() << " issue(s)\n";
-  std::cout << "  In Progress: " << inProgress.size() << " issue(s)\n";
-  std::cout << "  Done       : " << done.size() << " issue(s)\n";
-  if (!other.empty()) {
-    std::cout << "  Other      : " << other.size() << " issue(s)\n";
+  if (matches.empty()) {
+    std::cout << "No issues found with status '"
+              << targetStatus << "'.\n";
+    return;
   }
 
-  auto printGroup = [](const std::string& label,
-                       const std::vector<Issue>& group) {
-    if (group.empty()) {
-      return;
+  std::cout << "Issues with status '" << targetStatus << "':\n";
+  for (const auto& issue : matches) {
+    std::cout << "  Id: " << issue.getId()
+              << " | Title: " << issue.getTitle();
+    if (issue.hasAssignee()) {
+      std::cout << " | Assignee: " << issue.getAssignedTo();
     }
-    std::cout << "\n" << label << ":\n";
-    for (const auto& issue : group) {
-      std::cout << "  Id: " << issue.getId()
-                << " | Title: " << issue.getTitle();
-      if (issue.hasAssignee()) {
-        std::cout << " | Assignee: " << issue.getAssignedTo();
-      }
-      std::cout << "\n";
-    }
-  };
-
-  printGroup("To Be Done", todo);
-  printGroup("In Progress", inProgress);
-  printGroup("Done", done);
-  printGroup("Other / Unknown", other);
+    std::cout << "\n";
+  }
 }
 
 void IssueTrackerView::run() {
