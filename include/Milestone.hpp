@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
 
 class Milestone {
 private:
@@ -51,12 +52,9 @@ public:
     issue_ids_.push_back(issueId);
   }
   
-  void removeIssue(int issueId) {
-    issue_ids_.erase(
-      std::remove(issue_ids_.begin(), issue_ids_.end(), issueId),
-      issue_ids_.end()
-    );
-  }
+void removeIssue(int issueId) {
+    std::remove(issue_ids_.begin(), issue_ids_.end(), issueId);  // This is incorrect
+}
   
   bool hasIssue(int issueId) const {
     for (int id : issue_ids_) {
