@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "IssueTrackerController.hpp"
 #include "IssueRepository.hpp"
@@ -18,7 +19,10 @@ class IssueService {
 
  public:
   IssueService()
-      : repo_(createIssueRepository()),
+      : IssueService(std::unique_ptr<IssueRepository>(createIssueRepository())) {}
+
+  explicit IssueService(std::unique_ptr<IssueRepository> repo)
+      : repo_(std::move(repo)),
         controller_(repo_.get()) {}
 
   Issue createIssue(const std::string& title,

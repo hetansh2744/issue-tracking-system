@@ -1,11 +1,9 @@
 #ifndef ISSUE_API_CONTROLLER_HPP_
 #define ISSUE_API_CONTROLLER_HPP_
 
+#include <algorithm>
 #include <memory>
 #include <string>
-#include <algorithm>
-#include <cctype>
-
 #include "oatpp/web/server/api/ApiController.hpp"
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
@@ -14,7 +12,8 @@
 #include "CommentDto.hpp"
 #include "UserDto.hpp"
 #include "TagDto.hpp"
-#include "service/IssueService.hpp"
+#include "DatabaseDto.hpp"
+#include "service/DatabaseService.hpp"
 
 #include "Issue.hpp"
 #include "Comment.hpp"
@@ -24,16 +23,17 @@
 
 class IssueApiController : public oatpp::web::server::api::ApiController {
  private:
-  std::shared_ptr<IssueService> service;
+  std::shared_ptr<DatabaseService> dbService;
   static std::string asStdString(const oatpp::String& value) {
     return value ? *value : std::string();
   }
-
-  static std::string toLower(const std::string& input) {
-    std::string out = input;
-    std::transform(out.begin(), out.end(), out.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    return out;
+  IssueService& issues() const { return dbService->getIssueService(); }
+  static std::string withDbExtension(const std::string& name) {
+    if (name.size() >= 3 &&
+        name.substr(name.size() - 3) == ".db") {
+      return name;
+    }
+    return name + ".db";
   }
 
  public:
@@ -41,33 +41,34 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       const std::shared_ptr<
       oatpp::data::mapping::ObjectMapper>& objectMapper)
       : oatpp::web::server::api::ApiController(objectMapper),
-        service(std::make_shared<IssueService>()) {}
+        dbService(std::make_shared<DatabaseService>()) {}
 
-  // === DTO Helpers ===
+  // Convert helpers
+static oatpp::Object<IssueDto> issueToDto(const Issue& i) {
+  auto dto = IssueDto::createShared();
+  dto->id = i.getId();
+  dto->authorId = i.getAuthorId().c_str();
+  dto->title = i.getTitle().c_str();
+  dto->description = "";
+  dto->assignedTo =
+      i.hasAssignee() ? i.getAssignedTo().c_str() : "";
 
-  static oatpp::Object<IssueDto> issueToDto(const Issue& i) {
-    auto dto = IssueDto::createShared();
-    dto->id = i.getId();
-    dto->authorId = i.getAuthorId().c_str();
-    dto->title = i.getTitle().c_str();
-    dto->description = "";
-    dto->assignedTo = i.hasAssignee() ? i.getAssignedTo().c_str() : "";
-
-    auto ids = oatpp::List<oatpp::Int32>::createShared();
-    for (int cid : i.getCommentIds()) {
-      ids->push_back(cid);
-    }
-    dto->commentIds = ids;
-
-    auto tags = oatpp::List<oatpp::String>::createShared();
-    for (const auto& t : i.getTags()) {
-      tags->push_back(t.c_str());
-    }
-    dto->tags = tags;
-
-    dto->createdAt = i.getCreatedAt();
-    return dto;
+  auto ids = oatpp::List<oatpp::Int32>::createShared();
+  for (int cid : i.getCommentIds()) {
+    ids->push_back(cid);
   }
+  dto->commentIds = ids;
+
+  auto tags = oatpp::List<oatpp::String>::createShared();
+  for (const auto& t : i.getTags()) {
+    tags->push_back(t.c_str());
+  }
+  dto->tags = tags;
+
+  dto->createdAt = i.getCreatedAt();
+  return dto;
+}
+
 
   static oatpp::Object<CommentDto> commentToDto(const Comment& c) {
     auto dto = CommentDto::createShared();
@@ -85,43 +86,24 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return dto;
   }
 
-  // === Issue Endpoints ===
+  // ---- Issue endpoints ----
 
   ENDPOINT("POST", "/issues", createIssue,
-         BODY_DTO(oatpp::Object<IssueCreateDto>, body)) {
-
+           BODY_DTO(oatpp::Object<IssueCreateDto>, body)) {
     if (!body || !body->title || !body->authorId) {
       return createResponse(Status::CODE_400, "Missing fields");
     }
-
-    std::string inputAuthor = toLower(asStdString(body->authorId));
-    std::string realAuthor;
-    bool found = false;
-
-    for (const auto& user : service->listAllUsers()) {
-      if (toLower(user.getName()) == inputAuthor) {
-        realAuthor = user.getName();
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      return createResponse(Status::CODE_404, "Author not found");
-    }
-
-    Issue i = service->createIssue(
+    Issue i = issues().createIssue(
         asStdString(body->title),
         asStdString(body->description),
-        realAuthor);
-
+        asStdString(body->authorId));
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 
   ENDPOINT("GET", "/issues", listIssues) {
-    auto issues = service->listAllIssues();
+    auto issueList = issues().listAllIssues();
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-    for (auto& i : issues) {
+    for (auto& i : issueList) {
       list->push_back(issueToDto(i));
     }
     return createDtoResponse(Status::CODE_200, list);
@@ -130,7 +112,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("GET", "/issues/{id}", getIssue,
            PATH(oatpp::Int32, id)) {
     try {
-      Issue i = service->getIssue(id);
+      Issue i = issues().getIssue(id);
       return createDtoResponse(Status::CODE_200, issueToDto(i));
     } catch (...) {
       return createResponse(Status::CODE_404, "Not found");
@@ -140,7 +122,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("PATCH", "/issues/{id}", updateIssue,
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<IssueUpdateFieldDto>, body)) {
-    bool ok = service->updateIssueField(
+    bool ok = issues().updateIssueField(
         id, asStdString(body->field), asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_400, "Failed");
@@ -148,46 +130,24 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
   ENDPOINT("DELETE", "/issues/{id}", deleteIssue,
            PATH(oatpp::Int32, id)) {
-    bool ok = service->deleteIssue(id);
+    bool ok = issues().deleteIssue(id);
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
 
-  // === Comment Endpoints ===
+  // ---- Comment endpoints ----
 
   ENDPOINT("POST", "/issues/{id}/comments", addComment,
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<CommentCreateDto>, body)) {
-
-    if (!body || !body->text || !body->authorId) {
-      return createResponse(Status::CODE_400, "Missing fields");
-    }
-
-    std::string inputAuthor = toLower(asStdString(body->authorId));
-    std::string realAuthor;
-    bool found = false;
-
-    for (const auto& user : service->listAllUsers()) {
-      if (toLower(user.getName()) == inputAuthor) {
-        realAuthor = user.getName();
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      return createResponse(Status::CODE_404, "Author not found");
-    }
-
-    Comment c = service->addCommentToIssue(
-        id, asStdString(body->text), realAuthor);
-
+    Comment c = issues().addCommentToIssue(
+        id, asStdString(body->text), asStdString(body->authorId));
     return createDtoResponse(Status::CODE_201, commentToDto(c));
   }
 
   ENDPOINT("GET", "/issues/{id}/comments", listComments,
            PATH(oatpp::Int32, id)) {
-    auto comments = service->getAllComments(id);
+    auto comments = issues().getAllComments(id);
     auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
     for (auto& c : comments) {
       list->push_back(commentToDto(c));
@@ -200,7 +160,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, issueId),
            PATH(oatpp::Int32, commentId),
            BODY_DTO(oatpp::Object<CommentUpdateDto>, body)) {
-    bool ok = service->updateComment(
+    bool ok = issues().updateComment(
         issueId, commentId, asStdString(body->text));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
@@ -210,34 +170,22 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            deleteComment,
            PATH(oatpp::Int32, issueId),
            PATH(oatpp::Int32, commentId)) {
-    bool ok = service->deleteComment(issueId, commentId);
+    bool ok = issues().deleteComment(issueId, commentId);
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
 
-  // === User Endpoints ===
+  // ---- User endpoints ----
 
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
-    if (!body || !body->name || !body->role) {
-      return createResponse(Status::CODE_400, "Missing fields");
-    }
-
-    std::string nameLower = toLower(asStdString(body->name));
-
-    for (const auto& user : service->listAllUsers()) {
-      if (toLower(user.getName()) == nameLower) {
-        return createResponse(Status::CODE_409, "User already exists");
-      }
-    }
-
-    User u = service->createUser(
+    User u = issues().createUser(
         asStdString(body->name), asStdString(body->role));
     return createDtoResponse(Status::CODE_201, userToDto(u));
   }
 
   ENDPOINT("GET", "/users", listUsers) {
-    auto users = service->listAllUsers();
+    auto users = issues().listAllUsers();
     auto list = oatpp::List<oatpp::Object<UserDto>>::createShared();
     for (auto& u : users) {
       list->push_back(userToDto(u));
@@ -248,139 +196,154 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("PATCH", "/users/{id}", updateUser,
            PATH(oatpp::String, id),
            BODY_DTO(oatpp::Object<UserUpdateDto>, body)) {
-
-    std::string input = toLower(asStdString(id));
-    std::string realId;
-    bool found = false;
-
-    for (const auto& user : service->listAllUsers()) {
-      if (toLower(user.getName()) == input) {
-        realId = user.getName();
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      return createResponse(Status::CODE_404, "User not found");
-    }
-
-    bool ok = service->updateUser(
-        realId, asStdString(body->field), asStdString(body->value));
-
+    bool ok = issues().updateUser(
+        asStdString(id), asStdString(body->field), asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_400, "Failed");
   }
 
   ENDPOINT("DELETE", "/users/{id}", deleteUser,
            PATH(oatpp::String, id)) {
-
-    std::string input = toLower(asStdString(id));
-    std::string realId;
-    bool found = false;
-
-    for (const auto& user : service->listAllUsers()) {
-      if (toLower(user.getName()) == input) {
-        realId = user.getName();
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      return createResponse(Status::CODE_404, "User not found");
-    }
-
-    bool ok = service->removeUser(realId);
+    bool ok = issues().removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
 
   // ---- Tag endpoints ----
 
-ENDPOINT("POST", "/issues/{id}/tags", addTag,
-         PATH(oatpp::Int32, id),
-         BODY_DTO(oatpp::Object<TagDto>, body)) {
-
-  if (!body || !body->tag) {
-    return createResponse(Status::CODE_400, "Missing tag");
-  }
-
-  std::string inputTag = toLower(asStdString(body->tag));
-
-  try {
-    Issue issue = service->getIssue(id);
-
-    // ✅ Prevent duplicates (case-insensitive)
-    for (const auto& existing : issue.getTags()) {
-      if (toLower(existing) == inputTag) {
-        return createResponse(Status::CODE_409, "Tag already exists");
-      }
+  ENDPOINT("POST", "/issues/{id}/tags", addTag,
+           PATH(oatpp::Int32, id),
+           BODY_DTO(oatpp::Object<TagDto>, body)) {
+    if (!body || !body->tag) {
+      return createResponse(Status::CODE_400, "Missing tag");
     }
 
-    bool ok = service->addTagToIssue(id, inputTag);
+    bool ok = issues().addTagToIssue(
+        id, asStdString(body->tag));
 
     return ok ? createResponse(Status::CODE_201, "Tag added")
               : createResponse(Status::CODE_400, "Failed");
-  } catch (...) {
-    return createResponse(Status::CODE_404, "Issue not found");
-  }
-}
-
-ENDPOINT("DELETE", "/issues/{id}/tags", removeTag,
-         PATH(oatpp::Int32, id),
-         BODY_DTO(oatpp::Object<TagDto>, body)) {
-
-  if (!body || !body->tag) {
-    return createResponse(Status::CODE_400, "Missing tag");
   }
 
-  std::string inputTag = toLower(asStdString(body->tag));
-
-  try {
-    Issue issue = service->getIssue(id);
-
-    // ✅ Find real stored version (case-insensitive)
-    std::string realTag;
-    bool found = false;
-
-    for (const auto& existing : issue.getTags()) {
-      if (toLower(existing) == inputTag) {
-        realTag = existing;
-        found = true;
-        break;
-      }
+  ENDPOINT("DELETE", "/issues/{id}/tags", removeTag,
+           PATH(oatpp::Int32, id),
+           BODY_DTO(oatpp::Object<TagDto>, body)) {
+    if (!body || !body->tag) {
+      return createResponse(Status::CODE_400, "Missing tag");
     }
 
-    if (!found) {
-      return createResponse(Status::CODE_404, "Tag not found");
-    }
-
-    bool ok = service->removeTagFromIssue(id, realTag);
+    bool ok = issues().removeTagFromIssue(
+        id, asStdString(body->tag));
 
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
-  } catch (...) {
-    return createResponse(Status::CODE_404, "Issue not found");
   }
-}
 
-ENDPOINT("GET", "/issues/{id}/tags", listTags,
-         PATH(oatpp::Int32, id)) {
-  try {
-    Issue issue = service->getIssue(id);
+  ENDPOINT("GET", "/issues/{id}/tags", listTags,
+           PATH(oatpp::Int32, id)) {
+    try {
+      Issue issue = issues().getIssue(id);
 
-    auto list = oatpp::List<oatpp::String>::createShared();
-    for (const auto& tag : issue.getTags()) {
-      list->push_back(tag.c_str());
+      auto list = oatpp::List<oatpp::String>::createShared();
+      for (const auto& tag : issue.getTags()) {
+        list->push_back(tag.c_str());
+      }
+
+      return createDtoResponse(Status::CODE_200, list);
+    } catch (...) {
+      return createResponse(Status::CODE_404, "Issue not found");
+    }
+  }
+
+  // ---- Database endpoints ----
+
+  ENDPOINT("GET", "/databases", listDatabases) {
+    auto databases = dbService->listDatabases();
+    std::string active = dbService->getActiveDatabaseName();
+
+    auto list = oatpp::List<oatpp::Object<DatabaseDto>>::createShared();
+    bool activeIncluded = false;
+
+    for (const auto& name : databases) {
+      auto dto = DatabaseDto::createShared();
+      dto->name = name.c_str();
+      dto->active = (name == active);
+      activeIncluded = activeIncluded || dto->active;
+      list->push_back(dto);
+    }
+
+    if (!activeIncluded && !active.empty()) {
+      auto dto = DatabaseDto::createShared();
+      dto->name = active.c_str();
+      dto->active = true;
+      list->push_back(dto);
     }
 
     return createDtoResponse(Status::CODE_200, list);
-  } catch (...) {
-    return createResponse(Status::CODE_404, "Issue not found");
   }
-}
 
+  ENDPOINT("POST", "/databases", createDatabase,
+           BODY_DTO(oatpp::Object<DatabaseCreateDto>, body)) {
+    if (!body || !body->name) {
+      return createResponse(Status::CODE_400, "Database name is required");
+    }
+    std::string provided = asStdString(body->name);
+    std::string normalized = withDbExtension(provided);
+    auto existing = dbService->listDatabases();
+    bool alreadyExists = std::find(existing.begin(), existing.end(),
+                                   normalized) != existing.end();
+
+    bool created = dbService->createDatabase(provided);
+    if (created) {
+      auto dto = DatabaseDto::createShared();
+      dto->name = normalized.c_str();
+      dto->active = normalized == dbService->getActiveDatabaseName();
+      return createDtoResponse(Status::CODE_201, dto);
+    }
+
+    if (alreadyExists) {
+      return createResponse(Status::CODE_409, "Database already exists");
+    }
+    return createResponse(Status::CODE_400, "Unable to create database");
+  }
+
+  ENDPOINT("DELETE", "/databases/{name}", deleteDatabase,
+           PATH(oatpp::String, name)) {
+    std::string provided = asStdString(name);
+    std::string normalized = withDbExtension(provided);
+
+    auto existing = dbService->listDatabases();
+    std::string active = dbService->getActiveDatabaseName();
+    bool exists = std::find(existing.begin(), existing.end(), normalized)
+                  != existing.end();
+
+    if (!exists) {
+      return createResponse(Status::CODE_404, "Database not found");
+    }
+    if (normalized == active) {
+      return createResponse(Status::CODE_409,
+                            "Cannot delete the active database");
+    }
+
+    bool deleted = dbService->deleteDatabase(provided);
+    return deleted ? createResponse(Status::CODE_204, "")
+                   : createResponse(Status::CODE_400,
+                                    "Unable to delete database");
+  }
+
+  ENDPOINT("POST", "/databases/{name}/switch", switchDatabase,
+           PATH(oatpp::String, name)) {
+    std::string provided = asStdString(name);
+    bool ok = dbService->switchDatabase(provided);
+    if (!ok) {
+      return createResponse(Status::CODE_404, "Database not found");
+    }
+
+    auto dto = DatabaseDto::createShared();
+    dto->name = dbService->getActiveDatabaseName().c_str();
+    dto->active = true;
+    return createDtoResponse(Status::CODE_200, dto);
+  }
 };
 
 #include OATPP_CODEGEN_END(ApiController)
