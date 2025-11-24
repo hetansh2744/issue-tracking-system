@@ -22,13 +22,12 @@
  *  - We keep both comment id list (persistence) and Comment objects
  *    (in-memory lookups/edits).
  */
-class Issue
-{
-public:
+class Issue{
+ public:
   /// @brief Epoch milliseconds; 0 means unknown/unset.
   using TimePoint = std::int64_t;
 
-private:
+ private:
   // Core fields
   int id_{0};             ///< 0 => new (not yet persisted)
   std::string author_id_; ///< non-empty creator user id
@@ -46,7 +45,7 @@ private:
   TimePoint created_at_{0}; ///< creation time; 0 => unknown
   std::set<std::string> tags_;
 
-public:
+ public:
   /// @brief Default construct (id==0, empty fields).
   Issue() = default;
 
@@ -114,8 +113,7 @@ public:
    * @brief Whether description comment is linked.
    * @return true if description_comment_id_ >= 0.
    */
-  bool hasDescriptionComment() const noexcept
-  {
+  bool hasDescriptionComment() const noexcept{
     return description_comment_id_ >= 0;
   }
 
@@ -123,8 +121,7 @@ public:
    * @brief Get description comment id.
    * @return id (0 if none).
    */
-  int getDescriptionCommentId() const noexcept
-  {
+  int getDescriptionCommentId() const noexcept{
     return description_comment_id_;
   }
 
@@ -150,8 +147,7 @@ public:
    * @brief Get list of comment ids (read-only).
    * @return const ref to id vector.
    */
-  const std::vector<int> &getCommentIds() const noexcept
-  {
+  const std::vector<int> &getCommentIds() const noexcept{
     return comment_ids_;
   }
 
@@ -159,8 +155,7 @@ public:
    * @brief Get list of stored Comment objects (read-only).
    * @return const ref to comments_ vector.
    */
-  const std::vector<Comment> &getComments() const noexcept
-  {
+  const std::vector<Comment> &getComments() const noexcept{
     return comments_;
   }
 
