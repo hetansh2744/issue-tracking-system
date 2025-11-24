@@ -14,19 +14,18 @@
  *  - author_id_ and text_ must be non-empty.
  *  - timestamp_ is epoch ms; 0 means "unknown/unset".
  */
-class Comment
-{
-public:
+class Comment {
+ public:
         /// @brief Epoch milliseconds (0 means unknown/unset).
         using TimePoint = std::int64_t;
 
-private:
+ private:
         int id_{-1};             ///< -1 => new (not yet persisted)
         std::string author_id_;  ///< non-empty author user id
         std::string text_;       ///< non-empty comment text
         TimePoint timestamp_{0}; ///< creation/mod time; 0 => unknown
 
-public:
+ public:
         /// @brief Default construct (id==0, empty fields).
         Comment() = default;
 
