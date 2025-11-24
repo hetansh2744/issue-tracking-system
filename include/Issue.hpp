@@ -22,30 +22,31 @@
  *  - We keep both comment id list (persistence) and Comment objects
  *    (in-memory lookups/edits).
  */
-class Issue {
- public:
+class Issue
+{
+public:
   /// @brief Epoch milliseconds; 0 means unknown/unset.
   using TimePoint = std::int64_t;
 
- private:
+private:
   // Core fields
-  int id_{0};              ///< 0 => new (not yet persisted)
-  std::string author_id_;  ///< non-empty creator user id
-  std::string title_;      ///< non-empty short summary
+  int id_{0};             ///< 0 => new (not yet persisted)
+  std::string author_id_; ///< non-empty creator user id
+  std::string title_;     ///< non-empty short summary
 
   // Relationships / metadata
-  int description_comment_id_{-1};       ///< -1 => none linked
-  std::string assigned_to_;              ///< assignee user id; empty => none
-  std::string status_{"To Be Done"};     ///< issue status
+  int description_comment_id_{-1};   ///< -1 => none linked
+  std::string assigned_to_;          ///< assignee user id; empty => none
+  std::string status_{"To Be Done"}; ///< issue status
 
   // Persistence ids + in-memory objects
-  std::vector<int> comment_ids_;   ///< unique attached comment ids
-  std::vector<Comment> comments_;  ///< stored Comment objects
+  std::vector<int> comment_ids_;  ///< unique attached comment ids
+  std::vector<Comment> comments_; ///< stored Comment objects
 
-  TimePoint created_at_{0};        ///< creation time; 0 => unknown
+  TimePoint created_at_{0}; ///< creation time; 0 => unknown
   std::set<std::string> tags_;
 
- public:
+public:
   /// @brief Default construct (id==0, empty fields).
   Issue() = default;
 
@@ -94,7 +95,7 @@ class Issue {
    * @brief Get creator user id.
    * @return non-empty author id.
    */
-  const std::string& getAuthorId() const noexcept { return author_id_; }
+  const std::string &getAuthorId() const noexcept { return author_id_; }
 
   /**
    * @brief Update creator user id.
@@ -107,13 +108,14 @@ class Issue {
    * @brief Get title.
    * @return non-empty title.
    */
-  const std::string& getTitle() const noexcept { return title_; }
+  const std::string &getTitle() const noexcept { return title_; }
 
   /**
    * @brief Whether description comment is linked.
    * @return true if description_comment_id_ >= 0.
    */
-  bool hasDescriptionComment() const noexcept {
+  bool hasDescriptionComment() const noexcept
+  {
     return description_comment_id_ >= 0;
   }
 
@@ -121,7 +123,8 @@ class Issue {
    * @brief Get description comment id.
    * @return id (0 if none).
    */
-  int getDescriptionCommentId() const noexcept {
+  int getDescriptionCommentId() const noexcept
+  {
     return description_comment_id_;
   }
 
@@ -135,19 +138,20 @@ class Issue {
    * @brief Get assignee user id.
    * @return user id (empty if unassigned).
    */
-  const std::string& getAssignedTo() const noexcept { return assigned_to_; }
+  const std::string &getAssignedTo() const noexcept { return assigned_to_; }
 
   /**
    * @brief Get current status of the issue.
    * @return status string (e.g., "To Be Done", "In Progress", "Done").
    */
-  const std::string& getStatus() const noexcept { return status_; }
+  const std::string &getStatus() const noexcept { return status_; }
 
   /**
    * @brief Get list of comment ids (read-only).
    * @return const ref to id vector.
    */
-  const std::vector<int>& getCommentIds() const noexcept {
+  const std::vector<int> &getCommentIds() const noexcept
+  {
     return comment_ids_;
   }
 
@@ -155,7 +159,8 @@ class Issue {
    * @brief Get list of stored Comment objects (read-only).
    * @return const ref to comments_ vector.
    */
-  const std::vector<Comment>& getComments() const noexcept {
+  const std::vector<Comment> &getComments() const noexcept
+  {
     return comments_;
   }
 
@@ -237,7 +242,7 @@ class Issue {
    * @param comment  Comment with id >= 0
    * @throws std::invalid_argument if comment id < 0
    */
-  void addComment(const Comment& comment);
+  void addComment(const Comment &comment);
 
   /**
    * @brief Upsert a Comment (move) by id into comments_. Ensures its id
@@ -245,21 +250,21 @@ class Issue {
    * @param comment  rvalue Comment with id >= 0
    * @throws std::invalid_argument if comment id < 0
    */
-  void addComment(Comment&& comment);
+  void addComment(Comment &&comment);
 
   /**
    * @brief Find a comment by id (read-only).
    * @param id  comment id
    * @return pointer to Comment or nullptr if not found
    */
-  const Comment* findCommentById(int id) const noexcept;
+  const Comment *findCommentById(int id) const noexcept;
 
   /**
    * @brief Find a comment by id (mutable).
    * @param id  comment id
    * @return pointer to Comment or nullptr if not found
    */
-  Comment* findCommentById(int id) noexcept;
+  Comment *findCommentById(int id) noexcept;
 
   /**
    * @brief Remove a Comment object by id.
@@ -272,7 +277,7 @@ class Issue {
    * @brief Getter method for time of creation.
    * @return const reference to creation time.
    */
-  const TimePoint& getCreatedAt() const { return created_at_; }
+  const TimePoint &getCreatedAt() const { return created_at_; }
 
   // ---------------------------
   // tags
@@ -284,21 +289,21 @@ class Issue {
    * @return true if the tag was newly added, false if it already existed
    * @throws std::invalid_argument if tag is empty
    */
-  bool addTag(const std::string& tag);
+  bool addTag(const std::string &tag);
 
   /**
    * @brief Remove a tag from the issue.
    * @param tag tag to remove
    * @return true if the tag was removed, false if it did not exist
    */
-  bool removeTag(const std::string& tag);
+  bool removeTag(const std::string &tag);
 
   /**
    * @brief Check if the issue has a given tag.
    * @param tag tag to check
    * @return true if the tag exists on this issue
    */
-  bool hasTag(const std::string& tag) const;
+  bool hasTag(const std::string &tag) const;
 
   /**
    * @brief Get all tags on this issue.
@@ -307,4 +312,4 @@ class Issue {
   std::set<std::string> getTags() const;
 };
 
-#endif  // ISSUE_HPP_
+#endif // ISSUE_HPP_
