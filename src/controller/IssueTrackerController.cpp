@@ -28,6 +28,8 @@ Issue IssueTrackerController::createIssue(const std::string& title,
 
     // 3. Link comment #1 as description
     savedIssue.setDescriptionCommentId(savedComment.getId());
+    // Keep the in-memory Issue object consistent with what was persisted.
+    savedIssue.addComment(savedComment);
     repo->saveIssue(savedIssue);
   }
 

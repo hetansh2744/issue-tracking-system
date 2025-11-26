@@ -100,6 +100,11 @@ void Issue::setDescriptionCommentId(int comment_id) {
   description_comment_id_ = comment_id;
 }
 
+std::string Issue::getDescriptionComment() const {
+  const Comment* desc = findCommentById(description_comment_id_);
+  return desc ? desc->getText() : std::string();
+}
+
 // --------------------------------------------
 // full Comment object support (in-memory store)
 // --------------------------------------------

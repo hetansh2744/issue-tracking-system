@@ -124,10 +124,8 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     dto->authorId = i.getAuthorId().c_str();
     dto->title = i.getTitle().c_str();
 
-    // Description text is stored in comments; if you want to expose it
-    // here, you can look it up via repository/service. For now, keep
-    // behaviour as before (empty string).
-    dto->description = "";
+    // Description: mirror other fields by emitting a string (empty if absent).
+    dto->description = i.hasDescriptionComment() ? i.getDescriptionComment().c_str() : "";
 
     dto->assignedTo =
         i.hasAssignee() ? i.getAssignedTo().c_str() : "";
@@ -186,7 +184,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   // ---- Issue endpoints ----
-
+  ENDPOINT_INFO(createIssue) {
+    info->summary = "Create a new issue";
+    info->addConsumes<Object<IssueCreateDto>>("application/json");
+    info->addResponse<Object<IssueDto>>(Status::CODE_201, "application/json");
+    info->addResponse<String>(Status::CODE_400, "text/plain",
+                            "Missing required fields: title, authorId");
+  }
   ENDPOINT("POST", "/issues", createIssue,
            BODY_DTO(oatpp::Object<IssueCreateDto>, body)) {
     if (!body || !body->title || !body->authorId) {
@@ -197,7 +201,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
         asStdString(body->title),
         asStdString(body->description),
         asStdString(body->authorId));
-
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 
