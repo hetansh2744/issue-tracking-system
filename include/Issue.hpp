@@ -126,6 +126,12 @@ class Issue{
   }
 
   /**
+   * @brief Get the description text, if the linked comment is present.
+   * @return description text or empty string if none/unknown.
+   */
+  std::string getDescriptionComment() const;
+
+  /**
    * @brief Whether issue has an assignee.
    * @return true if assigned_to_ not empty.
    */

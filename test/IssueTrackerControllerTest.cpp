@@ -55,8 +55,10 @@ TEST(IssueTrackerControllerTest, CreateIssueValid) {
   MockIssueRepository mockRepo;
   Issue persistedIssue(1, "user123", "title", 0);
   Comment descComment(1, "user123", "desc", 0);
+  User author("user123", "Developer");
 
   testing::InSequence seq;
+  EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(author));
   EXPECT_CALL(mockRepo, saveIssue(testing::_))
       .WillOnce(testing::Return(persistedIssue));
   EXPECT_CALL(mockRepo, saveComment(1, testing::_))
@@ -125,7 +127,7 @@ TEST(IssueTrackerControllerTest, UpdateIssueFieldThrows) {
 TEST(IssueTrackerControllerTest, AssignUserToIssueSuccess) {
   MockIssueRepository mockRepo;
   Issue existingIssue(1, "author", "title", 0);
-  User user("name", "role");
+  User user("name", "Developer");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
   EXPECT_CALL(mockRepo, getIssue(1)).WillOnce(testing::Return(existingIssue));
@@ -236,7 +238,7 @@ TEST(IssueTrackerControllerTest, FindIssuesByUserIdUsesCaseInsensitiveMatch) {
 TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
   MockIssueRepository mockRepo;
   Issue issue(1, "author", "title", 0);
-  User user("author", "role");
+  User user("author", "Developer");
   Comment comment(1, "author", "text", 1);
 
   EXPECT_CALL(mockRepo, getIssue(1)).WillOnce(testing::Return(issue));
@@ -308,12 +310,12 @@ TEST(IssueTrackerControllerTest, DeleteCommentThrows) {
 
 TEST(IssueTrackerControllerTest, CreateUserSuccess) {
   MockIssueRepository mockRepo;
-  User user("name", "role");
+  User user("name", "Developer");
 
   EXPECT_CALL(mockRepo, saveUser(testing::_)).WillOnce(testing::Return(user));
 
   IssueTrackerController controller(&mockRepo);
-  User result = controller.createUser("name", "role");
+  User result = controller.createUser("name", "Developer");
 
   EXPECT_EQ(result.getName(), "name");
 }
@@ -326,23 +328,46 @@ TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
   EXPECT_EQ(result.getName(), "");
 }
 
+TEST(IssueTrackerControllerTest, CreateUserInvalidRoleRejected) {
+  MockIssueRepository mockRepo;
+  EXPECT_CALL(mockRepo, saveUser(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  User result = controller.createUser("name", "InvalidRole");
+
+  EXPECT_EQ(result.getName(), "");
+}
+
 TEST(IssueTrackerControllerTest, UpdateUserRoleSuccess) {
   MockIssueRepository mockRepo;
-  User user("oldName", "role");
+  User user("oldName", "Developer");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
   EXPECT_CALL(mockRepo, saveUser(testing::_))
-      .WillOnce(testing::Return(User("oldName", "newRole")));
+      .WillOnce(testing::Return(User("oldName", "Owner")));
 
   IssueTrackerController controller(&mockRepo);
-  bool result = controller.updateUser("user123", "role", "newRole");
+  bool result = controller.updateUser("user123", "role", "Owner");
 
   EXPECT_TRUE(result);
 }
 
+TEST(IssueTrackerControllerTest, UpdateUserRoleRejectsInvalidRole) {
+  MockIssueRepository mockRepo;
+  User user("oldName", "Developer");
+
+  EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
+  EXPECT_CALL(mockRepo, saveUser(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  bool result = controller.updateUser("user123", "role", "Bad");
+
+  EXPECT_FALSE(result);
+}
+
 TEST(IssueTrackerControllerTest, UpdateUserInvalidField) {
   MockIssueRepository mockRepo;
-  User user("name", "role");
+  User user("name", "Developer");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
 
@@ -368,7 +393,7 @@ TEST(IssueTrackerControllerTest, UpdateUserNameRenamesInPlace) {
   SQLiteIssueRepository repo(":memory:");
   IssueTrackerController controller(&repo);
 
-  repo.saveUser(User("old", "role"));
+  repo.saveUser(User("old", "Developer"));
   Issue created = controller.createIssue("title", "desc", "old");
   EXPECT_TRUE(controller.assignUserToIssue(created.getId(), "old"));
   controller.addCommentToIssue(created.getId(), "comment", "old");
@@ -377,7 +402,7 @@ TEST(IssueTrackerControllerTest, UpdateUserNameRenamesInPlace) {
 
   EXPECT_THROW(repo.getUser("old"), std::invalid_argument);
   User renamed = repo.getUser("new");
-  EXPECT_EQ(renamed.getRole(), "role");
+  EXPECT_EQ(renamed.getRole(), "Developer");
 
   Issue reloaded = repo.getIssue(created.getId());
   EXPECT_EQ(reloaded.getAuthorId(), "new");
@@ -404,7 +429,8 @@ TEST(IssueTrackerControllerTest, RemoveUser) {
 
 TEST(IssueTrackerControllerTest, ListAllUsers) {
   MockIssueRepository mockRepo;
-  std::vector<User> users = {User("u1", "r1"), User("u2", "r2")};
+  std::vector<User> users = {User("u1", "Developer"),
+                             User("u2", "Owner")};
 
   EXPECT_CALL(mockRepo, listAllUsers()).WillOnce(testing::Return(users));
 
@@ -435,6 +461,20 @@ TEST(IssueTrackerControllerTest, CreateIssueInvalidInputReturnsEmptyIssue) {
 
   EXPECT_EQ(result.getId(), 0);
   EXPECT_EQ(result.getTitle(), "");
+}
+
+TEST(IssueTrackerControllerTest, CreateIssueRejectsUnknownAuthor) {
+  MockIssueRepository mockRepo;
+
+  EXPECT_CALL(mockRepo, getUser("ghost"))
+      .WillOnce(Throw(std::invalid_argument("missing user")));
+  EXPECT_CALL(mockRepo, saveIssue(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  Issue result = controller.createIssue("title", "desc", "ghost");
+
+  EXPECT_FALSE(result.hasPersistentId());
+  EXPECT_EQ(result.getAuthorId(), "");
 }
 
 TEST(IssueTrackerControllerTest,

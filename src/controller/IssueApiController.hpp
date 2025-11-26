@@ -15,8 +15,10 @@
 #include "Milestone.hpp"
 #include "MilestoneDto.hpp"
 #include "TagDto.hpp"
+#include "ErrorDto.hpp"
 #include "User.hpp"
 #include "UserDto.hpp"
+#include "UserRoles.hpp"
 
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
@@ -56,16 +58,57 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return out;
   }
 
-static std::string normalize(const std::string& str) {
-    std::string out = str;
-    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
-      if (std::isspace(c)) return ' ';
-      return static_cast<char>(std::tolower(c));
-    });
-    out.erase(std::remove_if(out.begin(), out.end(), [](char c) {
-        return !std::isalnum(c);
-    }), out.end());
-    return out;
+  // ---- Status normalization helpers ----
+
+  // Turn a status string into a "key" we can compare:
+  // - lower-cased
+  // - spaces, '-' and '_' removed
+  static std::string normalizeStatusKey(const std::string& raw) {
+    std::string lowered = toLower(raw);
+    std::string key;
+    key.reserve(lowered.size());
+
+    for (char ch : lowered) {
+      unsigned char c = static_cast<unsigned char>(ch);
+      if (!std::isspace(c) && ch != '-' && ch != '_') {
+        key.push_back(static_cast<char>(c));
+      }
+    }
+    return key;
+  }
+
+  // Map various inputs to one canonical label we store in the DB/model.
+  // Accepts examples:
+  //   "1", "to-be-done", "To Be Done", "tobedone" -> "To Be Done"
+  //   "2", "in-progress", "inprogress"           -> "In Progress"
+  //   "3", "done"                                -> "Done"
+  // Otherwise we just return the original raw string.
+  static std::string canonicalStatusLabel(const std::string& raw) {
+    const std::string key = normalizeStatusKey(raw);
+
+    if (key == "1" || key == "tobedone") {
+      return "To Be Done";
+    }
+    if (key == "2" || key == "inprogress") {
+      return "In Progress";
+    }
+    if (key == "3" || key == "done") {
+      return "Done";
+    }
+
+    // Fallback: keep whatever the caller used
+    return raw;
+  }
+
+  std::shared_ptr<OutgoingResponse> error(
+      const Status& status,
+      const std::string& code,
+      const std::string& message) {
+    auto dto = ErrorDto::createShared();
+    dto->statusCode = status.code;
+    dto->error = code.c_str();
+    dto->message = message.c_str();
+    return createDtoResponse(status, dto);
   }
 
  public:
@@ -80,8 +123,14 @@ static std::string normalize(const std::string& str) {
     dto->id = i.getId();
     dto->authorId = i.getAuthorId().c_str();
     dto->title = i.getTitle().c_str();
-    dto->description = "";
-    dto->assignedTo = i.hasAssignee() ? i.getAssignedTo().c_str() : "";
+
+    // Description: mirror other fields by emitting a string (empty if absent).
+    dto->description = i.hasDescriptionComment() ? i.getDescriptionComment().c_str() : "";
+
+    dto->assignedTo =
+        i.hasAssignee() ? i.getAssignedTo().c_str() : "";
+
+    // Status (stored on Issue; ensure IssueDto has a "status" field).
     dto->status = i.getStatus().c_str();
 
     auto ids = oatpp::List<oatpp::Int32>::createShared();
@@ -158,15 +207,30 @@ static std::string normalize(const std::string& str) {
   }
 
   // ---- Issue endpoints ----
-
+  ENDPOINT_INFO(createIssue) {
+    info->summary = "Create a new issue";
+    info->addConsumes<Object<IssueCreateDto>>("application/json");
+    info->addResponse<Object<IssueDto>>(Status::CODE_201, "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                            "Missing required fields: title, authorId");
+  }
   ENDPOINT("POST", "/issues", createIssue,
            BODY_DTO(oatpp::Object<IssueCreateDto>, body)) {
     if (!body || !body->title || !body->authorId) {
-      return createResponse(Status::CODE_400, "Missing fields");
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "title and authorId are required");
     }
-    Issue i = issues().createIssue(asStdString(body->title),
-                                   asStdString(body->description),
-                                   asStdString(body->authorId));
+
+    Issue i = issues().createIssue(
+        asStdString(body->title),
+        asStdString(body->description),
+        asStdString(body->authorId));
+    if (!i.hasPersistentId()) {
+      return error(Status::CODE_400,
+                   "INVALID_AUTHOR",
+                   "Author does not exist");
+    }
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 
@@ -184,7 +248,9 @@ static std::string normalize(const std::string& str) {
       Issue i = issues().getIssue(id);
       return createDtoResponse(Status::CODE_200, issueToDto(i));
     } catch (...) {
-      return createResponse(Status::CODE_404, "Issue Not found");
+      return error(Status::CODE_404,
+                   "ISSUE_NOT_FOUND",
+                   "Issue not found");
     }
   }
 
@@ -193,56 +259,120 @@ static std::string normalize(const std::string& str) {
     bool ok = issues().updateIssueField(id, asStdString(body->field),
                                         asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_400, "Failed");
+              : error(Status::CODE_400,
+                      "UPDATE_FAILED",
+                      "Unable to update issue");
   }
 
-  ENDPOINT("DELETE", "/issues/{id}", deleteIssue, PATH(oatpp::Int32, id)) {
+  ENDPOINT_INFO(deleteIssue) {
+    info->summary = "Delete an issue by id";
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "Issue deleted (no content)");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not found");
+  }
+  ENDPOINT("DELETE", "/issues/{id}", deleteIssue,
+           PATH(oatpp::Int32, id)) {
     bool ok = issues().deleteIssue(id);
-    return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+    if (ok) {
+      return createResponse(Status::CODE_204, "");
+    }
+
+    return error(Status::CODE_404,
+                 "ISSUE_NOT_FOUND",
+                 "Issue not found");
   }
 
   // ---- Comment endpoints ----
 
   ENDPOINT("POST", "/issues/{id}/comments", addComment, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<CommentCreateDto>, body)) {
-    Comment c = issues().addCommentToIssue(id, asStdString(body->text),
-                                           asStdString(body->authorId));
+    if (!body || !body->text || !body->authorId) {
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "text and authorId are required");
+    }
+
+    Comment c = issues().addCommentToIssue(
+        id,
+        asStdString(body->text),
+        asStdString(body->authorId));
+
+    if (!c.hasPersistentId()) {
+      return error(Status::CODE_404,
+                   "COMMENT_NOT_CREATED",
+                   "Issue or author not found");
+    }
     return createDtoResponse(Status::CODE_201, commentToDto(c));
   }
 
   ENDPOINT("GET", "/issues/{id}/comments", listComments,
            PATH(oatpp::Int32, id)) {
-    auto comments = issues().getAllComments(id);
-    auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
-    for (auto& c : comments) {
-      list->push_back(commentToDto(c));
+    try {
+      auto comments = issues().getAllComments(id);
+      auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
+
+      for (auto& c : comments) {
+        list->push_back(commentToDto(c));
+      }
+      return createDtoResponse(Status::CODE_200, list);
+    } catch (...) {
+      return error(Status::CODE_404,
+                   "ISSUE_NOT_FOUND",
+                   "Issue not found");
     }
-    return createDtoResponse(Status::CODE_200, list);
   }
 
   ENDPOINT("PATCH", "/issues/{issueId}/comments/{commentId}", updateComment,
            PATH(oatpp::Int32, issueId), PATH(oatpp::Int32, commentId),
            BODY_DTO(oatpp::Object<CommentUpdateDto>, body)) {
-    bool ok =
-        issues().updateComment(issueId, commentId, asStdString(body->text));
+    if (!body || !body->text) {
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "text is required");
+    }
+
+    bool ok = issues().updateComment(
+        issueId,
+        commentId,
+        asStdString(body->text));
+
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : error(Status::CODE_404,
+                      "COMMENT_NOT_FOUND",
+                      "Comment not found");
   }
 
   ENDPOINT("DELETE", "/issues/{issueId}/comments/{commentId}", deleteComment,
            PATH(oatpp::Int32, issueId), PATH(oatpp::Int32, commentId)) {
     bool ok = issues().deleteComment(issueId, commentId);
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Issue Not found");
+              : error(Status::CODE_404,
+                      "COMMENT_NOT_FOUND",
+                      "Comment not found");
   }
 
   // ---- User endpoints ----
 
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
-    User u =
-        issues().createUser(asStdString(body->name), asStdString(body->role));
+    if (!body || !body->name || !body->role) {
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "name and role are required");
+    }
+    const std::string name = asStdString(body->name);
+    const std::string role = asStdString(body->role);
+    if (name.empty() || !user_roles::isValidRole(role)) {
+      return error(Status::CODE_400,
+                   "INVALID_USER",
+                   "Invalid name or role");
+    }
+
+    User u = issues().createUser(
+        name,
+        role);
+
     return createDtoResponse(Status::CODE_201, userToDto(u));
   }
 
@@ -260,13 +390,17 @@ static std::string normalize(const std::string& str) {
     bool ok = issues().updateUser(asStdString(id), asStdString(body->field),
                                   asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_400, "Failed");
+              : error(Status::CODE_400,
+                      "UPDATE_FAILED",
+                      "Unable to update user");
   }
 
   ENDPOINT("DELETE", "/users/{id}", deleteUser, PATH(oatpp::String, id)) {
     bool ok = issues().removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "User Not found");
+              : error(Status::CODE_404,
+                      "USER_NOT_FOUND",
+                      "User not found");
   }
 
   ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
@@ -285,7 +419,9 @@ static std::string normalize(const std::string& str) {
     }
 
     if (!found) {
-      return createResponse(Status::CODE_404, "User not found");
+      return error(Status::CODE_404,
+                   "USER_NOT_FOUND",
+                   "User not found");
     }
 
     auto userIssues = issues().findIssuesByUserId(realId);
@@ -296,31 +432,90 @@ static std::string normalize(const std::string& str) {
 
     return createDtoResponse(Status::CODE_200, list);
   }
+  ENDPOINT("POST", "/users/{id}/issues", assignUserToIssue,
+         PATH(oatpp::String, id),
+         BODY_DTO(oatpp::Object<AssignIssueDto>, body)) {
+
+  if (!body || !body->issueId) {
+    return createResponse(Status::CODE_400, "Missing issueId");
+  }
+
+  std::string inputUser = toLower(asStdString(id));
+  std::string realUser;
+  bool found = false;
+
+  for (const auto& user : issues().listAllUsers()) {
+    if (toLower(user.getName()) == inputUser) {
+      realUser = user.getName();
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    return createResponse(Status::CODE_404, "User not found");
+  }
+
+  bool ok = issues().assignUserToIssue(body->issueId, realUser);
+  if (!ok) {
+    return createResponse(Status::CODE_404, "Issue not found or assignment failed");
+  }
+
+  try {
+    Issue updated = issues().getIssue(body->issueId);
+    return createDtoResponse(Status::CODE_200, issueToDto(updated));
+  } catch (...) {
+    return createResponse(Status::CODE_404, "Issue not found after assignment");
+  }
+}
+
 
   // ---- Tag endpoints ----
 
   ENDPOINT("POST", "/issues/{id}/tags", addTag, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
-      return createResponse(Status::CODE_400, "Missing tag");
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
     }
 
-    bool ok = issues().addTagToIssue(id, asStdString(body->tag));
+    const std::string tag = asStdString(body->tag);
+    if (tag.empty()) {
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
+    }
+
+    bool ok = issues().addTagToIssue(id, tag);
 
     return ok ? createResponse(Status::CODE_201, "Tag added")
-              : createResponse(Status::CODE_400, "Failed");
+              : error(Status::CODE_400,
+                      "TAG_ADD_FAILED",
+                      "Failed to add tag");
   }
 
   ENDPOINT("DELETE", "/issues/{id}/tags", removeTag, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
-      return createResponse(Status::CODE_400, "Missing tag");
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
     }
 
-    bool ok = issues().removeTagFromIssue(id, asStdString(body->tag));
+    const std::string tag = asStdString(body->tag);
+    if (tag.empty()) {
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
+    }
+
+    bool ok = issues().removeTagFromIssue(id, tag);
 
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : error(Status::CODE_404,
+                      "TAG_NOT_FOUND",
+                      "Tag not found on issue");
   }
 
   ENDPOINT("GET", "/issues/{id}/tags", listTags, PATH(oatpp::Int32, id)) {
@@ -334,7 +529,9 @@ static std::string normalize(const std::string& str) {
 
       return createDtoResponse(Status::CODE_200, list);
     } catch (...) {
-      return createResponse(Status::CODE_404, "Issue not found");
+      return error(Status::CODE_404,
+                   "ISSUE_NOT_FOUND",
+                   "Issue not found");
     }
   }
 
@@ -409,7 +606,9 @@ static std::string normalize(const std::string& str) {
   ENDPOINT("POST", "/milestones", createMilestone,
            BODY_DTO(oatpp::Object<MilestoneCreateDto>, body)) {
     if (!body) {
-      return createResponse(Status::CODE_400, "Missing payload");
+      return error(Status::CODE_400,
+                   "MISSING_PAYLOAD",
+                   "Milestone payload is required");
     }
 
     const std::string name = asStdString(body->name);
@@ -417,8 +616,9 @@ static std::string normalize(const std::string& str) {
     const std::string end = asStdString(body->endDate);
 
     if (name.empty() || start.empty() || end.empty()) {
-      return createResponse(Status::CODE_400,
-                            "name, startDate, and endDate are required");
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "name, startDate, and endDate are required");
     }
 
     const std::string desc = asStdString(body->description);
@@ -427,7 +627,9 @@ static std::string normalize(const std::string& str) {
       Milestone m = issues().createMilestone(name, desc, start, end);
       return createDtoResponse(Status::CODE_201, milestoneToDto(m));
     } catch (const std::invalid_argument& ex) {
-      return createResponse(Status::CODE_400, ex.what());
+      return error(Status::CODE_400,
+                   "INVALID_MILESTONE",
+                   ex.what());
     }
   }
 
@@ -447,19 +649,25 @@ static std::string normalize(const std::string& str) {
       auto m = issues().getMilestone(id);
       return createDtoResponse(Status::CODE_200, milestoneToDto(m));
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
   ENDPOINT("PATCH", "/milestones/{id}", updateMilestone, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<MilestoneUpdateDto>, body)) {
     if (!body) {
-      return createResponse(Status::CODE_400, "Missing payload");
+      return error(Status::CODE_400,
+                   "MISSING_PAYLOAD",
+                   "Milestone payload is required");
     }
 
-    if (!body->name && !body->description && !body->startDate &&
-        !body->endDate) {
-      return createResponse(Status::CODE_400, "No fields to update");
+    if (!body->name && !body->description &&
+        !body->startDate && !body->endDate) {
+      return error(Status::CODE_400,
+                   "NO_FIELDS",
+                   "No fields to update");
     }
 
     try {
@@ -470,9 +678,13 @@ static std::string normalize(const std::string& str) {
                                    asOptionalStdString(body->endDate));
       return createDtoResponse(Status::CODE_200, milestoneToDto(updated));
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     } catch (const std::invalid_argument& ex) {
-      return createResponse(Status::CODE_400, ex.what());
+      return error(Status::CODE_400,
+                   "INVALID_MILESTONE",
+                   ex.what());
     }
   }
 
@@ -482,7 +694,9 @@ static std::string normalize(const std::string& str) {
       bool ok = issues().deleteMilestone(id, cascade);
       return createResponse(Status::CODE_200, ok ? "Deleted" : "Failed");
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -491,14 +705,20 @@ static std::string normalize(const std::string& str) {
     try {
       bool linked = issues().addIssueToMilestone(id, issueId);
       if (!linked) {
-        return createResponse(Status::CODE_400, "Issue already linked");
+        return error(Status::CODE_400,
+                     "ISSUE_ALREADY_LINKED",
+                     "Issue already linked");
       }
       auto milestone = issues().getMilestone(id);
       return createDtoResponse(Status::CODE_200, milestoneToDto(milestone));
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     } catch (const std::invalid_argument& ex) {
-      return createResponse(Status::CODE_400, ex.what());
+      return error(Status::CODE_400,
+                   "INVALID_MILESTONE",
+                   ex.what());
     }
   }
 
@@ -508,9 +728,13 @@ static std::string normalize(const std::string& str) {
     try {
       bool ok = issues().removeIssueFromMilestone(id, issueId);
       return ok ? createResponse(Status::CODE_204, "")
-                : createResponse(Status::CODE_404, "Issue not linked");
+                : error(Status::CODE_404,
+                        "ISSUE_NOT_LINKED",
+                        "Issue not linked to milestone");
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -526,7 +750,9 @@ static std::string normalize(const std::string& str) {
 
       return createDtoResponse(Status::CODE_200, dtoList);
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -560,7 +786,9 @@ static std::string normalize(const std::string& str) {
   ENDPOINT("POST", "/databases", createDatabase,
            BODY_DTO(oatpp::Object<DatabaseCreateDto>, body)) {
     if (!body || !body->name) {
-      return createResponse(Status::CODE_400, "Database name is required");
+      return error(Status::CODE_400,
+                   "MISSING_NAME",
+                   "Database name is required");
     }
     std::string provided = asStdString(body->name);
     std::string normalized = withDbExtension(provided);
@@ -577,9 +805,13 @@ static std::string normalize(const std::string& str) {
     }
 
     if (alreadyExists) {
-      return createResponse(Status::CODE_409, "Database already exists");
+      return error(Status::CODE_409,
+                   "DATABASE_EXISTS",
+                   "Database already exists");
     }
-    return createResponse(Status::CODE_400, "Unable to create database");
+    return error(Status::CODE_400,
+                 "DATABASE_CREATE_FAILED",
+                 "Unable to create database");
   }
 
   ENDPOINT("DELETE", "/databases/{name}", deleteDatabase,
@@ -593,17 +825,22 @@ static std::string normalize(const std::string& str) {
                   existing.end();
 
     if (!exists) {
-      return createResponse(Status::CODE_404, "Database not found");
+      return error(Status::CODE_404,
+                   "DATABASE_NOT_FOUND",
+                   "Database not found");
     }
     if (normalized == active) {
-      return createResponse(Status::CODE_409,
-                            "Cannot delete the active database");
+      return error(Status::CODE_409,
+                   "DATABASE_ACTIVE",
+                   "Cannot delete the active database");
     }
 
     bool deleted = dbService->deleteDatabase(provided);
     return deleted
                ? createResponse(Status::CODE_204, "")
-               : createResponse(Status::CODE_400, "Unable to delete database");
+               : error(Status::CODE_400,
+                       "DATABASE_DELETE_FAILED",
+                       "Unable to delete database");
   }
 
   ENDPOINT("POST", "/databases/{name}/switch", switchDatabase,
@@ -611,7 +848,9 @@ static std::string normalize(const std::string& str) {
     std::string provided = asStdString(name);
     bool ok = dbService->switchDatabase(provided);
     if (!ok) {
-      return createResponse(Status::CODE_404, "Database not found");
+      return error(Status::CODE_404,
+                   "DATABASE_NOT_FOUND",
+                   "Database not found");
     }
 
     auto dto = DatabaseDto::createShared();
@@ -620,7 +859,28 @@ static std::string normalize(const std::string& str) {
     return createDtoResponse(Status::CODE_200, dto);
   }
 
-  // ---- Status Endpoints ---
+  // ---- Status endpoints ----
+
+  ENDPOINT("PUT", "/issues/{id}/status", updateIssueStatus,
+           PATH(Int32, id),
+           BODY_STRING(String, status)) {
+    if (!status) {
+      return error(Status::CODE_400,
+                   "MISSING_STATUS",
+                   "Status is required");
+    }
+
+    const std::string canonical =
+        canonicalStatusLabel(asStdString(status));
+
+    bool ok = issues().updateIssueField(id, "status", canonical);
+
+    return ok ? createResponse(Status::CODE_200, "Status updated")
+              : error(Status::CODE_404,
+                      "ISSUE_NOT_FOUND",
+                      "Issue not found");
+  }
+
   ENDPOINT("GET", "/issues/status/{status}", getIssuesByStatus,
            PATH(oatpp::String, status)) {
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
