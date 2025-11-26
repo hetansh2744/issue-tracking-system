@@ -58,11 +58,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return out;
   }
 
-  // ---- Status normalization helpers ----
-
-  // Turn a status string into a "key" we can compare:
-  // - lower-cased
-  // - spaces, '-' and '_' removed
   static std::string normalizeStatusKey(const std::string& raw) {
     std::string lowered = toLower(raw);
     std::string key;
@@ -77,12 +72,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return key;
   }
 
-  // Map various inputs to one canonical label we store in the DB/model.
-  // Accepts examples:
-  //   "1", "to-be-done", "To Be Done", "tobedone" -> "To Be Done"
-  //   "2", "in-progress", "inprogress"           -> "In Progress"
-  //   "3", "done"                                -> "Done"
-  // Otherwise we just return the original raw string.
   static std::string canonicalStatusLabel(const std::string& raw) {
     const std::string key = normalizeStatusKey(raw);
 
@@ -178,32 +167,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
     dto->issueIds = issueIds;
     return dto;
-  }
-
-  static std::string canonicalStatusLabel(const std::string& raw) {
-    const std::string key = normalize(raw);
-
-    if (key == "1" || key == "tobedone" || key == "tobdone") {
-      return "To Be Done";
-    }
-    if (key == "2" || key == "inprogress") {
-      return "In Progress";
-    }
-    if (key == "3" || key == "done") {
-      return "Done";
-    }
-
-    if (raw == "To Be Done") {
-      return "To Be Done";
-    }
-    if (raw == "In Progress") {
-      return "In Progress";
-    }
-    if (raw == "Done") {
-      return "Done";
-    }
-
-    return raw;
   }
 
   // ---- Issue endpoints ----
