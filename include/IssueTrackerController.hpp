@@ -190,7 +190,27 @@ class IssueTrackerController {
    * @return std::vector<Issue> List of issues assigned to the user
    */
   virtual std::vector<Issue> findIssuesByUserId(const std::string& user_name);
+
+        /**
+     * @brief Find issues that have a specific tag
+     * @param status The status to search for
+     * @return Vector of issues with the specified tag
+     */
   virtual std::vector<Issue> findIssuesByStatus(const std::string& status);
+
+      /**
+     * @brief Find issues that have a specific tag
+     * @param tag The tag to search for
+     * @return Vector of issues with the specified tag
+     */
+  std::vector<Issue> findIssuesByTag(const std::string& tag);
+
+    /**
+     * @brief Find issues that have any of the specified tags (OR logic)
+     * @param tags Vector of tags to search for
+     * @return Vector of issues that have at least one of the specified tags
+     */
+  std::vector<Issue> findIssuesByTags(const std::vector<std::string>& tags);
 
   /**
    * @brief Gets all users in the system

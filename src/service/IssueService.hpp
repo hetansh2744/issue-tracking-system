@@ -110,6 +110,13 @@ class IssueService {
   bool addTagToIssue(int issueId, const std::string& tag) {
     return controller_.addTagToIssue(issueId, tag);
   }
+  std::vector<Issue> findIssuesByTag(const std::string& tag) {
+    return controller_.findIssuesByTag(tag);
+  }
+
+  std::vector<Issue> findIssuesByTags(const std::vector<std::string>& tags) {
+    return controller_.findIssuesByTags(tags);
+  }
 
   bool removeTagFromIssue(int issueId, const std::string& tag) {
     return controller_.removeTagFromIssue(issueId, tag);

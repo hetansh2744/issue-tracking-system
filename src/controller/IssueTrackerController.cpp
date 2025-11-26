@@ -328,6 +328,37 @@ std::vector<Issue> IssueTrackerController::findIssuesByStatus(
   return filtered;
 }
 
+std::vector<Issue> IssueTrackerController::findIssuesByTag(
+    const std::string& tag) {
+  
+  std::vector<Issue> all = repo->listIssues();
+  std::vector<Issue> filtered;
+
+  for (const auto& issue : all) {
+    if (issue.hasTag(tag)) {
+      filtered.push_back(issue);
+    }
+  }
+  return filtered;
+}
+
+std::vector<Issue> IssueTrackerController::findIssuesByTags(
+    const std::vector<std::string>& tags) {
+  
+  std::vector<Issue> all = repo->listIssues();
+  std::vector<Issue> filtered;
+
+  for (const auto& issue : all) {
+    for (const auto& tag : tags) {
+      if (issue.hasTag(tag)) {
+        filtered.push_back(issue);
+        break;
+      }
+    }
+  }
+  return filtered;
+}
+
 //lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {
   return repo->listAllUsers();

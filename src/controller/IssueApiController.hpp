@@ -26,10 +26,6 @@
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
 
-/**
- * @brief REST API controller for issues, comments, users, tags, milestones,
- *        and database management.
- */
 class IssueApiController : public oatpp::web::server::api::ApiController {
  private:
   std::shared_ptr<DatabaseService> dbService;
@@ -37,7 +33,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   static std::string asStdString(const oatpp::String& value) {
     return value ? *value : std::string();
   }
-
   static std::optional<std::string> asOptionalStdString(
       const oatpp::String& value) {
     if (!value) {
@@ -45,11 +40,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
     return std::optional<std::string>(*value);
   }
-
-  IssueService& issues() const {
-    return dbService->getIssueService();
-  }
-
+  IssueService& issues() const { return dbService->getIssueService(); }
   static std::string withDbExtension(const std::string& name) {
     if (name.size() >= 3 && name.substr(name.size() - 3) == ".db") {
       return name;
@@ -60,89 +51,45 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   static std::string toLower(const std::string& str) {
     std::string out = str;
     std::transform(out.begin(), out.end(), out.begin(),
-                   [](unsigned char c) {
-                     return static_cast<char>(std::tolower(c));
-                   });
+                   [](unsigned char c) { return
+                    static_cast<char>(std::tolower(c)); });
     return out;
   }
 
-  // ---- Status normalization helpers ----
-
-  // Turn a status string into a "key" we can compare:
-  // - lower-cased
-  // - spaces, '-' and '_' removed
-  static std::string normalizeStatusKey(const std::string& raw) {
-    std::string lowered = toLower(raw);
-    std::string key;
-    key.reserve(lowered.size());
-
-    for (char ch : lowered) {
-      unsigned char c = static_cast<unsigned char>(ch);
-      if (!std::isspace(c) && ch != '-' && ch != '_') {
-        key.push_back(static_cast<char>(c));
-      }
-    }
-    return key;
-  }
-
-  // Map various inputs to one canonical label we store in the DB/model.
-  // Accepts examples:
-  //   "1", "to-be-done", "To Be Done", "tobedone" -> "To Be Done"
-  //   "2", "in-progress", "inprogress"           -> "In Progress"
-  //   "3", "done"                                -> "Done"
-  // Otherwise we just return the original raw string.
-  static std::string canonicalStatusLabel(const std::string& raw) {
-    const std::string key = normalizeStatusKey(raw);
-
-    if (key == "1" || key == "tobedone") {
-      return "To Be Done";
-    }
-    if (key == "2" || key == "inprogress") {
-      return "In Progress";
-    }
-    if (key == "3" || key == "done") {
-      return "Done";
-    }
-
-    // Fallback: keep whatever the caller used
-    return raw;
+static std::string normalize(const std::string& str) {
+    std::string out = str;
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
+      if (std::isspace(c)) return ' ';
+      return static_cast<char>(std::tolower(c));
+    });
+    out.erase(std::remove_if(out.begin(), out.end(), [](char c) {
+        return !std::isalnum(c);
+    }), out.end());
+    return out;
   }
 
  public:
-  explicit IssueApiController(
-      const std::shared_ptr<oatpp::data::mapping::ObjectMapper>&
-          objectMapper)
+  IssueApiController(
+      const std::shared_ptr<oatpp::data::mapping::ObjectMapper>& objectMapper)
       : oatpp::web::server::api::ApiController(objectMapper),
         dbService(std::make_shared<DatabaseService>()) {}
 
-  // ---- DTO conversion helpers ----
-
+  // Convert helpers
   static oatpp::Object<IssueDto> issueToDto(const Issue& i) {
     auto dto = IssueDto::createShared();
-
     dto->id = i.getId();
     dto->authorId = i.getAuthorId().c_str();
     dto->title = i.getTitle().c_str();
-
-    // Description text is stored in comments; if you want to expose it
-    // here, you can look it up via repository/service. For now, keep
-    // behaviour as before (empty string).
     dto->description = "";
-
-    dto->assignedTo =
-        i.hasAssignee() ? i.getAssignedTo().c_str() : "";
-
-    // Status (stored on Issue; ensure IssueDto has a "status" field).
+    dto->assignedTo = i.hasAssignee() ? i.getAssignedTo().c_str() : "";
     dto->status = i.getStatus().c_str();
 
-    // Comment IDs
     auto ids = oatpp::List<oatpp::Int32>::createShared();
     for (int cid : i.getCommentIds()) {
       ids->push_back(cid);
     }
     dto->commentIds = ids;
 
-    // Tags (ensure IssueDto has "tags" field).
     auto tags = oatpp::List<oatpp::String>::createShared();
     for (const auto& t : i.getTags()) {
       tags->push_back(t.c_str());
@@ -176,13 +123,38 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     dto->description = m.getDescription().c_str();
     dto->startDate = m.getStartDate().c_str();
     dto->endDate = m.getEndDate().c_str();
-
     auto issueIds = oatpp::List<oatpp::Int32>::createShared();
     for (int id : m.getIssueIds()) {
       issueIds->push_back(id);
     }
     dto->issueIds = issueIds;
     return dto;
+  }
+
+  static std::string canonicalStatusLabel(const std::string& raw) {
+    const std::string key = normalize(raw);
+
+    if (key == "1" || key == "tobedone" || key == "tobdone") {
+      return "To Be Done";
+    }
+    if (key == "2" || key == "inprogress") {
+      return "In Progress";
+    }
+    if (key == "3" || key == "done") {
+      return "Done";
+    }
+
+    if (raw == "To Be Done") {
+      return "To Be Done";
+    }
+    if (raw == "In Progress") {
+      return "In Progress";
+    }
+    if (raw == "Done") {
+      return "Done";
+    }
+
+    return raw;
   }
 
   // ---- Issue endpoints ----
@@ -192,49 +164,39 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     if (!body || !body->title || !body->authorId) {
       return createResponse(Status::CODE_400, "Missing fields");
     }
-
-    Issue i = issues().createIssue(
-        asStdString(body->title),
-        asStdString(body->description),
-        asStdString(body->authorId));
-
+    Issue i = issues().createIssue(asStdString(body->title),
+                                   asStdString(body->description),
+                                   asStdString(body->authorId));
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 
   ENDPOINT("GET", "/issues", listIssues) {
     auto issueList = issues().listAllIssues();
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-
     for (auto& i : issueList) {
       list->push_back(issueToDto(i));
     }
     return createDtoResponse(Status::CODE_200, list);
   }
 
-  ENDPOINT("GET", "/issues/{id}", getIssue,
-           PATH(oatpp::Int32, id)) {
+  ENDPOINT("GET", "/issues/{id}", getIssue, PATH(oatpp::Int32, id)) {
     try {
       Issue i = issues().getIssue(id);
       return createDtoResponse(Status::CODE_200, issueToDto(i));
     } catch (...) {
-      return createResponse(Status::CODE_404, "Not found");
+      return createResponse(Status::CODE_404, "Issue Not found");
     }
   }
 
-  ENDPOINT("PATCH", "/issues/{id}", updateIssue,
-           PATH(oatpp::Int32, id),
+  ENDPOINT("PATCH", "/issues/{id}", updateIssue, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<IssueUpdateFieldDto>, body)) {
-    bool ok = issues().updateIssueField(
-        id,
-        asStdString(body->field),
-        asStdString(body->value));
-
+    bool ok = issues().updateIssueField(id, asStdString(body->field),
+                                        asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_400, "Failed");
   }
 
-  ENDPOINT("DELETE", "/issues/{id}", deleteIssue,
-           PATH(oatpp::Int32, id)) {
+  ENDPOINT("DELETE", "/issues/{id}", deleteIssue, PATH(oatpp::Int32, id)) {
     bool ok = issues().deleteIssue(id);
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
@@ -242,14 +204,10 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
   // ---- Comment endpoints ----
 
-  ENDPOINT("POST", "/issues/{id}/comments", addComment,
-           PATH(oatpp::Int32, id),
+  ENDPOINT("POST", "/issues/{id}/comments", addComment, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<CommentCreateDto>, body)) {
-    Comment c = issues().addCommentToIssue(
-        id,
-        asStdString(body->text),
-        asStdString(body->authorId));
-
+    Comment c = issues().addCommentToIssue(id, asStdString(body->text),
+                                           asStdString(body->authorId));
     return createDtoResponse(Status::CODE_201, commentToDto(c));
   }
 
@@ -257,79 +215,62 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, id)) {
     auto comments = issues().getAllComments(id);
     auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
-
     for (auto& c : comments) {
       list->push_back(commentToDto(c));
     }
     return createDtoResponse(Status::CODE_200, list);
   }
 
-  ENDPOINT("PATCH", "/issues/{issueId}/comments/{commentId}",
-           updateComment,
-           PATH(oatpp::Int32, issueId),
-           PATH(oatpp::Int32, commentId),
+  ENDPOINT("PATCH", "/issues/{issueId}/comments/{commentId}", updateComment,
+           PATH(oatpp::Int32, issueId), PATH(oatpp::Int32, commentId),
            BODY_DTO(oatpp::Object<CommentUpdateDto>, body)) {
-    bool ok = issues().updateComment(
-        issueId,
-        commentId,
-        asStdString(body->text));
-
+    bool ok =
+        issues().updateComment(issueId, commentId, asStdString(body->text));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_404, "Not found");
   }
 
-  ENDPOINT("DELETE", "/issues/{issueId}/comments/{commentId}",
-           deleteComment,
-           PATH(oatpp::Int32, issueId),
-           PATH(oatpp::Int32, commentId)) {
+  ENDPOINT("DELETE", "/issues/{issueId}/comments/{commentId}", deleteComment,
+           PATH(oatpp::Int32, issueId), PATH(oatpp::Int32, commentId)) {
     bool ok = issues().deleteComment(issueId, commentId);
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : createResponse(Status::CODE_404, "Issue Not found");
   }
 
   // ---- User endpoints ----
 
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
-    User u = issues().createUser(
-        asStdString(body->name),
-        asStdString(body->role));
-
+    User u =
+        issues().createUser(asStdString(body->name), asStdString(body->role));
     return createDtoResponse(Status::CODE_201, userToDto(u));
   }
 
   ENDPOINT("GET", "/users", listUsers) {
     auto usersList = issues().listAllUsers();
     auto list = oatpp::List<oatpp::Object<UserDto>>::createShared();
-
     for (auto& u : usersList) {
       list->push_back(userToDto(u));
     }
     return createDtoResponse(Status::CODE_200, list);
   }
 
-  ENDPOINT("PATCH", "/users/{id}", updateUser,
-           PATH(oatpp::String, id),
+  ENDPOINT("PATCH", "/users/{id}", updateUser, PATH(oatpp::String, id),
            BODY_DTO(oatpp::Object<UserUpdateDto>, body)) {
-    bool ok = issues().updateUser(
-        asStdString(id),
-        asStdString(body->field),
-        asStdString(body->value));
-
+    bool ok = issues().updateUser(asStdString(id), asStdString(body->field),
+                                  asStdString(body->value));
     return ok ? createResponse(Status::CODE_204, "")
               : createResponse(Status::CODE_400, "Failed");
   }
 
-  ENDPOINT("DELETE", "/users/{id}", deleteUser,
-           PATH(oatpp::String, id)) {
+  ENDPOINT("DELETE", "/users/{id}", deleteUser, PATH(oatpp::String, id)) {
     bool ok = issues().removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : createResponse(Status::CODE_404, "User Not found");
   }
 
   ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
            PATH(oatpp::String, id)) {
-    // case-insensitive lookup of the user
     std::string input = toLower(asStdString(id));
     std::string realId;
     bool found = false;
@@ -349,7 +290,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
     auto userIssues = issues().findIssuesByUserId(realId);
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-
     for (auto& issue : userIssues) {
       list->push_back(issueToDto(issue));
     }
@@ -359,44 +299,31 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
   // ---- Tag endpoints ----
 
-  ENDPOINT("POST", "/issues/{id}/tags", addTag,
-           PATH(oatpp::Int32, id),
+  ENDPOINT("POST", "/issues/{id}/tags", addTag, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
       return createResponse(Status::CODE_400, "Missing tag");
     }
 
-    const std::string tag = asStdString(body->tag);
-    if (tag.empty()) {
-      return createResponse(Status::CODE_400, "Missing tag");
-    }
-
-    bool ok = issues().addTagToIssue(id, tag);
+    bool ok = issues().addTagToIssue(id, asStdString(body->tag));
 
     return ok ? createResponse(Status::CODE_201, "Tag added")
-              : createResponse(Status::CODE_400, "Failed to add tag");
+              : createResponse(Status::CODE_400, "Failed");
   }
 
-  ENDPOINT("DELETE", "/issues/{id}/tags", removeTag,
-           PATH(oatpp::Int32, id),
+  ENDPOINT("DELETE", "/issues/{id}/tags", removeTag, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
       return createResponse(Status::CODE_400, "Missing tag");
     }
 
-    const std::string tag = asStdString(body->tag);
-    if (tag.empty()) {
-      return createResponse(Status::CODE_400, "Missing tag");
-    }
-
-    bool ok = issues().removeTagFromIssue(id, tag);
+    bool ok = issues().removeTagFromIssue(id, asStdString(body->tag));
 
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Tag not found on issue");
+              : createResponse(Status::CODE_404, "Not found");
   }
 
-  ENDPOINT("GET", "/issues/{id}/tags", listTags,
-           PATH(oatpp::Int32, id)) {
+  ENDPOINT("GET", "/issues/{id}/tags", listTags, PATH(oatpp::Int32, id)) {
     try {
       Issue issue = issues().getIssue(id);
 
@@ -409,6 +336,72 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     } catch (...) {
       return createResponse(Status::CODE_404, "Issue not found");
     }
+  }
+
+  ENDPOINT("GET", "/issues/tags/{tag}", getIssuesByTag,
+           PATH(oatpp::String, tag)) {
+    auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+
+    if (!tag) {
+      return createDtoResponse(Status::CODE_200, list);
+    }
+
+    std::string searchTag = asStdString(tag);
+    if (searchTag.empty()) {
+      return createDtoResponse(Status::CODE_200, list);
+    }
+
+    auto allIssues = issues().listAllIssues();
+    
+    for (const auto& issue : allIssues) {
+      if (issue.hasTag(searchTag)) {
+        list->push_back(issueToDto(issue));
+      }
+    }
+
+    return createDtoResponse(Status::CODE_200, list);
+  }
+
+  ENDPOINT("GET", "/issues/tags", getIssuesByTags,
+           QUERY(oatpp::String, tags)) {
+    auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+
+    if (!tags) {
+      return createDtoResponse(Status::CODE_200, list);
+    }
+
+    std::string tagsStr = asStdString(tags);
+    if (tagsStr.empty()) {
+      return createDtoResponse(Status::CODE_200, list);
+    }
+
+    std::vector<std::string> searchTags;
+    std::istringstream iss(tagsStr);
+    std::string tag;
+    while (std::getline(iss, tag, ',')) {
+      tag.erase(0, tag.find_first_not_of(" \t"));
+      tag.erase(tag.find_last_not_of(" \t") + 1);
+      if (!tag.empty()) {
+        searchTags.push_back(tag);
+      }
+    }
+
+    if (searchTags.empty()) {
+      return createDtoResponse(Status::CODE_200, list);
+    }
+
+    auto allIssues = issues().listAllIssues();
+    
+    for (const auto& issue : allIssues) {
+      for (const auto& searchTag : searchTags) {
+        if (issue.hasTag(searchTag)) {
+          list->push_back(issueToDto(issue));
+          break;
+        }
+      }
+    }
+
+    return createDtoResponse(Status::CODE_200, list);
   }
 
   // ---- Milestone endpoints ----
@@ -424,16 +417,14 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     const std::string end = asStdString(body->endDate);
 
     if (name.empty() || start.empty() || end.empty()) {
-      return createResponse(
-          Status::CODE_400,
-          "name, startDate, and endDate are required");
+      return createResponse(Status::CODE_400,
+                            "name, startDate, and endDate are required");
     }
 
     const std::string desc = asStdString(body->description);
 
     try {
-      Milestone m = issues().createMilestone(
-          name, desc, start, end);
+      Milestone m = issues().createMilestone(name, desc, start, end);
       return createDtoResponse(Status::CODE_201, milestoneToDto(m));
     } catch (const std::invalid_argument& ex) {
       return createResponse(Status::CODE_400, ex.what());
@@ -443,8 +434,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("GET", "/milestones", listMilestones) {
     auto list = issues().listAllMilestones();
 
-    auto dtoList =
-        oatpp::List<oatpp::Object<MilestoneDto>>::createShared();
+    auto dtoList = oatpp::List<oatpp::Object<MilestoneDto>>::createShared();
     for (auto& m : list) {
       dtoList->push_back(milestoneToDto(m));
     }
@@ -452,8 +442,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_200, dtoList);
   }
 
-  ENDPOINT("GET", "/milestones/{id}", getMilestone,
-           PATH(oatpp::Int32, id)) {
+  ENDPOINT("GET", "/milestones/{id}", getMilestone, PATH(oatpp::Int32, id)) {
     try {
       auto m = issues().getMilestone(id);
       return createDtoResponse(Status::CODE_200, milestoneToDto(m));
@@ -462,27 +451,24 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
   }
 
-  ENDPOINT("PATCH", "/milestones/{id}", updateMilestone,
-           PATH(oatpp::Int32, id),
+  ENDPOINT("PATCH", "/milestones/{id}", updateMilestone, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<MilestoneUpdateDto>, body)) {
     if (!body) {
       return createResponse(Status::CODE_400, "Missing payload");
     }
 
-    if (!body->name && !body->description &&
-        !body->startDate && !body->endDate) {
+    if (!body->name && !body->description && !body->startDate &&
+        !body->endDate) {
       return createResponse(Status::CODE_400, "No fields to update");
     }
 
     try {
-      auto updated = issues().updateMilestone(
-          id,
-          asOptionalStdString(body->name),
-          asOptionalStdString(body->description),
-          asOptionalStdString(body->startDate),
-          asOptionalStdString(body->endDate));
-      return createDtoResponse(Status::CODE_200,
-                               milestoneToDto(updated));
+      auto updated =
+          issues().updateMilestone(id, asOptionalStdString(body->name),
+                                   asOptionalStdString(body->description),
+                                   asOptionalStdString(body->startDate),
+                                   asOptionalStdString(body->endDate));
+      return createDtoResponse(Status::CODE_200, milestoneToDto(updated));
     } catch (const std::out_of_range&) {
       return createResponse(Status::CODE_404, "Milestone not found");
     } catch (const std::invalid_argument& ex) {
@@ -491,30 +477,24 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   ENDPOINT("DELETE", "/milestones/{id}", deleteMilestone,
-           PATH(oatpp::Int32, id),
-           QUERY(oatpp::Boolean, cascade)) {
+           PATH(oatpp::Int32, id), QUERY(oatpp::Boolean, cascade)) {
     try {
       bool ok = issues().deleteMilestone(id, cascade);
-      return createResponse(Status::CODE_200,
-                            ok ? "Deleted" : "Failed");
+      return createResponse(Status::CODE_200, ok ? "Deleted" : "Failed");
     } catch (const std::out_of_range&) {
       return createResponse(Status::CODE_404, "Milestone not found");
     }
   }
 
-  ENDPOINT("POST", "/milestones/{id}/issues/{issueId}",
-           addIssueToMilestone,
-           PATH(oatpp::Int32, id),
-           PATH(oatpp::Int32, issueId)) {
+  ENDPOINT("POST", "/milestones/{id}/issues/{issueId}", addIssueToMilestone,
+           PATH(oatpp::Int32, id), PATH(oatpp::Int32, issueId)) {
     try {
       bool linked = issues().addIssueToMilestone(id, issueId);
       if (!linked) {
-        return createResponse(Status::CODE_400,
-                              "Issue already linked");
+        return createResponse(Status::CODE_400, "Issue already linked");
       }
       auto milestone = issues().getMilestone(id);
-      return createDtoResponse(Status::CODE_200,
-                               milestoneToDto(milestone));
+      return createDtoResponse(Status::CODE_200, milestoneToDto(milestone));
     } catch (const std::out_of_range&) {
       return createResponse(Status::CODE_404, "Milestone not found");
     } catch (const std::invalid_argument& ex) {
@@ -523,14 +503,12 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   ENDPOINT("DELETE", "/milestones/{id}/issues/{issueId}",
-           removeIssueFromMilestone,
-           PATH(oatpp::Int32, id),
+           removeIssueFromMilestone, PATH(oatpp::Int32, id),
            PATH(oatpp::Int32, issueId)) {
     try {
       bool ok = issues().removeIssueFromMilestone(id, issueId);
       return ok ? createResponse(Status::CODE_204, "")
-                : createResponse(Status::CODE_404,
-                                 "Issue not linked");
+                : createResponse(Status::CODE_404, "Issue not linked");
     } catch (const std::out_of_range&) {
       return createResponse(Status::CODE_404, "Milestone not found");
     }
@@ -541,8 +519,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     try {
       auto list = issues().getIssuesForMilestone(id);
 
-      auto dtoList =
-          oatpp::List<oatpp::Object<IssueDto>>::createShared();
+      auto dtoList = oatpp::List<oatpp::Object<IssueDto>>::createShared();
       for (auto& i : list) {
         dtoList->push_back(issueToDto(i));
       }
@@ -583,32 +560,26 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/databases", createDatabase,
            BODY_DTO(oatpp::Object<DatabaseCreateDto>, body)) {
     if (!body || !body->name) {
-      return createResponse(Status::CODE_400,
-                            "Database name is required");
+      return createResponse(Status::CODE_400, "Database name is required");
     }
     std::string provided = asStdString(body->name);
     std::string normalized = withDbExtension(provided);
-
     auto existing = dbService->listDatabases();
-    bool alreadyExists =
-        std::find(existing.begin(), existing.end(), normalized) !=
-        existing.end();
+    bool alreadyExists = std::find(existing.begin(), existing.end(),
+                                   normalized) != existing.end();
 
     bool created = dbService->createDatabase(provided);
     if (created) {
       auto dto = DatabaseDto::createShared();
       dto->name = normalized.c_str();
-      dto->active =
-          (normalized == dbService->getActiveDatabaseName());
+      dto->active = normalized == dbService->getActiveDatabaseName();
       return createDtoResponse(Status::CODE_201, dto);
     }
 
     if (alreadyExists) {
-      return createResponse(Status::CODE_409,
-                            "Database already exists");
+      return createResponse(Status::CODE_409, "Database already exists");
     }
-    return createResponse(Status::CODE_400,
-                          "Unable to create database");
+    return createResponse(Status::CODE_400, "Unable to create database");
   }
 
   ENDPOINT("DELETE", "/databases/{name}", deleteDatabase,
@@ -618,8 +589,8 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
     auto existing = dbService->listDatabases();
     std::string active = dbService->getActiveDatabaseName();
-    bool exists = std::find(existing.begin(), existing.end(),
-                            normalized) != existing.end();
+    bool exists = std::find(existing.begin(), existing.end(), normalized) !=
+                  existing.end();
 
     if (!exists) {
       return createResponse(Status::CODE_404, "Database not found");
@@ -632,8 +603,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     bool deleted = dbService->deleteDatabase(provided);
     return deleted
                ? createResponse(Status::CODE_204, "")
-               : createResponse(Status::CODE_400,
-                                "Unable to delete database");
+               : createResponse(Status::CODE_400, "Unable to delete database");
   }
 
   ENDPOINT("POST", "/databases/{name}/switch", switchDatabase,
@@ -650,24 +620,7 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_200, dto);
   }
 
-  // ---- Status endpoints ----
-
-  ENDPOINT("PUT", "/issues/{id}/status", updateIssueStatus,
-           PATH(Int32, id),
-           BODY_STRING(String, status)) {
-    if (!status) {
-      return createResponse(Status::CODE_400, "Missing status");
-    }
-
-    const std::string canonical =
-        canonicalStatusLabel(asStdString(status));
-
-    bool ok = issues().updateIssueField(id, "status", canonical);
-
-    return ok ? createResponse(Status::CODE_200, "Status updated")
-              : createResponse(Status::CODE_404, "Issue not found");
-  }
-
+  // ---- Status Endpoints ---
   ENDPOINT("GET", "/issues/status/{status}", getIssuesByStatus,
            PATH(oatpp::String, status)) {
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
@@ -679,6 +632,11 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
     const std::string canonical =
         canonicalStatusLabel(asStdString(status));
+
+    if (canonical != "To Be Done" && canonical !=
+      "In Progress" && canonical != "Done") {
+      return createResponse(Status::CODE_400, "Invalid status. Status must be 'To Be Done', 'In Progress', 'Done', or a valid alias (e.g., '1', '2', 'tobedone').");
+    }
 
     auto all = issues().listAllIssues();
     for (const auto& issue : all) {
