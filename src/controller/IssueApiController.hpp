@@ -15,6 +15,7 @@
 #include "Milestone.hpp"
 #include "MilestoneDto.hpp"
 #include "TagDto.hpp"
+#include "ErrorDto.hpp"
 #include "User.hpp"
 #include "UserDto.hpp"
 #include "UserRoles.hpp"
@@ -109,6 +110,17 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return raw;
   }
 
+  std::shared_ptr<OutgoingResponse> error(
+      const Status& status,
+      const std::string& code,
+      const std::string& message) {
+    auto dto = ErrorDto::createShared();
+    dto->statusCode = status.code;
+    dto->error = code.c_str();
+    dto->message = message.c_str();
+    return createDtoResponse(status, dto);
+  }
+
  public:
   explicit IssueApiController(
       const std::shared_ptr<oatpp::data::mapping::ObjectMapper>&
@@ -189,13 +201,15 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     info->summary = "Create a new issue";
     info->addConsumes<Object<IssueCreateDto>>("application/json");
     info->addResponse<Object<IssueDto>>(Status::CODE_201, "application/json");
-    info->addResponse<String>(Status::CODE_400, "text/plain",
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
                             "Missing required fields: title, authorId");
   }
   ENDPOINT("POST", "/issues", createIssue,
            BODY_DTO(oatpp::Object<IssueCreateDto>, body)) {
     if (!body || !body->title || !body->authorId) {
-      return createResponse(Status::CODE_400, "Missing fields");
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "title and authorId are required");
     }
 
     Issue i = issues().createIssue(
@@ -203,7 +217,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
         asStdString(body->description),
         asStdString(body->authorId));
     if (!i.hasPersistentId()) {
-      return createResponse(Status::CODE_400, "Invalid authorId");
+      return error(Status::CODE_400,
+                   "INVALID_AUTHOR",
+                   "Author does not exist");
     }
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
@@ -224,7 +240,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       Issue i = issues().getIssue(id);
       return createDtoResponse(Status::CODE_200, issueToDto(i));
     } catch (...) {
-      return createResponse(Status::CODE_404, "Not found");
+      return error(Status::CODE_404,
+                   "ISSUE_NOT_FOUND",
+                   "Issue not found");
     }
   }
 
@@ -237,14 +255,28 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
         asStdString(body->value));
 
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_400, "Failed");
+              : error(Status::CODE_400,
+                      "UPDATE_FAILED",
+                      "Unable to update issue");
   }
 
+  ENDPOINT_INFO(deleteIssue) {
+    info->summary = "Delete an issue by id";
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "Issue deleted (no content)");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not found");
+  }
   ENDPOINT("DELETE", "/issues/{id}", deleteIssue,
            PATH(oatpp::Int32, id)) {
     bool ok = issues().deleteIssue(id);
-    return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+    if (ok) {
+      return createResponse(Status::CODE_204, "");
+    }
+
+    return error(Status::CODE_404,
+                 "ISSUE_NOT_FOUND",
+                 "Issue not found");
   }
 
   // ---- Comment endpoints ----
@@ -252,23 +284,40 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/issues/{id}/comments", addComment,
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<CommentCreateDto>, body)) {
+    if (!body || !body->text || !body->authorId) {
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "text and authorId are required");
+    }
+
     Comment c = issues().addCommentToIssue(
         id,
         asStdString(body->text),
         asStdString(body->authorId));
 
+    if (!c.hasPersistentId()) {
+      return error(Status::CODE_404,
+                   "COMMENT_NOT_CREATED",
+                   "Issue or author not found");
+    }
     return createDtoResponse(Status::CODE_201, commentToDto(c));
   }
 
   ENDPOINT("GET", "/issues/{id}/comments", listComments,
            PATH(oatpp::Int32, id)) {
-    auto comments = issues().getAllComments(id);
-    auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
+    try {
+      auto comments = issues().getAllComments(id);
+      auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
 
-    for (auto& c : comments) {
-      list->push_back(commentToDto(c));
+      for (auto& c : comments) {
+        list->push_back(commentToDto(c));
+      }
+      return createDtoResponse(Status::CODE_200, list);
+    } catch (...) {
+      return error(Status::CODE_404,
+                   "ISSUE_NOT_FOUND",
+                   "Issue not found");
     }
-    return createDtoResponse(Status::CODE_200, list);
   }
 
   ENDPOINT("PATCH", "/issues/{issueId}/comments/{commentId}",
@@ -276,13 +325,21 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, issueId),
            PATH(oatpp::Int32, commentId),
            BODY_DTO(oatpp::Object<CommentUpdateDto>, body)) {
+    if (!body || !body->text) {
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "text is required");
+    }
+
     bool ok = issues().updateComment(
         issueId,
         commentId,
         asStdString(body->text));
 
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : error(Status::CODE_404,
+                      "COMMENT_NOT_FOUND",
+                      "Comment not found");
   }
 
   ENDPOINT("DELETE", "/issues/{issueId}/comments/{commentId}",
@@ -291,7 +348,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, commentId)) {
     bool ok = issues().deleteComment(issueId, commentId);
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : error(Status::CODE_404,
+                      "COMMENT_NOT_FOUND",
+                      "Comment not found");
   }
 
   // ---- User endpoints ----
@@ -299,12 +358,16 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
     if (!body || !body->name || !body->role) {
-      return createResponse(Status::CODE_400, "Missing fields");
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "name and role are required");
     }
     const std::string name = asStdString(body->name);
     const std::string role = asStdString(body->role);
     if (name.empty() || !user_roles::isValidRole(role)) {
-      return createResponse(Status::CODE_400, "Invalid name or role");
+      return error(Status::CODE_400,
+                   "INVALID_USER",
+                   "Invalid name or role");
     }
 
     User u = issues().createUser(
@@ -333,14 +396,18 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
         asStdString(body->value));
 
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_400, "Failed");
+              : error(Status::CODE_400,
+                      "UPDATE_FAILED",
+                      "Unable to update user");
   }
 
   ENDPOINT("DELETE", "/users/{id}", deleteUser,
            PATH(oatpp::String, id)) {
     bool ok = issues().removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Not found");
+              : error(Status::CODE_404,
+                      "USER_NOT_FOUND",
+                      "User not found");
   }
 
   ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
@@ -360,7 +427,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
 
     if (!found) {
-      return createResponse(Status::CODE_404, "User not found");
+      return error(Status::CODE_404,
+                   "USER_NOT_FOUND",
+                   "User not found");
     }
 
     auto userIssues = issues().findIssuesByUserId(realId);
@@ -379,36 +448,48 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
-      return createResponse(Status::CODE_400, "Missing tag");
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
     }
 
     const std::string tag = asStdString(body->tag);
     if (tag.empty()) {
-      return createResponse(Status::CODE_400, "Missing tag");
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
     }
 
     bool ok = issues().addTagToIssue(id, tag);
 
     return ok ? createResponse(Status::CODE_201, "Tag added")
-              : createResponse(Status::CODE_400, "Failed to add tag");
+              : error(Status::CODE_400,
+                      "TAG_ADD_FAILED",
+                      "Failed to add tag");
   }
 
   ENDPOINT("DELETE", "/issues/{id}/tags", removeTag,
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
-      return createResponse(Status::CODE_400, "Missing tag");
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
     }
 
     const std::string tag = asStdString(body->tag);
     if (tag.empty()) {
-      return createResponse(Status::CODE_400, "Missing tag");
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
     }
 
     bool ok = issues().removeTagFromIssue(id, tag);
 
     return ok ? createResponse(Status::CODE_204, "")
-              : createResponse(Status::CODE_404, "Tag not found on issue");
+              : error(Status::CODE_404,
+                      "TAG_NOT_FOUND",
+                      "Tag not found on issue");
   }
 
   ENDPOINT("GET", "/issues/{id}/tags", listTags,
@@ -423,7 +504,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
       return createDtoResponse(Status::CODE_200, list);
     } catch (...) {
-      return createResponse(Status::CODE_404, "Issue not found");
+      return error(Status::CODE_404,
+                   "ISSUE_NOT_FOUND",
+                   "Issue not found");
     }
   }
 
@@ -432,7 +515,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/milestones", createMilestone,
            BODY_DTO(oatpp::Object<MilestoneCreateDto>, body)) {
     if (!body) {
-      return createResponse(Status::CODE_400, "Missing payload");
+      return error(Status::CODE_400,
+                   "MISSING_PAYLOAD",
+                   "Milestone payload is required");
     }
 
     const std::string name = asStdString(body->name);
@@ -440,9 +525,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     const std::string end = asStdString(body->endDate);
 
     if (name.empty() || start.empty() || end.empty()) {
-      return createResponse(
-          Status::CODE_400,
-          "name, startDate, and endDate are required");
+      return error(Status::CODE_400,
+                   "MISSING_FIELDS",
+                   "name, startDate, and endDate are required");
     }
 
     const std::string desc = asStdString(body->description);
@@ -452,7 +537,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
           name, desc, start, end);
       return createDtoResponse(Status::CODE_201, milestoneToDto(m));
     } catch (const std::invalid_argument& ex) {
-      return createResponse(Status::CODE_400, ex.what());
+      return error(Status::CODE_400,
+                   "INVALID_MILESTONE",
+                   ex.what());
     }
   }
 
@@ -474,7 +561,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       auto m = issues().getMilestone(id);
       return createDtoResponse(Status::CODE_200, milestoneToDto(m));
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -482,12 +571,16 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<MilestoneUpdateDto>, body)) {
     if (!body) {
-      return createResponse(Status::CODE_400, "Missing payload");
+      return error(Status::CODE_400,
+                   "MISSING_PAYLOAD",
+                   "Milestone payload is required");
     }
 
     if (!body->name && !body->description &&
         !body->startDate && !body->endDate) {
-      return createResponse(Status::CODE_400, "No fields to update");
+      return error(Status::CODE_400,
+                   "NO_FIELDS",
+                   "No fields to update");
     }
 
     try {
@@ -500,9 +593,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       return createDtoResponse(Status::CODE_200,
                                milestoneToDto(updated));
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     } catch (const std::invalid_argument& ex) {
-      return createResponse(Status::CODE_400, ex.what());
+      return error(Status::CODE_400,
+                   "INVALID_MILESTONE",
+                   ex.what());
     }
   }
 
@@ -514,7 +611,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       return createResponse(Status::CODE_200,
                             ok ? "Deleted" : "Failed");
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -525,16 +624,21 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     try {
       bool linked = issues().addIssueToMilestone(id, issueId);
       if (!linked) {
-        return createResponse(Status::CODE_400,
-                              "Issue already linked");
+        return error(Status::CODE_400,
+                     "ISSUE_ALREADY_LINKED",
+                     "Issue already linked");
       }
       auto milestone = issues().getMilestone(id);
       return createDtoResponse(Status::CODE_200,
                                milestoneToDto(milestone));
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     } catch (const std::invalid_argument& ex) {
-      return createResponse(Status::CODE_400, ex.what());
+      return error(Status::CODE_400,
+                   "INVALID_MILESTONE",
+                   ex.what());
     }
   }
 
@@ -545,10 +649,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     try {
       bool ok = issues().removeIssueFromMilestone(id, issueId);
       return ok ? createResponse(Status::CODE_204, "")
-                : createResponse(Status::CODE_404,
-                                 "Issue not linked");
+                : error(Status::CODE_404,
+                        "ISSUE_NOT_LINKED",
+                        "Issue not linked to milestone");
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -565,7 +672,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
       return createDtoResponse(Status::CODE_200, dtoList);
     } catch (const std::out_of_range&) {
-      return createResponse(Status::CODE_404, "Milestone not found");
+      return error(Status::CODE_404,
+                   "MILESTONE_NOT_FOUND",
+                   "Milestone not found");
     }
   }
 
@@ -599,8 +708,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/databases", createDatabase,
            BODY_DTO(oatpp::Object<DatabaseCreateDto>, body)) {
     if (!body || !body->name) {
-      return createResponse(Status::CODE_400,
-                            "Database name is required");
+      return error(Status::CODE_400,
+                   "MISSING_NAME",
+                   "Database name is required");
     }
     std::string provided = asStdString(body->name);
     std::string normalized = withDbExtension(provided);
@@ -620,11 +730,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
 
     if (alreadyExists) {
-      return createResponse(Status::CODE_409,
-                            "Database already exists");
+      return error(Status::CODE_409,
+                   "DATABASE_EXISTS",
+                   "Database already exists");
     }
-    return createResponse(Status::CODE_400,
-                          "Unable to create database");
+    return error(Status::CODE_400,
+                 "DATABASE_CREATE_FAILED",
+                 "Unable to create database");
   }
 
   ENDPOINT("DELETE", "/databases/{name}", deleteDatabase,
@@ -638,18 +750,22 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
                             normalized) != existing.end();
 
     if (!exists) {
-      return createResponse(Status::CODE_404, "Database not found");
+      return error(Status::CODE_404,
+                   "DATABASE_NOT_FOUND",
+                   "Database not found");
     }
     if (normalized == active) {
-      return createResponse(Status::CODE_409,
-                            "Cannot delete the active database");
+      return error(Status::CODE_409,
+                   "DATABASE_ACTIVE",
+                   "Cannot delete the active database");
     }
 
     bool deleted = dbService->deleteDatabase(provided);
     return deleted
                ? createResponse(Status::CODE_204, "")
-               : createResponse(Status::CODE_400,
-                                "Unable to delete database");
+               : error(Status::CODE_400,
+                       "DATABASE_DELETE_FAILED",
+                       "Unable to delete database");
   }
 
   ENDPOINT("POST", "/databases/{name}/switch", switchDatabase,
@@ -657,7 +773,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     std::string provided = asStdString(name);
     bool ok = dbService->switchDatabase(provided);
     if (!ok) {
-      return createResponse(Status::CODE_404, "Database not found");
+      return error(Status::CODE_404,
+                   "DATABASE_NOT_FOUND",
+                   "Database not found");
     }
 
     auto dto = DatabaseDto::createShared();
@@ -672,7 +790,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
            PATH(Int32, id),
            BODY_STRING(String, status)) {
     if (!status) {
-      return createResponse(Status::CODE_400, "Missing status");
+      return error(Status::CODE_400,
+                   "MISSING_STATUS",
+                   "Status is required");
     }
 
     const std::string canonical =
@@ -681,7 +801,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     bool ok = issues().updateIssueField(id, "status", canonical);
 
     return ok ? createResponse(Status::CODE_200, "Status updated")
-              : createResponse(Status::CODE_404, "Issue not found");
+              : error(Status::CODE_404,
+                      "ISSUE_NOT_FOUND",
+                      "Issue not found");
   }
 
   ENDPOINT("GET", "/issues/status/{status}", getIssuesByStatus,
