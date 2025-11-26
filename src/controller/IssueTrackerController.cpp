@@ -2,12 +2,19 @@
 #include "IssueTrackerController.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <exception>
 #include <optional>
 #include <stdexcept>
 
+#include "UserRoles.hpp"
+
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
+
+bool isValidRole(const std::string& role) {
+  return user_roles::isValidRole(role);
+}
 
 Issue IssueTrackerController::createIssue(const std::string& title,
                                           const std::string& desc,
@@ -222,7 +229,7 @@ bool IssueTrackerController::deleteComment(int issueId, int commentId) {
 // takes input (from view / API) and creates a new user
 User IssueTrackerController::createUser(const std::string& name,
                                         const std::string& role) {
-  if (name.empty() || role.empty()) {
+  if (name.empty() || !isValidRole(role)) {
     return User("", "");
   }
   User newUser(name, role);
@@ -283,6 +290,9 @@ bool IssueTrackerController::updateUser(const std::string& userId,
       return true;
 
     } else if (field == "role") {
+      if (!isValidRole(value)) {
+        return false;
+      }
       userObj.setRole(value);
       repo->saveUser(userObj);
       return true;

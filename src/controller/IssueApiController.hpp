@@ -17,6 +17,7 @@
 #include "TagDto.hpp"
 #include "User.hpp"
 #include "UserDto.hpp"
+#include "UserRoles.hpp"
 
 #include "oatpp/core/Types.hpp"
 #include "oatpp/core/macro/codegen.hpp"
@@ -297,9 +298,18 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
+    if (!body || !body->name || !body->role) {
+      return createResponse(Status::CODE_400, "Missing fields");
+    }
+    const std::string name = asStdString(body->name);
+    const std::string role = asStdString(body->role);
+    if (name.empty() || !user_roles::isValidRole(role)) {
+      return createResponse(Status::CODE_400, "Invalid name or role");
+    }
+
     User u = issues().createUser(
-        asStdString(body->name),
-        asStdString(body->role));
+        name,
+        role);
 
     return createDtoResponse(Status::CODE_201, userToDto(u));
   }
