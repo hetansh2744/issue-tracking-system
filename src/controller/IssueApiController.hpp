@@ -201,6 +201,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
         asStdString(body->title),
         asStdString(body->description),
         asStdString(body->authorId));
+    if (!i.hasPersistentId()) {
+      return createResponse(Status::CODE_400, "Invalid authorId");
+    }
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 

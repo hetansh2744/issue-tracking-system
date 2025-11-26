@@ -55,8 +55,10 @@ TEST(IssueTrackerControllerTest, CreateIssueValid) {
   MockIssueRepository mockRepo;
   Issue persistedIssue(1, "user123", "title", 0);
   Comment descComment(1, "user123", "desc", 0);
+  User author("user123", "role");
 
   testing::InSequence seq;
+  EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(author));
   EXPECT_CALL(mockRepo, saveIssue(testing::_))
       .WillOnce(testing::Return(persistedIssue));
   EXPECT_CALL(mockRepo, saveComment(1, testing::_))
@@ -435,6 +437,20 @@ TEST(IssueTrackerControllerTest, CreateIssueInvalidInputReturnsEmptyIssue) {
 
   EXPECT_EQ(result.getId(), 0);
   EXPECT_EQ(result.getTitle(), "");
+}
+
+TEST(IssueTrackerControllerTest, CreateIssueRejectsUnknownAuthor) {
+  MockIssueRepository mockRepo;
+
+  EXPECT_CALL(mockRepo, getUser("ghost"))
+      .WillOnce(Throw(std::invalid_argument("missing user")));
+  EXPECT_CALL(mockRepo, saveIssue(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  Issue result = controller.createIssue("title", "desc", "ghost");
+
+  EXPECT_FALSE(result.hasPersistentId());
+  EXPECT_EQ(result.getAuthorId(), "");
 }
 
 TEST(IssueTrackerControllerTest,

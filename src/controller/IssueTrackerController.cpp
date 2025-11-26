@@ -16,6 +16,13 @@ Issue IssueTrackerController::createIssue(const std::string& title,
     return Issue();
   }
 
+  // ensure the author exists before creating any records
+  try {
+    repo->getUser(author_id);
+  } catch (const std::exception&) {
+    return Issue();
+  }
+
   // 1. Create the Issue (no description yet, timestamp 0 means "unspecified"
   //    or "let the repo / model decide").
   Issue newIssue(0, author_id, title, 0);
