@@ -506,15 +506,14 @@ std::vector<Issue> SQLiteIssueRepository::listAllUnassigned() const {
       });
 }
 
-// Tags are not persisted in SQLite. Keep behaviour as "unsupported".
 bool SQLiteIssueRepository::addTagToIssue(
-    int /*issueId*/, const std::string& /*tag*/) {
-  return false;
+    int issueId, const std::string& tag) {
+  return IssueRepository::addTagToIssue(issueId, tag);
 }
 
 bool SQLiteIssueRepository::removeTagFromIssue(
-    int /*issueId*/, const std::string& /*tag*/) {
-  return false;
+    int issueId, const std::string& tag) {
+  return IssueRepository::removeTagFromIssue(issueId, tag);
 }
 
 // --- Comments ---
