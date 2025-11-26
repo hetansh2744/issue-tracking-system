@@ -441,6 +441,43 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
     return createDtoResponse(Status::CODE_200, list);
   }
+  ENDPOINT("POST", "/users/{id}/issues", assignUserToIssue,
+         PATH(oatpp::String, id),
+         BODY_DTO(oatpp::Object<AssignIssueDto>, body)) {
+
+  if (!body || !body->issueId) {
+    return createResponse(Status::CODE_400, "Missing issueId");
+  }
+
+  std::string inputUser = toLower(asStdString(id));
+  std::string realUser;
+  bool found = false;
+
+  for (const auto& user : issues().listAllUsers()) {
+    if (toLower(user.getName()) == inputUser) {
+      realUser = user.getName();
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    return createResponse(Status::CODE_404, "User not found");
+  }
+
+  bool ok = issues().assignUserToIssue(body->issueId, realUser);
+  if (!ok) {
+    return createResponse(Status::CODE_404, "Issue not found or assignment failed");
+  }
+
+  try {
+    Issue updated = issues().getIssue(body->issueId);
+    return createDtoResponse(Status::CODE_200, issueToDto(updated));
+  } catch (...) {
+    return createResponse(Status::CODE_404, "Issue not found after assignment");
+  }
+}
+
 
   // ---- Tag endpoints ----
 
