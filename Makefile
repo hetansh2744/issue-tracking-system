@@ -182,7 +182,7 @@ docs:
 run:
 	./${PROJECT}
 
-run-its: # CHANGED: Renamed from run-rest to run-its
+run-its:
 	./${REST}
 
 ################################################################################
@@ -198,4 +198,3 @@ version:
 	gcov --version
 	lcov --version
 	valgrind --version
-	
