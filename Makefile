@@ -3,7 +3,7 @@
 ################################################################################
 
 PROJECT = project
-REST    = rest_server
+REST    = its # CHANGED: Renamed from rest_server to its
 GTEST   = test_${PROJECT}
 
 ################################################################################
@@ -52,10 +52,10 @@ SRC_INCLUDE = include
 ################################################################################
 
 BASE_INCLUDE = \
-	-I include \
-	-I src \
-	-I src/dto \
-	-I third_party/sqlite-build/include
+    -I include \
+    -I src \
+    -I src/dto \
+    -I third_party/sqlite-build/include
 
 REST_INCLUDE = $(BASE_INCLUDE) $(OATPP_INCLUDE)
 
@@ -64,14 +64,14 @@ REST_INCLUDE = $(BASE_INCLUDE) $(OATPP_INCLUDE)
 ################################################################################
 
 BASE_LINKFLAGS = -lgtest -lgmock -pthread \
-	-L $(SQLITE_PREFIX)/lib \
-	-Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
-	-lsqlite3
+    -L $(SQLITE_PREFIX)/lib \
+    -Wl,-rpath,$(abspath $(SQLITE_PREFIX)/lib) \
+    -lsqlite3
 
 OATPP_LINKFLAGS = \
-	-L $(OATPP_LIB_DIR) \
-	-Wl,-rpath,$(OATPP_LIB_DIR) \
-	-loatpp-swagger -loatpp
+    -L $(OATPP_LIB_DIR) \
+    -Wl,-rpath,$(OATPP_LIB_DIR) \
+    -loatpp-swagger -loatpp
 
 ################################################################################
 # Tools
@@ -90,14 +90,14 @@ DOXY_DIR = docs/code
 ################################################################################
 
 CORE_SRCS = \
-	$(wildcard ${SRC_DIR}/*.cpp) \
-	$(wildcard ${MODEL_DIR}/*.cpp) \
-	$(wildcard ${REPO_DIR}/*.cpp) \
-	$(wildcard ${VIEW_DIR}/*.cpp) \
-	$(wildcard ${CONTROLLER_DIR}/*.cpp)
+    $(wildcard ${SRC_DIR}/*.cpp) \
+    $(wildcard ${MODEL_DIR}/*.cpp) \
+    $(wildcard ${REPO_DIR}/*.cpp) \
+    $(wildcard ${VIEW_DIR}/*.cpp) \
+    $(wildcard ${CONTROLLER_DIR}/*.cpp)
 
 REST_SRCS = ${CORE_SRCS} \
-	$(wildcard ${SERVER_DIR}/*.cpp)
+    $(wildcard ${SERVER_DIR}/*.cpp)
 
 ################################################################################
 # Default target
@@ -113,10 +113,10 @@ REST_SRCS = ${CORE_SRCS} \
 clean:
 	rm -rf *.gcov *.gcda *.gcno ${COVERAGE_RESULTS} ${COVERAGE_DIR}
 	rm -rf docs/code/html
-	rm -rf ${PROJECT} ${GTEST} ${REST}
+	rm -rf ${PROJECT} ${GTEST} ${REST} # Updated ${REST} variable
 	rm -rf src/*.o src/model/*.o src/repository/*.o \
-	       src/view/*.o src/controller/*.o \
-	       src/server/*.o src/project/*.o
+           src/view/*.o src/controller/*.o \
+           src/server/*.o src/project/*.o
 	rm -rf *~ \#* .\#* src/*~ test/*~ include/*~
 
 ################################################################################
@@ -133,15 +133,15 @@ clean:
 # Tests: no oatpp
 ${GTEST}: clean
 	${CXX} ${CXXFLAGS} -o ./${GTEST} ${BASE_INCLUDE} \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
+    ${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
 
 # Main project: core only (no oatpp unless you really need it here)
 compileProject: clean
 	${CXX} ${CXXVERSION} -o ${PROJECT} ${BASE_INCLUDE} \
-	${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${BASE_LINKFLAGS}
+    ${CORE_SRCS} ${PROJECT_SRC_DIR}/*.cpp ${BASE_LINKFLAGS}
 
 # REST server: this is where oatpp is required
-rest: clean
+its: clean # CHANGED: Target name changed from 'rest' to 'its'
 	${CXX} ${CXXVERSION} -o ${REST} ${REST_INCLUDE} \
 	${REST_SRCS} ${BASE_LINKFLAGS} ${OATPP_LINKFLAGS}
 
@@ -151,30 +151,30 @@ rest: clean
 
 memcheck: ${GTEST}
 	valgrind --tool=memcheck --leak-check=yes \
-	--error-exitcode=1 ./${GTEST}
+    --error-exitcode=1 ./${GTEST}
 
 coverage: clean
 	${CXX} ${CXXWITHCOVERAGEFLAGS} -o ./${GTEST} ${BASE_INCLUDE} \
-	${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
+    ${GTEST_DIR}/*.cpp ${CORE_SRCS} ${BASE_LINKFLAGS}
 	./${GTEST}
 	${LCOV} --capture --gcov-tool ${GCOV} \
-		--directory . --output-file ${COVERAGE_RESULTS} \
-		--rc lcov_branch_coverage=1
+        --directory . --output-file ${COVERAGE_RESULTS} \
+        --rc lcov_branch_coverage=1
 	${LCOV} --extract ${COVERAGE_RESULTS} */*/*/${SRC_DIR}/* \
-		-o ${COVERAGE_RESULTS}
+        -o ${COVERAGE_RESULTS}
 	genhtml ${COVERAGE_RESULTS} --output-directory ${COVERAGE_DIR}
 
 static:
 	${STATIC_ANALYSIS} --verbose --enable=all ${SRC_DIR} \
-	${SRC_INCLUDE} --suppress=missingInclude \
-	--error-exitcode=1
+    ${SRC_INCLUDE} --suppress=missingInclude \
+    --error-exitcode=1
 
 style:
 	${STYLE_CHECK} ${SRC_DIR}/* ${GTEST_DIR}/* \
-	${SRC_INCLUDE}/* \
-	${MODEL_DIR}/* ${REPO_DIR}/* ${VIEW_DIR}/* \
-	${CONTROLLER_DIR}/* ${SERVER_DIR}/* \
-	${PROJECT_SRC_DIR}/*
+    ${SRC_INCLUDE}/* \
+    ${MODEL_DIR}/* ${REPO_DIR}/* ${VIEW_DIR}/* \
+    ${CONTROLLER_DIR}/* ${SERVER_DIR}/* \
+    ${PROJECT_SRC_DIR}/*
 
 docs:
 	doxygen ${DOXY_DIR}/doxyfile
@@ -182,7 +182,7 @@ docs:
 run:
 	./${PROJECT}
 
-run-rest:
+run-its: # CHANGED: Renamed from run-rest to run-its
 	./${REST}
 
 ################################################################################
@@ -198,3 +198,4 @@ version:
 	gcov --version
 	lcov --version
 	valgrind --version
+	
