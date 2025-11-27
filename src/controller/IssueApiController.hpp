@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "Comment.hpp"
 #include "CommentDto.hpp"
@@ -897,7 +898,7 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     info->summary = "Unlink an issue from a milestone";
     info->addResponse<String>(Status::CODE_204, "text/plain", "");
     info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
-                                        "Issue not linked or milestone not found");
+              "Issue not linked or milestone not found");
   }
   ENDPOINT("DELETE", "/milestones/{id}/issues/{issueId}",
            removeIssueFromMilestone, PATH(oatpp::Int32, id),
