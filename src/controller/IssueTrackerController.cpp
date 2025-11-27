@@ -344,7 +344,7 @@ std::vector<Issue> IssueTrackerController::findIssuesByStatus(
 
 std::vector<Issue> IssueTrackerController::findIssuesByTag(
     const std::string& tag) {
-  
+
   std::vector<Issue> all = repo->listIssues();
   std::vector<Issue> filtered;
 
@@ -358,7 +358,7 @@ std::vector<Issue> IssueTrackerController::findIssuesByTag(
 
 std::vector<Issue> IssueTrackerController::findIssuesByTags(
     const std::vector<std::string>& tags) {
-  
+
   std::vector<Issue> all = repo->listIssues();
   std::vector<Issue> filtered;
 
