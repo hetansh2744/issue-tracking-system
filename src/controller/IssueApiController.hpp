@@ -111,7 +111,8 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     dto->authorId = i.getAuthorId().c_str();
     dto->title = i.getTitle().c_str();
 
-    dto->description = i.hasDescriptionComment() ? i.getDescriptionComment().c_str() : "";
+    dto->description =
+    i.hasDescriptionComment() ? i.getDescriptionComment().c_str() : "";
 
     dto->assignedTo =
         i.hasAssignee() ? i.getAssignedTo().c_str() : "";
@@ -203,13 +204,12 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   ENDPOINT("GET", "/issues/unassigned", listUnassignedIssues) {
-    auto issueList = issues().listAllUnassignedIssues(); // Assuming issues() is IssueService
+    auto issueList = issues().listAllUnassignedIssues();
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
-    
+
     for (auto& i : issueList) {
       list->push_back(issueToDto(i));
     }
-    
     return createDtoResponse(Status::CODE_200, list);
   }
 
@@ -405,7 +405,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   ENDPOINT("POST", "/users/{id}/issues", assignUserToIssue,
          PATH(oatpp::String, id),
          BODY_DTO(oatpp::Object<AssignIssueDto>, body)) {
-
   if (!body || !body->issueId) {
     return error(Status::CODE_400,
                  "MISSING_ISSUE_ID",
@@ -449,11 +448,11 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
 ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
          PATH(oatpp::Int32, issueId)) {
-
   bool ok = issues().unassignUserFromIssue(issueId);
 
   if (!ok) {
-    return createResponse(Status::CODE_404, "Issue not found or cannot unassign");
+    return createResponse(Status::CODE_404,
+      "Issue not found or cannot unassign");
   }
 
   try {
@@ -544,7 +543,7 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
 
     auto allIssues = issues().listAllIssues();
-    
+
     for (const auto& issue : allIssues) {
       if (issue.hasTag(searchTag)) {
         list->push_back(issueToDto(issue));
@@ -583,7 +582,7 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
 
     auto allIssues = issues().listAllIssues();
-    
+
     for (const auto& issue : allIssues) {
       for (const auto& searchTag : searchTags) {
         if (issue.hasTag(searchTag)) {
@@ -891,7 +890,9 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
       "In Progress" && canonical != "Done") {
       return error(Status::CODE_400,
                    "INVALID_STATUS",
-                   "Status must be 'To Be Done', 'In Progress', 'Done', or a valid alias (e.g., '1', '2', 'tobedone').");
+                   "Status must be 'To Be Done',
+                    'In Progress', 'Done', or a
+                    valid alias (e.g., '1', '2', 'tobedone').");
     }
 
     auto all = issues().listAllIssues();
