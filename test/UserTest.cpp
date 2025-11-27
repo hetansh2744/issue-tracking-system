@@ -1,55 +1,56 @@
 #include <gtest/gtest.h>
+
 #include "User.hpp"
 
 TEST(UserTest, ConstructorAndGettersWork) {
-    std::string expectedName = "Mario";
-    std::string expectedRole = "Plumber/Hero";
+  std::string expectedName = "Mario";
+  std::string expectedRole = "Plumber/Hero";
 
-    User user(expectedName, expectedRole);
+  User user(expectedName, expectedRole);
 
-    ASSERT_EQ(user.getName(), expectedName);
-    ASSERT_EQ(user.getRole(), expectedRole);
+  ASSERT_EQ(user.getName(), expectedName);
+  ASSERT_EQ(user.getRole(), expectedRole);
 }
 
 TEST(UserTest, SetNameUpdatesName) {
-    User user("Link", "Adventurer");
-    std::string newName = "Zelda";
+  User user("Link", "Adventurer");
+  std::string newName = "Zelda";
 
-    user.setName(newName);
+  user.setName(newName);
 
-    ASSERT_EQ(user.getName(), newName);
-    ASSERT_EQ(user.getRole(), "Adventurer");
+  ASSERT_EQ(user.getName(), newName);
+  ASSERT_EQ(user.getRole(), "Adventurer");
 }
 
 TEST(UserTest, SetRoleUpdatesRole) {
-    User user("Samus", "Hunter");
-    std::string newRole = "Bounty Hunter";
+  User user("Samus", "Hunter");
+  std::string newRole = "Bounty Hunter";
 
-    user.setRole(newRole);
+  user.setRole(newRole);
 
-    ASSERT_EQ(user.getRole(), newRole);
-    ASSERT_EQ(user.getName(), "Samus");
+  ASSERT_EQ(user.getRole(), newRole);
+  ASSERT_EQ(user.getName(), "Samus");
 }
 
 TEST(UserTest, SetEmptyValues) {
-    User user("Kirby", "Star Warrior");
-    std::string emptyString = "";
+  User user("Kirby", "Star Warrior");
+  std::string emptyString = "";
 
-    user.setName(emptyString);
-    user.setRole(emptyString);
+  user.setName(emptyString);
+  user.setRole(emptyString);
 
-    ASSERT_EQ(user.getName(), emptyString);
-    ASSERT_EQ(user.getRole(), emptyString);
+  ASSERT_EQ(user.getName(), emptyString);
+  ASSERT_EQ(user.getRole(), emptyString);
 }
 
 TEST(UserTest, VillainToHeroTransition) {
-    User user("Bowser", "Villain");
-    std::string newName = "Yoshi";
-    std::string newRole = "Ally";
+  User user("Bowser", "Villain");
+  std::string newName = "Yoshi";
+  std::string newRole = "Ally";
 
-    user.setName(newName);
-    user.setRole(newRole);
+  user.setName(newName);
+  user.setRole(newRole);
 
-    ASSERT_EQ(user.getName(), newName);
-    ASSERT_EQ(user.getRole(), newRole);
+  ASSERT_EQ(user.getName(), newName);
+  ASSERT_EQ(user.getRole(), newRole);
 }

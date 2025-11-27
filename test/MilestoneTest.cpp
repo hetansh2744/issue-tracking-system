@@ -3,12 +3,8 @@
 #include "Milestone.hpp"
 
 TEST(MilestoneTests, ConstructWithValidData) {
-  Milestone milestone(5,
-                      "Sprint 1",
-                      "Stabilize MVP",
-                      "2024-01-01",
-                      "2024-02-01",
-                      {1, 2});
+  Milestone milestone(5, "Sprint 1", "Stabilize MVP", "2024-01-01",
+                      "2024-02-01", {1, 2});
   EXPECT_EQ(milestone.getId(), 5);
   EXPECT_EQ(milestone.getName(), "Sprint 1");
   EXPECT_EQ(milestone.getDescription(), "Stabilize MVP");

@@ -14,9 +14,9 @@
 
 class DatabaseService {
  private:
-  bool useMemoryBackend_;
-  std::string dbDirectory_;
+ bool useMemoryBackend_;
   std::string activeDbPath_;
+  std::string dbDirectory_;
   std::unique_ptr<IssueService> issueService_;
 
   static bool isMemoryBackendConfigured() {

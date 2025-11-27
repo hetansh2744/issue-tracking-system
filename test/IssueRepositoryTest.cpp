@@ -345,3 +345,52 @@ TEST_F(InMemoryIssueRepositoryTest, DeleteCommentThrowsForMissingData) {
                std::invalid_argument);
   EXPECT_THROW(repository->deleteComment(999, 0), std::invalid_argument);
 }
+
+TEST_F(InMemoryIssueRepositoryTest, MilestoneLifecycleWithIssueLinks) {
+  Milestone milestone(-1, "Sprint 1", "Initial", "2024-01-01", "2024-02-01");
+  Milestone savedMilestone = repository->saveMilestone(milestone);
+  EXPECT_GT(savedMilestone.getId(), 0);
+
+  Issue issue(0, "user1", "Link me up");
+  Issue savedIssue = repository->saveIssue(issue);
+
+  EXPECT_TRUE(repository->addIssueToMilestone(savedMilestone.getId(),
+                                              savedIssue.getId()));
+
+  auto withIssue = repository->getMilestone(savedMilestone.getId());
+  EXPECT_TRUE(withIssue.hasIssue(savedIssue.getId()));
+
+  auto issues = repository->getIssuesForMilestone(savedMilestone.getId());
+  EXPECT_THAT(issues, SizeIs(1));
+  EXPECT_EQ(issues.front().getId(), savedIssue.getId());
+
+  withIssue.setDescription("Updated");
+  Milestone updated = repository->saveMilestone(withIssue);
+  EXPECT_EQ(updated.getDescription(), "Updated");
+
+  EXPECT_TRUE(repository->removeIssueFromMilestone(savedMilestone.getId(),
+                                                   savedIssue.getId()));
+  auto withoutIssue = repository->getMilestone(savedMilestone.getId());
+  EXPECT_FALSE(withoutIssue.hasIssue(savedIssue.getId()));
+
+  auto milestones = repository->listAllMilestones();
+  EXPECT_THAT(milestones, SizeIs(1));
+}
+
+TEST_F(InMemoryIssueRepositoryTest, DeleteMilestoneCascadeRemovesIssues) {
+  Milestone milestone(-1, "Sprint 2", "Cleanup", "2024-03-01", "2024-04-01");
+  Milestone savedMilestone = repository->saveMilestone(milestone);
+
+  Issue issue(0, "user1", "Temporary");
+  Issue savedIssue = repository->saveIssue(issue);
+  repository->addIssueToMilestone(savedMilestone.getId(), savedIssue.getId());
+
+  EXPECT_TRUE(repository->deleteMilestone(savedMilestone.getId(), true));
+  EXPECT_THROW(repository->getIssue(savedIssue.getId()), std::invalid_argument);
+  EXPECT_THROW(repository->getMilestone(savedMilestone.getId()),
+               std::out_of_range);
+}
+
+TEST_F(InMemoryIssueRepositoryTest, GetIssuesForMissingMilestoneThrows) {
+  EXPECT_THROW(repository->getIssuesForMilestone(999), std::out_of_range);
+}

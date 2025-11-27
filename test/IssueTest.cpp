@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
-#include "Issue.hpp"
 #include "Comment.hpp"
+#include "Issue.hpp"
+#include "gtest/gtest.h"
 
 using std::string;
 
