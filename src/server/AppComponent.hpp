@@ -23,7 +23,7 @@ class AppComponent {
     oatpp::network::tcp::server::ConnectionProvider>,
     serverConnectionProvider)([] {
       return oatpp::network::tcp::server::ConnectionProvider::
-          createShared({"0.0.0.0", 8100});
+          createShared({"0.0.0.0", 8600});
     }());
 
   OATPP_CREATE_COMPONENT(std::shared_ptr<

@@ -22,7 +22,7 @@ class SwaggerComponent {
       .setTitle("Issue Traking Service")
       .setDescription("Group F Milestone 2")
       .setVersion("1.0")
-      .addServer("http://localhost:8100", "server on localhost");
+      .addServer("http://localhost:8600", "server on localhost");
     return builder.build();
   }());
 

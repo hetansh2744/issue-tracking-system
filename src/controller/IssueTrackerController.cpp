@@ -2,16 +2,31 @@
 #include "IssueTrackerController.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <exception>
+#include <optional>
 #include <stdexcept>
+
+#include "UserRoles.hpp"
 
 IssueTrackerController::IssueTrackerController(IssueRepository* repository)
     : repo(repository) {}
+
+bool isValidRole(const std::string& role) {
+  return user_roles::isValidRole(role);
+}
 
 Issue IssueTrackerController::createIssue(const std::string& title,
                                           const std::string& desc,
                                           const std::string& author_id) {
   if (title.empty() || author_id.empty()) {
+    return Issue();
+  }
+
+  // ensure the author exists before creating any records
+  try {
+    repo->getUser(author_id);
+  } catch (const std::exception&) {
     return Issue();
   }
 
@@ -27,6 +42,8 @@ Issue IssueTrackerController::createIssue(const std::string& title,
 
     // 3. Link comment #1 as description
     savedIssue.setDescriptionCommentId(savedComment.getId());
+    // Keep the in-memory Issue object consistent with what was persisted.
+    savedIssue.addComment(savedComment);
     repo->saveIssue(savedIssue);
   }
 
@@ -163,7 +180,7 @@ Comment IssueTrackerController::addCommentToIssue(
     repo->getUser(authorId);
 
     // Create and save the new comment
-    Comment newComment(0, authorId, text, 0);
+    Comment newComment(-1, authorId, text, 0);  // -1 so repo assigns id
     Comment savedComment = repo->saveComment(issueId, newComment);
 
     // Link comment to issue and save
@@ -212,28 +229,70 @@ bool IssueTrackerController::deleteComment(int issueId, int commentId) {
 // takes input (from view / API) and creates a new user
 User IssueTrackerController::createUser(const std::string& name,
                                         const std::string& role) {
-  if (name.empty() || role.empty()) {
+  if (name.empty() || !isValidRole(role)) {
     return User("", "");
   }
   User newUser(name, role);
   return repo->saveUser(newUser);
 }
 
-// allows the view / API to change user name/role
 bool IssueTrackerController::updateUser(const std::string& userId,
                                         const std::string& field,
                                         const std::string& value) {
   try {
     User userObj = repo->getUser(userId);
     if (field == "name") {
+      if (value.empty()) {
+        return false;
+      }
+      if (value == userId) {
+        return true;
+      }
+
+      try {
+        if (repo->getUser(value).getName() == value) {
+          return false;
+        }
+      } catch (...) {
+      }
+
+      for (Issue issue : repo->listIssues()) {
+        bool issueChanged = false;
+        if (issue.getAuthorId() == userId) {
+          issue.setAuthorId(value);
+          issueChanged = true;
+        }
+        if (issue.hasAssignee() && issue.getAssignedTo() == userId) {
+          issue.assignTo(value);
+          issueChanged = true;
+        }
+
+        for (Comment c : repo->getAllComments(issue.getId())) {
+          if (c.getAuthor() == userId) {
+            c.setAuthor(value);
+            repo->saveComment(issue.getId(), c);
+          }
+        }
+
+        if (issueChanged) {
+          repo->saveIssue(issue);
+        }
+      }
+
       userObj.setName(value);
+      repo->saveUser(userObj);
+      repo->deleteUser(userId);
+      return true;
+
     } else if (field == "role") {
+      if (!isValidRole(value)) {
+        return false;
+      }
       userObj.setRole(value);
-    } else {
-      return false;
+      repo->saveUser(userObj);
+      return true;
     }
-    repo->saveUser(userObj);
-    return true;
+    return false;
   } catch (...) {
     return false;
   }
@@ -283,6 +342,37 @@ std::vector<Issue> IssueTrackerController::findIssuesByStatus(
   return filtered;
 }
 
+std::vector<Issue> IssueTrackerController::findIssuesByTag(
+    const std::string& tag) {
+
+  std::vector<Issue> all = repo->listIssues();
+  std::vector<Issue> filtered;
+
+  for (const auto& issue : all) {
+    if (issue.hasTag(tag)) {
+      filtered.push_back(issue);
+    }
+  }
+  return filtered;
+}
+
+std::vector<Issue> IssueTrackerController::findIssuesByTags(
+    const std::vector<std::string>& tags) {
+
+  std::vector<Issue> all = repo->listIssues();
+  std::vector<Issue> filtered;
+
+  for (const auto& issue : all) {
+    for (const auto& tag : tags) {
+      if (issue.hasTag(tag)) {
+        filtered.push_back(issue);
+        break;
+      }
+    }
+  }
+  return filtered;
+}
+
 //lists all the users created
 std::vector<User> IssueTrackerController::listAllUsers() {
   return repo->listAllUsers();
@@ -304,4 +394,120 @@ bool IssueTrackerController::removeTagFromIssue(int issueId,
   } catch (...) {
     return false;
   }
+}
+
+Milestone IssueTrackerController::createMilestone(
+    const std::string& name,
+    const std::string& desc,
+    const std::string& start_date,
+    const std::string& end_date) {
+
+    if (name.empty()) {
+        throw std::invalid_argument("Milestone name is required");
+    }
+    if (start_date.empty()) {
+        throw std::invalid_argument("Milestone start date is required");
+    }
+    if (end_date.empty()) {
+        throw std::invalid_argument("Milestone end date is required");
+    }
+
+    Milestone milestone(-1, name, desc, start_date, end_date);
+    return repo->saveMilestone(milestone);
+}
+
+bool IssueTrackerController::updateMilestoneField(int milestoneId,
+    const std::string& field,
+    const std::string& value) {
+    try {
+        if (field.empty()) {
+            return false;
+        }
+
+        std::optional<std::string> name;
+        std::optional<std::string> desc;
+        std::optional<std::string> start;
+        std::optional<std::string> end;
+
+        if (field == "name") {
+            name = value;
+        } else if (field == "description") {
+            desc = value;
+        } else if (field == "startDate" || field == "start_date") {
+            start = value;
+        } else if (field == "endDate" || field == "end_date") {
+            end = value;
+        } else {
+            return false;
+        }
+
+        updateMilestone(milestoneId, name, desc, start, end);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+Milestone IssueTrackerController::updateMilestone(int milestoneId,
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& description,
+    const std::optional<std::string>& startDate,
+    const std::optional<std::string>& endDate) {
+    if (!name && !description && !startDate && !endDate) {
+        throw std::invalid_argument("No milestone fields provided");
+    }
+
+    Milestone milestone = repo->getMilestone(milestoneId);
+
+    if (name) {
+        milestone.setName(*name);
+    }
+    if (description) {
+        milestone.setDescription(*description);
+    }
+    if (startDate) {
+        milestone.setStartDate(*startDate);
+    }
+    if (endDate) {
+        milestone.setEndDate(*endDate);
+    }
+
+    return repo->saveMilestone(milestone);
+}
+
+bool IssueTrackerController::addIssueToMilestone(
+    int milestoneId, int issueId) {
+    repo->getMilestone(milestoneId);
+    repo->getIssue(issueId);
+    return repo->addIssueToMilestone(milestoneId, issueId);
+}
+
+
+bool IssueTrackerController::removeIssueFromMilestone(
+    int milestoneId, int issueId) {
+    repo->getMilestone(milestoneId);
+    repo->getIssue(issueId);
+    return repo->removeIssueFromMilestone(milestoneId, issueId);
+}
+
+Milestone IssueTrackerController::getMilestone(int milestoneId) {
+    return repo->getMilestone(milestoneId);
+}
+
+
+bool IssueTrackerController::deleteMilestone(
+    int milestoneId, bool cascade) {
+    return repo->deleteMilestone(milestoneId, cascade);
+}
+
+
+std::vector<Milestone> IssueTrackerController::listAllMilestones() {
+    return repo->listAllMilestones();
+}
+
+
+
+std::vector<Issue> IssueTrackerController::getIssuesForMilestone(
+    int milestoneId) {
+    return repo->getIssuesForMilestone(milestoneId);
 }

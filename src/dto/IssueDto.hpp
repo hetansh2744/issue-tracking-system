@@ -15,6 +15,7 @@ class IssueDto : public oatpp::DTO {
   DTO_FIELD(oatpp::String, assignedTo, "assigned_to");
   DTO_FIELD(oatpp::List<oatpp::Int32>, commentIds, "comment_ids");
   DTO_FIELD(oatpp::Int64, createdAt, "created_at");
+  DTO_FIELD(oatpp::String, status);
   DTO_FIELD(oatpp::List<oatpp::String>, tags);
 };
 

@@ -2,15 +2,18 @@
 #define ISSUE_SERVICE_HPP_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <utility>
+#include <iostream>
 
 #include "IssueTrackerController.hpp"
 #include "IssueRepository.hpp"
 #include "Issue.hpp"
 #include "Comment.hpp"
 #include "User.hpp"
+#include "Milestone.hpp"
 
 class IssueService {
  private:
@@ -43,6 +46,10 @@ class IssueService {
 
   bool assignUserToIssue(int issueId, const std::string& userId) {
     return controller_.assignUserToIssue(issueId, userId);
+  }
+
+  std::vector<Issue> findIssuesByStatus(const std::string& status) {
+    return controller_.findIssuesByStatus(status);
   }
 
   bool unassignUserFromIssue(int issueId) {
@@ -103,10 +110,59 @@ class IssueService {
   bool addTagToIssue(int issueId, const std::string& tag) {
     return controller_.addTagToIssue(issueId, tag);
   }
+  std::vector<Issue> findIssuesByTag(const std::string& tag) {
+    return controller_.findIssuesByTag(tag);
+  }
+
+  std::vector<Issue> findIssuesByTags(const std::vector<std::string>& tags) {
+    return controller_.findIssuesByTags(tags);
+  }
 
   bool removeTagFromIssue(int issueId, const std::string& tag) {
     return controller_.removeTagFromIssue(issueId, tag);
   }
+
+  Milestone createMilestone(
+    const std::string& name,
+    const std::string& desc,
+    const std::string& start,
+    const std::string& end) {
+  std::cout << "Creating milestone: " << name << std::endl;
+  return controller_.createMilestone(name, desc, start, end);
+}
+
+std::vector<Milestone> listAllMilestones() {
+  return controller_.listAllMilestones();
+}
+
+Milestone getMilestone(int id) {
+  return controller_.getMilestone(id);
+}
+
+Milestone updateMilestone(int id,
+                          const std::optional<std::string>& name,
+                          const std::optional<std::string>& desc,
+                          const std::optional<std::string>& start,
+                          const std::optional<std::string>& end) {
+  return controller_.updateMilestone(id, name, desc, start, end);
+}
+
+bool deleteMilestone(int id, bool cascade) {
+  return controller_.deleteMilestone(id, cascade);
+}
+
+bool addIssueToMilestone(int mId, int issueId) {
+  return controller_.addIssueToMilestone(mId, issueId);
+}
+
+bool removeIssueFromMilestone(int mId, int issueId) {
+  return controller_.removeIssueFromMilestone(mId, issueId);
+}
+
+std::vector<Issue> getIssuesForMilestone(int mId) {
+  return controller_.getIssuesForMilestone(mId);
+}
+
 };
 
 #endif
