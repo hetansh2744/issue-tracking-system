@@ -1,13 +1,13 @@
+#include <cstdlib>
+#include <memory>
+
 #include "IssueTrackerController.hpp"
 #include "SQLiteIssueRepository.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <cstdlib>
-#include <memory>
-
-using ::testing::Throw;
 using ::testing::SizeIs;
+using ::testing::Throw;
 
 class MockIssueRepository : public IssueRepository {
  public:
@@ -21,10 +21,10 @@ class MockIssueRepository : public IssueRepository {
               (const, override));
   MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
-  MOCK_METHOD(bool, addTagToIssue,
-            (int issueId, const std::string& tag), (override));
-  MOCK_METHOD(bool, removeTagFromIssue,
-            (int issueId, const std::string& tag), (override));
+  MOCK_METHOD(bool, addTagToIssue, (int issueId, const std::string& tag),
+              (override));
+  MOCK_METHOD(bool, removeTagFromIssue, (int issueId, const std::string& tag),
+              (override));
 
   MOCK_METHOD(Comment, saveComment, (int issueId, const Comment& comment),
               (override));
@@ -34,25 +34,23 @@ class MockIssueRepository : public IssueRepository {
   MOCK_METHOD(std::vector<Comment>, getAllComments, (int issueId),
               (const, override));
 
-    MOCK_METHOD(User, saveUser, (const User& user), (override));
-    MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
-    MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
-    MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
+  MOCK_METHOD(User, saveUser, (const User& user), (override));
+  MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
+  MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
+  MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
 
-    MOCK_METHOD(Milestone, saveMilestone,
-        (const Milestone& milestone), (override));
-    MOCK_METHOD(Milestone, getMilestone, (int milestoneId),
-        (const, override));
-    MOCK_METHOD(bool, deleteMilestone, (int milestoneId, bool cascade),
-        (override));
-    MOCK_METHOD(std::vector<Milestone>, listAllMilestones, (),
-    (const, override));
-    MOCK_METHOD(bool, addIssueToMilestone, (int milestoneId, int issueId),
-        (override));
-    MOCK_METHOD(bool, removeIssueFromMilestone, (int milestoneId, int issueId),
-        (override));
-    MOCK_METHOD(std::vector<Issue>, getIssuesForMilestone,
-        (int milestoneId), (const, override));
+  MOCK_METHOD(Milestone, saveMilestone, (const Milestone& milestone),
+              (override));
+  MOCK_METHOD(Milestone, getMilestone, (int milestoneId), (const, override));
+  MOCK_METHOD(bool, deleteMilestone, (int milestoneId, bool cascade),
+              (override));
+  MOCK_METHOD(std::vector<Milestone>, listAllMilestones, (), (const, override));
+  MOCK_METHOD(bool, addIssueToMilestone, (int milestoneId, int issueId),
+              (override));
+  MOCK_METHOD(bool, removeIssueFromMilestone, (int milestoneId, int issueId),
+              (override));
+  MOCK_METHOD(std::vector<Issue>, getIssuesForMilestone, (int milestoneId),
+              (const, override));
 };
 
 TEST(IssueTrackerControllerTest, CreateIssueValid) {
@@ -433,8 +431,7 @@ TEST(IssueTrackerControllerTest, RemoveUser) {
 
 TEST(IssueTrackerControllerTest, ListAllUsers) {
   MockIssueRepository mockRepo;
-  std::vector<User> users = {User("u1", "Developer"),
-                             User("u2", "Owner")};
+  std::vector<User> users = {User("u1", "Developer"), User("u2", "Owner")};
 
   EXPECT_CALL(mockRepo, listAllUsers()).WillOnce(testing::Return(users));
 
@@ -612,39 +609,36 @@ TEST_F(IssueTrackerControllerIntegrationTest, FiltersByStatusAndTags) {
 
 TEST_F(IssueTrackerControllerIntegrationTest, MilestoneWorkflow) {
   Issue issue = controller->createIssue("Bug", "", "owner");
-  Milestone milestone = controller->createMilestone(
-      "Sprint A", "desc", "2024-01-01", "2024-02-01");
+  Milestone milestone = controller->createMilestone("Sprint A", "desc",
+                                                    "2024-01-01", "2024-02-01");
 
   EXPECT_TRUE(
       controller->addIssueToMilestone(milestone.getId(), issue.getId()));
 
-  auto milestoneIssues =
-      controller->getIssuesForMilestone(milestone.getId());
+  auto milestoneIssues = controller->getIssuesForMilestone(milestone.getId());
   EXPECT_THAT(milestoneIssues, SizeIs(1));
   EXPECT_EQ(milestoneIssues.front().getId(), issue.getId());
 
-  EXPECT_TRUE(controller->updateMilestoneField(
-      milestone.getId(), "description", "updated"));
+  EXPECT_TRUE(controller->updateMilestoneField(milestone.getId(), "description",
+                                               "updated"));
   EXPECT_EQ(controller->getMilestone(milestone.getId()).getDescription(),
             "updated");
 
-  EXPECT_TRUE(controller->removeIssueFromMilestone(
-      milestone.getId(), issue.getId()));
+  EXPECT_TRUE(
+      controller->removeIssueFromMilestone(milestone.getId(), issue.getId()));
   EXPECT_TRUE(controller->deleteMilestone(milestone.getId(), false));
-  EXPECT_THROW(controller->getMilestone(milestone.getId()),
-               std::out_of_range);
+  EXPECT_THROW(controller->getMilestone(milestone.getId()), std::out_of_range);
   EXPECT_NO_THROW(controller->getIssue(issue.getId()));
 }
 
 TEST_F(IssueTrackerControllerIntegrationTest,
        CascadeDeleteMilestoneRemovesIssues) {
   Issue issue = controller->createIssue("To delete", "", "owner");
-  Milestone milestone = controller->createMilestone(
-      "Sprint B", "desc", "2024-03-01", "2024-04-01");
+  Milestone milestone = controller->createMilestone("Sprint B", "desc",
+                                                    "2024-03-01", "2024-04-01");
   controller->addIssueToMilestone(milestone.getId(), issue.getId());
 
   EXPECT_TRUE(controller->deleteMilestone(milestone.getId(), true));
   EXPECT_THROW(controller->getIssue(issue.getId()), std::invalid_argument);
-  EXPECT_THROW(controller->getMilestone(milestone.getId()),
-               std::out_of_range);
+  EXPECT_THROW(controller->getMilestone(milestone.getId()), std::out_of_range);
 }

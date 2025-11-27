@@ -16,8 +16,7 @@ namespace {
 
 class EnvVarGuard {
  public:
-  EnvVarGuard(const std::string& key, const std::string& value)
-      : key_(key) {
+  EnvVarGuard(const std::string& key, const std::string& value) : key_(key) {
     const char* existing = std::getenv(key.c_str());
     if (existing) {
       original_ = std::string(existing);
@@ -43,10 +42,9 @@ class EnvVarGuard {
 
 std::filesystem::path makeTempRoot() {
   return std::filesystem::temp_directory_path() /
-         ("dbservice-" + std::to_string(
-                              std::chrono::steady_clock::now()
-                                  .time_since_epoch()
-                                  .count()));
+         ("dbservice-" +
+          std::to_string(
+              std::chrono::steady_clock::now().time_since_epoch().count()));
 }
 
 class TempDirCleaner {
@@ -98,7 +96,6 @@ TEST(DatabaseServiceTest, RespectsCustomPathAndCreatesDirectory) {
     EXPECT_TRUE(std::filesystem::exists(initialPath.parent_path()));
     EXPECT_TRUE(std::filesystem::exists(initialPath));
   }
-
 }
 
 TEST(DatabaseServiceTest, CreateListSwitchAndDeleteDatabases) {
