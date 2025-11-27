@@ -194,6 +194,11 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_201, issueToDto(i));
   }
 
+  ENDPOINT_INFO(listIssues) {
+    info->summary = "List all issues";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+  }
   ENDPOINT("GET", "/issues", listIssues) {
     auto issueList = issues().listAllIssues();
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
@@ -203,6 +208,11 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_200, list);
   }
 
+  ENDPOINT_INFO(listUnassignedIssues) {
+    info->summary = "List all unassigned issues";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+  }
   ENDPOINT("GET", "/issues/unassigned", listUnassignedIssues) {
     auto issueList = issues().listAllUnassignedIssues();
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
@@ -213,6 +223,12 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_200, list);
   }
 
+  ENDPOINT_INFO(getIssue) {
+    info->summary = "Get an issue by id";
+    info->addResponse<Object<IssueDto>>(Status::CODE_200, "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not found");
+  }
   ENDPOINT("GET", "/issues/{id}", getIssue, PATH(oatpp::Int32, id)) {
     try {
       Issue i = issues().getIssue(id);
@@ -224,6 +240,14 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
   }
 
+  ENDPOINT_INFO(updateIssue) {
+    info->summary = "Update a specific issue field";
+    info->addConsumes<Object<IssueUpdateFieldDto>>("application/json");
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "Issue updated");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Unable to update issue");
+  }
   ENDPOINT("PATCH", "/issues/{id}", updateIssue, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<IssueUpdateFieldDto>, body)) {
     bool ok = issues().updateIssueField(id, asStdString(body->field),
@@ -255,6 +279,15 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
   // ---- Comment endpoints ----
 
+  ENDPOINT_INFO(addComment) {
+    info->summary = "Add a comment to an issue";
+    info->addConsumes<Object<CommentCreateDto>>("application/json");
+    info->addResponse<Object<CommentDto>>(Status::CODE_201, "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Missing fields");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue or author not found");
+  }
   ENDPOINT("POST", "/issues/{id}/comments", addComment, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<CommentCreateDto>, body)) {
     if (!body || !body->text || !body->authorId) {
@@ -276,6 +309,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_201, commentToDto(c));
   }
 
+  ENDPOINT_INFO(listComments) {
+    info->summary = "List comments for an issue";
+    info->addResponse<List<Object<CommentDto>>>(Status::CODE_200,
+                                                "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not found");
+  }
   ENDPOINT("GET", "/issues/{id}/comments", listComments,
            PATH(oatpp::Int32, id)) {
     try {
@@ -293,6 +333,16 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
   }
 
+  ENDPOINT_INFO(updateComment) {
+    info->summary = "Update a comment";
+    info->addConsumes<Object<CommentUpdateDto>>("application/json");
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "Comment updated");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Missing required fields");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Comment not found");
+  }
   ENDPOINT("PATCH", "/issues/{issueId}/comments/{commentId}", updateComment,
            PATH(oatpp::Int32, issueId), PATH(oatpp::Int32, commentId),
            BODY_DTO(oatpp::Object<CommentUpdateDto>, body)) {
@@ -313,6 +363,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
                       "Comment not found");
   }
 
+  ENDPOINT_INFO(deleteComment) {
+    info->summary = "Delete a comment";
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "Comment deleted");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Comment not found");
+  }
   ENDPOINT("DELETE", "/issues/{issueId}/comments/{commentId}", deleteComment,
            PATH(oatpp::Int32, issueId), PATH(oatpp::Int32, commentId)) {
     bool ok = issues().deleteComment(issueId, commentId);
@@ -324,6 +381,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
   // ---- User endpoints ----
 
+  ENDPOINT_INFO(createUser) {
+    info->summary = "Create a new user";
+    info->addConsumes<Object<UserCreateDto>>("application/json");
+    info->addResponse<Object<UserDto>>(Status::CODE_201, "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Invalid name or role");
+  }
   ENDPOINT("POST", "/users", createUser,
            BODY_DTO(oatpp::Object<UserCreateDto>, body)) {
     if (!body || !body->name || !body->role) {
@@ -346,6 +410,11 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_201, userToDto(u));
   }
 
+  ENDPOINT_INFO(listUsers) {
+    info->summary = "List all users";
+    info->addResponse<List<Object<UserDto>>>(Status::CODE_200,
+                                             "application/json");
+  }
   ENDPOINT("GET", "/users", listUsers) {
     auto usersList = issues().listAllUsers();
     auto list = oatpp::List<oatpp::Object<UserDto>>::createShared();
@@ -355,6 +424,14 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_200, list);
   }
 
+  ENDPOINT_INFO(updateUser) {
+    info->summary = "Update a user field";
+    info->addConsumes<Object<UserUpdateDto>>("application/json");
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "User updated");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Unable to update user");
+  }
   ENDPOINT("PATCH", "/users/{id}", updateUser, PATH(oatpp::String, id),
            BODY_DTO(oatpp::Object<UserUpdateDto>, body)) {
     bool ok = issues().updateUser(asStdString(id), asStdString(body->field),
@@ -365,6 +442,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
                       "Unable to update user");
   }
 
+  ENDPOINT_INFO(deleteUser) {
+    info->summary = "Delete a user";
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "User deleted");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "User not found");
+  }
   ENDPOINT("DELETE", "/users/{id}", deleteUser, PATH(oatpp::String, id)) {
     bool ok = issues().removeUser(asStdString(id));
     return ok ? createResponse(Status::CODE_204, "")
@@ -373,6 +457,13 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
                       "User not found");
   }
 
+  ENDPOINT_INFO(listIssuesByUser) {
+    info->summary = "List issues created or assigned to a user";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "User not found");
+  }
   ENDPOINT("GET", "/users/{id}/issues", listIssuesByUser,
            PATH(oatpp::String, id)) {
     std::string input = toLower(asStdString(id));
@@ -401,6 +492,16 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
 
     return createDtoResponse(Status::CODE_200, list);
+  }
+
+  ENDPOINT_INFO(assignUserToIssue) {
+    info->summary = "Assign a user to an issue";
+    info->addConsumes<Object<AssignIssueDto>>("application/json");
+    info->addResponse<Object<IssueDto>>(Status::CODE_200, "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Missing issueId");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "User or issue not found");
   }
   ENDPOINT("POST", "/users/{id}/issues", assignUserToIssue,
          PATH(oatpp::String, id),
@@ -466,6 +567,13 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
 
   // ---- Tag endpoints ----
 
+  ENDPOINT_INFO(addTag) {
+    info->summary = "Add a tag to an issue";
+    info->addConsumes<Object<TagDto>>("application/json");
+    info->addResponse<String>(Status::CODE_201, "text/plain", "Tag added");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Missing or invalid tag");
+  }
   ENDPOINT("POST", "/issues/{id}/tags", addTag, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
@@ -489,6 +597,14 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
                       "Failed to add tag");
   }
 
+  ENDPOINT_INFO(removeTag) {
+    info->summary = "Remove a tag from an issue";
+    info->addConsumes<Object<TagDto>>("application/json");
+    info->addResponse<String>(Status::CODE_204, "text/plain",
+                              "Tag removed");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Tag not found on issue");
+  }
   ENDPOINT("DELETE", "/issues/{id}/tags", removeTag, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<TagDto>, body)) {
     if (!body || !body->tag) {
@@ -512,6 +628,12 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
                       "Tag not found on issue");
   }
 
+  ENDPOINT_INFO(listTags) {
+    info->summary = "List tags for an issue";
+    info->addResponse<List<String>>(Status::CODE_200, "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not found");
+  }
   ENDPOINT("GET", "/issues/{id}/tags", listTags, PATH(oatpp::Int32, id)) {
     try {
       Issue issue = issues().getIssue(id);
@@ -529,6 +651,11 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(getIssuesByTag) {
+    info->summary = "Find issues with a specific tag";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+  }
   ENDPOINT("GET", "/issues/tags/{tag}", getIssuesByTag,
            PATH(oatpp::String, tag)) {
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
@@ -553,6 +680,11 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     return createDtoResponse(Status::CODE_200, list);
   }
 
+  ENDPOINT_INFO(getIssuesByTags) {
+    info->summary = "Find issues that match any of the provided tags";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+  }
   ENDPOINT("GET", "/issues/tags", getIssuesByTags,
            QUERY(oatpp::String, tags)) {
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
@@ -597,6 +729,14 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
 
   // ---- Milestone endpoints ----
 
+  ENDPOINT_INFO(createMilestone) {
+    info->summary = "Create a milestone";
+    info->addConsumes<Object<MilestoneCreateDto>>("application/json");
+    info->addResponse<Object<MilestoneDto>>(Status::CODE_201,
+                                            "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Invalid milestone payload");
+  }
   ENDPOINT("POST", "/milestones", createMilestone,
            BODY_DTO(oatpp::Object<MilestoneCreateDto>, body)) {
     if (!body) {
@@ -627,6 +767,11 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(listMilestones) {
+    info->summary = "List all milestones";
+    info->addResponse<List<Object<MilestoneDto>>>(Status::CODE_200,
+                                                  "application/json");
+  }
   ENDPOINT("GET", "/milestones", listMilestones) {
     auto list = issues().listAllMilestones();
 
@@ -638,6 +783,13 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     return createDtoResponse(Status::CODE_200, dtoList);
   }
 
+  ENDPOINT_INFO(getMilestone) {
+    info->summary = "Get a milestone by id";
+    info->addResponse<Object<MilestoneDto>>(Status::CODE_200,
+                                            "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Milestone not found");
+  }
   ENDPOINT("GET", "/milestones/{id}", getMilestone, PATH(oatpp::Int32, id)) {
     try {
       auto m = issues().getMilestone(id);
@@ -649,6 +801,16 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(updateMilestone) {
+    info->summary = "Update milestone fields";
+    info->addConsumes<Object<MilestoneUpdateDto>>("application/json");
+    info->addResponse<Object<MilestoneDto>>(Status::CODE_200,
+                                            "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Invalid milestone data");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Milestone not found");
+  }
   ENDPOINT("PATCH", "/milestones/{id}", updateMilestone, PATH(oatpp::Int32, id),
            BODY_DTO(oatpp::Object<MilestoneUpdateDto>, body)) {
     if (!body) {
@@ -682,6 +844,12 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(deleteMilestone) {
+    info->summary = "Delete a milestone";
+    info->addResponse<String>(Status::CODE_200, "text/plain", "Deleted");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Milestone not found");
+  }
   ENDPOINT("DELETE", "/milestones/{id}", deleteMilestone,
            PATH(oatpp::Int32, id), QUERY(oatpp::Boolean, cascade)) {
     try {
@@ -694,6 +862,15 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(addIssueToMilestone) {
+    info->summary = "Link an issue to a milestone";
+    info->addResponse<Object<MilestoneDto>>(Status::CODE_200,
+                                            "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Issue already linked");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Milestone or issue not found");
+  }
   ENDPOINT("POST", "/milestones/{id}/issues/{issueId}", addIssueToMilestone,
            PATH(oatpp::Int32, id), PATH(oatpp::Int32, issueId)) {
     try {
@@ -716,6 +893,12 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(removeIssueFromMilestone) {
+    info->summary = "Unlink an issue from a milestone";
+    info->addResponse<String>(Status::CODE_204, "text/plain", "");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not linked or milestone not found");
+  }
   ENDPOINT("DELETE", "/milestones/{id}/issues/{issueId}",
            removeIssueFromMilestone, PATH(oatpp::Int32, id),
            PATH(oatpp::Int32, issueId)) {
@@ -732,6 +915,13 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(getMilestoneIssues) {
+    info->summary = "List issues for a milestone";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Milestone not found");
+  }
   ENDPOINT("GET", "/milestones/{id}/issues", getMilestoneIssues,
            PATH(oatpp::Int32, id)) {
     try {
@@ -752,6 +942,11 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
 
   // ---- Database endpoints ----
 
+  ENDPOINT_INFO(listDatabases) {
+    info->summary = "List available databases";
+    info->addResponse<List<Object<DatabaseDto>>>(Status::CODE_200,
+                                                 "application/json");
+  }
   ENDPOINT("GET", "/databases", listDatabases) {
     auto databases = dbService->listDatabases();
     std::string active = dbService->getActiveDatabaseName();
@@ -777,6 +972,16 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     return createDtoResponse(Status::CODE_200, list);
   }
 
+  ENDPOINT_INFO(createDatabase) {
+    info->summary = "Create a new database file";
+    info->addConsumes<Object<DatabaseCreateDto>>("application/json");
+    info->addResponse<Object<DatabaseDto>>(Status::CODE_201,
+                                           "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Invalid database name");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_409, "application/json",
+                                        "Database already exists");
+  }
   ENDPOINT("POST", "/databases", createDatabase,
            BODY_DTO(oatpp::Object<DatabaseCreateDto>, body)) {
     if (!body || !body->name) {
@@ -808,6 +1013,14 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
                  "Unable to create database");
   }
 
+  ENDPOINT_INFO(deleteDatabase) {
+    info->summary = "Delete a database";
+    info->addResponse<String>(Status::CODE_204, "text/plain", "");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Database not found");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_409, "application/json",
+                                        "Cannot delete active database");
+  }
   ENDPOINT("DELETE", "/databases/{name}", deleteDatabase,
            PATH(oatpp::String, name)) {
     std::string provided = asStdString(name);
@@ -833,10 +1046,17 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     return deleted
                ? createResponse(Status::CODE_204, "")
                : error(Status::CODE_400,
-                       "DATABASE_DELETE_FAILED",
-                       "Unable to delete database");
+                 "DATABASE_DELETE_FAILED",
+                 "Unable to delete database");
   }
 
+  ENDPOINT_INFO(switchDatabase) {
+    info->summary = "Switch the active database";
+    info->addResponse<Object<DatabaseDto>>(Status::CODE_200,
+                                           "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Database not found");
+  }
   ENDPOINT("POST", "/databases/{name}/switch", switchDatabase,
            PATH(oatpp::String, name)) {
     std::string provided = asStdString(name);
@@ -855,6 +1075,15 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
 
   // ---- Status endpoints ----
 
+  ENDPOINT_INFO(updateIssueStatus) {
+    info->summary = "Update issue status";
+    info->addResponse<String>(Status::CODE_200, "text/plain",
+                              "Status updated");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Missing or invalid status");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Issue not found");
+  }
   ENDPOINT("PUT", "/issues/{id}/status", updateIssueStatus,
            PATH(Int32, id),
            BODY_STRING(String, status)) {
@@ -875,6 +1104,13 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
                       "Issue not found");
   }
 
+  ENDPOINT_INFO(getIssuesByStatus) {
+    info->summary = "List issues filtered by status";
+    info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,
+                                              "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Invalid status value");
+  }
   ENDPOINT("GET", "/issues/status/{status}", getIssuesByStatus,
            PATH(oatpp::String, status)) {
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
