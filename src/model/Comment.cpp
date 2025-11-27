@@ -30,6 +30,12 @@ void Comment::setIdForPersistence(int new_id) {
 
 // Read accessors.
 const std::string& Comment::getAuthor() const noexcept { return author_id_; }
+void Comment::setAuthor(std::string author_id) {
+  if (author_id.empty()) {
+    throw std::invalid_argument("authorId empty");
+  }
+  author_id_ = std::move(author_id);
+}
 const std::string& Comment::getText() const noexcept { return text_; }
 Comment::TimePoint Comment::getTimeStamp() const noexcept {
   return timestamp_;

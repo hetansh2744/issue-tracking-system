@@ -1,4 +1,5 @@
 #include "IssueTrackerController.hpp"
+#include "SQLiteIssueRepository.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -16,6 +17,11 @@ class MockIssueRepository : public IssueRepository {
               (const, override));
   MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
+  MOCK_METHOD(bool, addTagToIssue,
+            (int issueId, const std::string& tag), (override));
+  MOCK_METHOD(bool, removeTagFromIssue,
+            (int issueId, const std::string& tag), (override));
+
   MOCK_METHOD(Comment, saveComment, (int issueId, const Comment& comment),
               (override));
   MOCK_METHOD(Comment, getComment, (int issueId, int commentId),
@@ -24,22 +30,35 @@ class MockIssueRepository : public IssueRepository {
   MOCK_METHOD(std::vector<Comment>, getAllComments, (int issueId),
               (const, override));
 
-  MOCK_METHOD(User, saveUser, (const User& user), (override));
-  MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
-  MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
-  MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
-  MOCK_METHOD(bool, addTagToIssue, (int issueId, const std::string& tag),
-              (override));
-  MOCK_METHOD(bool, removeTagFromIssue, (int issueId, const std::string& tag),
-              (override));
+    MOCK_METHOD(User, saveUser, (const User& user), (override));
+    MOCK_METHOD(User, getUser, (const std::string& id), (const, override));
+    MOCK_METHOD(bool, deleteUser, (const std::string& id), (override));
+    MOCK_METHOD(std::vector<User>, listAllUsers, (), (const, override));
+
+    MOCK_METHOD(Milestone, saveMilestone,
+        (const Milestone& milestone), (override));
+    MOCK_METHOD(Milestone, getMilestone, (int milestoneId),
+        (const, override));
+    MOCK_METHOD(bool, deleteMilestone, (int milestoneId, bool cascade),
+        (override));
+    MOCK_METHOD(std::vector<Milestone>, listAllMilestones, (),
+    (const, override));
+    MOCK_METHOD(bool, addIssueToMilestone, (int milestoneId, int issueId),
+        (override));
+    MOCK_METHOD(bool, removeIssueFromMilestone, (int milestoneId, int issueId),
+        (override));
+    MOCK_METHOD(std::vector<Issue>, getIssuesForMilestone,
+        (int milestoneId), (const, override));
 };
 
 TEST(IssueTrackerControllerTest, CreateIssueValid) {
   MockIssueRepository mockRepo;
   Issue persistedIssue(1, "user123", "title", 0);
   Comment descComment(1, "user123", "desc", 0);
+  User author("user123", "Developer");
 
   testing::InSequence seq;
+  EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(author));
   EXPECT_CALL(mockRepo, saveIssue(testing::_))
       .WillOnce(testing::Return(persistedIssue));
   EXPECT_CALL(mockRepo, saveComment(1, testing::_))
@@ -108,7 +127,7 @@ TEST(IssueTrackerControllerTest, UpdateIssueFieldThrows) {
 TEST(IssueTrackerControllerTest, AssignUserToIssueSuccess) {
   MockIssueRepository mockRepo;
   Issue existingIssue(1, "author", "title", 0);
-  User user("name", "role");
+  User user("name", "Developer");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
   EXPECT_CALL(mockRepo, getIssue(1)).WillOnce(testing::Return(existingIssue));
@@ -219,7 +238,7 @@ TEST(IssueTrackerControllerTest, FindIssuesByUserIdUsesCaseInsensitiveMatch) {
 TEST(IssueTrackerControllerTest, AddCommentToIssueSuccess) {
   MockIssueRepository mockRepo;
   Issue issue(1, "author", "title", 0);
-  User user("author", "role");
+  User user("author", "Developer");
   Comment comment(1, "author", "text", 1);
 
   EXPECT_CALL(mockRepo, getIssue(1)).WillOnce(testing::Return(issue));
@@ -291,12 +310,12 @@ TEST(IssueTrackerControllerTest, DeleteCommentThrows) {
 
 TEST(IssueTrackerControllerTest, CreateUserSuccess) {
   MockIssueRepository mockRepo;
-  User user("name", "role");
+  User user("name", "Developer");
 
   EXPECT_CALL(mockRepo, saveUser(testing::_)).WillOnce(testing::Return(user));
 
   IssueTrackerController controller(&mockRepo);
-  User result = controller.createUser("name", "role");
+  User result = controller.createUser("name", "Developer");
 
   EXPECT_EQ(result.getName(), "name");
 }
@@ -309,23 +328,46 @@ TEST(IssueTrackerControllerTest, CreateUserEmptyName) {
   EXPECT_EQ(result.getName(), "");
 }
 
-TEST(IssueTrackerControllerTest, UpdateUserSuccess) {
+TEST(IssueTrackerControllerTest, CreateUserInvalidRoleRejected) {
   MockIssueRepository mockRepo;
-  User user("oldName", "role");
+  EXPECT_CALL(mockRepo, saveUser(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  User result = controller.createUser("name", "InvalidRole");
+
+  EXPECT_EQ(result.getName(), "");
+}
+
+TEST(IssueTrackerControllerTest, UpdateUserRoleSuccess) {
+  MockIssueRepository mockRepo;
+  User user("oldName", "Developer");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
   EXPECT_CALL(mockRepo, saveUser(testing::_))
-      .WillOnce(testing::Return(User("newName", "role")));
+      .WillOnce(testing::Return(User("oldName", "Owner")));
 
   IssueTrackerController controller(&mockRepo);
-  bool result = controller.updateUser("user123", "name", "newName");
+  bool result = controller.updateUser("user123", "role", "Owner");
 
   EXPECT_TRUE(result);
 }
 
+TEST(IssueTrackerControllerTest, UpdateUserRoleRejectsInvalidRole) {
+  MockIssueRepository mockRepo;
+  User user("oldName", "Developer");
+
+  EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
+  EXPECT_CALL(mockRepo, saveUser(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  bool result = controller.updateUser("user123", "role", "Bad");
+
+  EXPECT_FALSE(result);
+}
+
 TEST(IssueTrackerControllerTest, UpdateUserInvalidField) {
   MockIssueRepository mockRepo;
-  User user("name", "role");
+  User user("name", "Developer");
 
   EXPECT_CALL(mockRepo, getUser("user123")).WillOnce(testing::Return(user));
 
@@ -347,6 +389,33 @@ TEST(IssueTrackerControllerTest, UpdateUserThrows) {
   EXPECT_FALSE(result);
 }
 
+TEST(IssueTrackerControllerTest, UpdateUserNameRenamesInPlace) {
+  SQLiteIssueRepository repo(":memory:");
+  IssueTrackerController controller(&repo);
+
+  repo.saveUser(User("old", "Developer"));
+  Issue created = controller.createIssue("title", "desc", "old");
+  EXPECT_TRUE(controller.assignUserToIssue(created.getId(), "old"));
+  controller.addCommentToIssue(created.getId(), "comment", "old");
+
+  EXPECT_TRUE(controller.updateUser("old", "name", "new"));
+
+  EXPECT_THROW(repo.getUser("old"), std::invalid_argument);
+  User renamed = repo.getUser("new");
+  EXPECT_EQ(renamed.getRole(), "Developer");
+
+  Issue reloaded = repo.getIssue(created.getId());
+  EXPECT_EQ(reloaded.getAuthorId(), "new");
+  ASSERT_TRUE(reloaded.hasAssignee());
+  EXPECT_EQ(reloaded.getAssignedTo(), "new");
+
+  auto comments = repo.getAllComments(created.getId());
+  ASSERT_FALSE(comments.empty());
+  for (const auto& c : comments) {
+    EXPECT_EQ(c.getAuthor(), "new");
+  }
+}
+
 TEST(IssueTrackerControllerTest, RemoveUser) {
   MockIssueRepository mockRepo;
 
@@ -360,7 +429,8 @@ TEST(IssueTrackerControllerTest, RemoveUser) {
 
 TEST(IssueTrackerControllerTest, ListAllUsers) {
   MockIssueRepository mockRepo;
-  std::vector<User> users = {User("u1", "r1"), User("u2", "r2")};
+  std::vector<User> users = {User("u1", "Developer"),
+                             User("u2", "Owner")};
 
   EXPECT_CALL(mockRepo, listAllUsers()).WillOnce(testing::Return(users));
 
@@ -391,6 +461,20 @@ TEST(IssueTrackerControllerTest, CreateIssueInvalidInputReturnsEmptyIssue) {
 
   EXPECT_EQ(result.getId(), 0);
   EXPECT_EQ(result.getTitle(), "");
+}
+
+TEST(IssueTrackerControllerTest, CreateIssueRejectsUnknownAuthor) {
+  MockIssueRepository mockRepo;
+
+  EXPECT_CALL(mockRepo, getUser("ghost"))
+      .WillOnce(Throw(std::invalid_argument("missing user")));
+  EXPECT_CALL(mockRepo, saveIssue(testing::_)).Times(0);
+
+  IssueTrackerController controller(&mockRepo);
+  Issue result = controller.createIssue("title", "desc", "ghost");
+
+  EXPECT_FALSE(result.hasPersistentId());
+  EXPECT_EQ(result.getAuthorId(), "");
 }
 
 TEST(IssueTrackerControllerTest,

@@ -26,6 +26,12 @@ class UserUpdateDto : public oatpp::DTO {
   DTO_FIELD(oatpp::String, field);
   DTO_FIELD(oatpp::String, value);
 };
+
+class AssignIssueDto : public oatpp::DTO {
+  DTO_INIT(AssignIssueDto, DTO)
+  DTO_FIELD(Int32, issueId);
+};
+
 #include OATPP_CODEGEN_END(DTO)
 
 #endif

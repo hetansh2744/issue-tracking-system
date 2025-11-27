@@ -2,182 +2,127 @@
 #define ISSUE_REPOSITORY_H_INCLUDED
 
 #include <functional>
-#include <memory>
-#include <optional>
 #include <string>
 #include <vector>
+
 #include "Comment.hpp"
 #include "Issue.hpp"
 #include "User.hpp"
+#include "Milestone.hpp"
 
 /**
  * @brief Abstract repository interface for issue tracking data operations
  *
- * The IssueRepository defines the contract for data persistence operations
- * in the issue tracking system. It provides methods for managing issues,
- * comments, and users through a repository pattern.
+ * Defines all persistence operations for issues, comments, users,
+ * tags, and milestones.
  */
 class IssueRepository {
  public:
-  // === Issues ===
-  /**
-   * @brief Retrieves an issue by its unique identifier
-   *
-   * @param issueId The ID of the issue to retrieve
-   * @return Issue The requested issue object
-   */
+  // ===================== ISSUES =====================
+
+  /// Get a single issue by ID
   virtual Issue getIssue(int issueId) const = 0;
 
-  /**
-   * @brief Saves an issue (creates new or updates existing)
-   *
-   * @param issue The issue object to save
-   * @return Issue The saved issue with updated persistence data
-   */
+  /// Create or update an issue
   virtual Issue saveIssue(const Issue& issue) = 0;
 
-  /**
-   * @brief Deletes an issue from the repository
-   *
-   * @param issueId The ID of the issue to delete
-   * @return bool True if deletion was successful, false otherwise
-   */
+  /// Delete an issue by ID
   virtual bool deleteIssue(int issueId) = 0;
 
-  /**
-   * @brief Retrieves all issues in the repository
-   *
-   * @return std::vector<Issue> List of all issues
-   */
+  /// List all issues
   virtual std::vector<Issue> listIssues() const = 0;
 
-  /**
-   * @brief Finds issues matching custom criteria
-   *
-   * @param criteria Function that defines the matching condition
-   * @return std::vector<Issue> List of issues matching the criteria
-   */
+  /// Find issues by custom predicate
   virtual std::vector<Issue> findIssues(
       std::function<bool(const Issue&)> criteria) const = 0;
 
-  /**
-   * @brief Finds issues assigned to a specific user
-   *
-   * @param userId The ID of the user to search for
-   * @return std::vector<Issue> List of issues assigned to the user
-   */
-  virtual std::vector<Issue> findIssues(const std::string& userId) const;
+  /// Find issues assigned to a specific user
+  virtual std::vector<Issue> findIssues(
+      const std::string& userId) const;
 
-  /**
-   * @brief Retrieves all unassigned issues
-   *
-   * @return std::vector<Issue> List of issues with no assignee
-   */
+  /// List all unassigned issues
   virtual std::vector<Issue> listAllUnassigned() const;
 
-  // === Tags ===
+  // ===================== TAGS =====================
 
-  /**
-   * @brief Adds a tag to an issue
-   *
-   * @param issueId The ID of the issue
-   * @param tag The tag to add
-   * @return bool True if successful, false otherwise
-   */
+  /// Add a tag to an issue
   virtual bool addTagToIssue(int issueId,
                              const std::string& tag);
 
-  /**
-   * @brief Removes a tag from an issue
-   *
-   * @param issueId The ID of the issue
-   * @param tag The tag to remove
-   * @return bool True if successful, false otherwise
-   */
+  /// Remove a tag from an issue
   virtual bool removeTagFromIssue(int issueId,
                                   const std::string& tag);
 
-  // === Comments ===
+  // ===================== COMMENTS =====================
 
-  /**
-   * @brief Retrieves a specific comment from an issue
-   *
-   * @param commentId The ID of the comment to retrieve
-   * @param issueId The ID of the issue containing the comment
-   * @return Comment The requested comment object
-   */
-  virtual Comment getComment(int issueId, int commentId) const = 0;
+  /// Get a specific comment by ID
+  virtual Comment getComment(int issueId,
+                             int commentId) const = 0;
 
-  /**
-   * @brief Retrieves all comments for a specific issue
-   *
-   * @param issueId The ID of the issue
-   * @return std::vector<Comment> List of all comments on the issue
-   */
-  virtual std::vector<Comment> getAllComments(int issueId) const = 0;
+  /// List all comments on an issue
+  virtual std::vector<Comment> getAllComments(
+      int issueId) const = 0;
 
-  /**
-   * @brief Saves a comment to an issue
-   *
-   * @param issueId The ID of the issue to add the comment to
-   * @param comment The comment object to save
-   * @return Comment The saved comment with updated persistence data
-   */
+  /// Create or update a comment
   virtual Comment saveComment(int issueId,
                               const Comment& comment) = 0;
 
-  /**
-   * @brief Deletes a comment from a specific issue
-   *
-   * @param issueId The ID of the issue containing the comment
-   * @param commentId The ID of the comment to delete
-   * @return bool True if deletion was successful, false otherwise
-   */
-  virtual bool deleteComment(int issueId, int commentId) = 0;
+  /// Delete a comment
+  virtual bool deleteComment(int issueId,
+                             int commentId) = 0;
 
-  // === Users ===
+  // ===================== USERS =====================
 
-  /**
-   * @brief Retrieves a user by their unique identifier
-   *
-   * @param userId The ID of the user to retrieve
-   * @return User The requested user object
-   */
+  /// Get a user by ID
   virtual User getUser(const std::string& userId) const = 0;
 
-  /**
-   * @brief Saves a user (creates new or updates existing)
-   *
-   * @param user The user object to save
-   * @return User The saved user with updated persistence data
-   */
+  /// Create or update a user
   virtual User saveUser(const User& user) = 0;
 
-  /**
-   * @brief Deletes a user from the repository
-   *
-   * @param userId The ID of the user to delete
-   * @return bool True if deletion was successful, false otherwise
-   */
+  /// Delete a user
   virtual bool deleteUser(const std::string& userId) = 0;
 
-  /**
-   * @brief Retrieves all users in the repository
-   *
-   * @return std::vector<User> List of all users
-   */
+  /// List all users
   virtual std::vector<User> listAllUsers() const = 0;
 
-  /**
-   * @brief Virtual destructor for proper inheritance support
-   */
+  // ===================== MILESTONES =====================
+
+  /// Create or update a milestone
+  virtual Milestone saveMilestone(
+      const Milestone& milestone) = 0;
+
+  /// Get a milestone by ID
+  virtual Milestone getMilestone(
+      int milestoneId) const = 0;
+
+  /// Delete a milestone
+  virtual bool deleteMilestone(
+      int milestoneId,
+      bool cascade = false) = 0;
+
+  /// List all milestones
+  virtual std::vector<Milestone> listAllMilestones() const = 0;
+
+  /// Add an issue to a milestone
+  virtual bool addIssueToMilestone(
+      int milestoneId,
+      int issueId) = 0;
+
+  /// Remove an issue from a milestone
+  virtual bool removeIssueFromMilestone(
+      int milestoneId,
+      int issueId) = 0;
+
+  /// Get all issues attached to a milestone
+  virtual std::vector<Issue> getIssuesForMilestone(
+      int milestoneId) const = 0;
+
+  /// Virtual destructor
   virtual ~IssueRepository() = default;
 };
 
 /**
- * @brief Factory function to create a repository instance
- *
- * @return IssueRepository* Pointer to a new repository instance
+ * Factory method to create repository
  */
 IssueRepository* createIssueRepository();
 

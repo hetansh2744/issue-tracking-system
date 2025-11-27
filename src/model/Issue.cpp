@@ -55,9 +55,16 @@ void Issue::setTitle(std::string new_title) {
   title_ = std::move(new_title);
 }
 
+void Issue::setAuthorId(std::string author_id) {
+  if (author_id.empty()) {
+    throw std::invalid_argument("authorId must not be empty");
+  }
+  author_id_ = std::move(author_id);
+}
+
 void Issue::addComment(int comment_id) {
   if (comment_id < 0) {
-    throw std::invalid_argument("comment_id must be > 0 but was "
+    throw std::invalid_argument("comment_id must be >= 0 but was "
                                 + std::to_string(comment_id));
   }
   auto it =
@@ -74,7 +81,7 @@ bool Issue::removeComment(int comment_id) {
     return false;
   }
   if (description_comment_id_ == comment_id) {
-    description_comment_id_ = 0;  // clear description link
+    description_comment_id_ = -1;  // clear description link
   }
   comment_ids_.erase(it);
   return true;
@@ -82,7 +89,7 @@ bool Issue::removeComment(int comment_id) {
 
 void Issue::setDescriptionCommentId(int comment_id) {
   if (comment_id < 0) {
-    throw std::invalid_argument("comment_id must be > 0 but was "
+    throw std::invalid_argument("comment_id must be >= 0 but was "
                                 + std::to_string(comment_id));
   }
   auto it =
@@ -93,6 +100,11 @@ void Issue::setDescriptionCommentId(int comment_id) {
   description_comment_id_ = comment_id;
 }
 
+std::string Issue::getDescriptionComment() const {
+  const Comment* desc = findCommentById(description_comment_id_);
+  return desc ? desc->getText() : std::string();
+}
+
 // --------------------------------------------
 // full Comment object support (in-memory store)
 // --------------------------------------------
@@ -100,7 +112,7 @@ void Issue::setDescriptionCommentId(int comment_id) {
 void Issue::addComment(const Comment& comment) {
   const int commentId = comment.getId();
   if (commentId < 0) {
-    throw std::invalid_argument("comment.id must be > 0 but was "
+    throw std::invalid_argument("comment.id must be >= 0 but was "
                                 + std::to_string(commentId));
   }
 
@@ -125,7 +137,7 @@ void Issue::addComment(const Comment& comment) {
 void Issue::addComment(Comment&& comment) {
   const int commentId = comment.getId();
   if (commentId < 0) {
-    throw std::invalid_argument("comment.id must be > 0 but was "
+    throw std::invalid_argument("comment.id must be >= 0 but was "
                                 + std::to_string(commentId));
   }
 
