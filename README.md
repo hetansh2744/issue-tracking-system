@@ -134,3 +134,10 @@ doxygen
 * **Fletcher** — TextUI & User
 * **Colby** — Issue Tracker Controller & User Input Error Handling in TextUI
 * **Miller** — Issue Repository
+
+## Team REST Endpoints 
+
+* **Hetansh** — Issue statuses
+* **Fletcher** — Project milestone's
+* **Colby** — Tags 
+* **Miller** — Persistence / databases
