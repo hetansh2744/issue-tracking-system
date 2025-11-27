@@ -400,7 +400,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
          BODY_DTO(oatpp::Object<AssignIssueDto>, body)) {
 
   if (!body || !body->issueId) {
-    return createResponse(Status::CODE_400, "Missing issueId");
+    return error(Status::CODE_400,
+                 "MISSING_ISSUE_ID",
+                 "issueId is required");
   }
 
   std::string inputUser = toLower(asStdString(id));
@@ -416,19 +418,25 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 
   if (!found) {
-    return createResponse(Status::CODE_404, "User not found");
+    return error(Status::CODE_404,
+                 "USER_NOT_FOUND",
+                 "User not found");
   }
 
   bool ok = issues().assignUserToIssue(body->issueId, realUser);
   if (!ok) {
-    return createResponse(Status::CODE_404, "Issue not found or assignment failed");
+    return error(Status::CODE_404,
+                 "ISSUE_NOT_FOUND",
+                 "Issue not found or assignment failed");
   }
 
   try {
     Issue updated = issues().getIssue(body->issueId);
     return createDtoResponse(Status::CODE_200, issueToDto(updated));
   } catch (...) {
-    return createResponse(Status::CODE_404, "Issue not found after assignment");
+    return error(Status::CODE_404,
+                 "ISSUE_NOT_FOUND",
+                 "Issue not found after assignment");
   }
 }
 
@@ -858,7 +866,9 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
 
     if (canonical != "To Be Done" && canonical !=
       "In Progress" && canonical != "Done") {
-      return createResponse(Status::CODE_400, "Invalid status. Status must be 'To Be Done', 'In Progress', 'Done', or a valid alias (e.g., '1', '2', 'tobedone').");
+      return error(Status::CODE_400,
+                   "INVALID_STATUS",
+                   "Status must be 'To Be Done', 'In Progress', 'Done', or a valid alias (e.g., '1', '2', 'tobedone').");
     }
 
     auto all = issues().listAllIssues();
