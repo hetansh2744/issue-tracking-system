@@ -447,6 +447,23 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
   }
 }
 
+ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
+         PATH(oatpp::Int32, issueId)) {
+
+  bool ok = issues().unassignUserFromIssue(issueId);
+
+  if (!ok) {
+    return createResponse(Status::CODE_404, "Issue not found or cannot unassign");
+  }
+
+  try {
+    Issue updated = issues().getIssue(issueId);
+    return createDtoResponse(Status::CODE_200, issueToDto(updated));
+  } catch (...) {
+    return createResponse(Status::CODE_500, "Unexpected error");
+  }
+}
+
 
   // ---- Tag endpoints ----
 
