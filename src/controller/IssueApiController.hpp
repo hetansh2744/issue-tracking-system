@@ -886,13 +886,13 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     const std::string canonical =
         canonicalStatusLabel(asStdString(status));
 
-    if (canonical != "To Be Done" && canonical !=
+if (canonical != "To Be Done" && canonical !=
       "In Progress" && canonical != "Done") {
       return error(Status::CODE_400,
                    "INVALID_STATUS",
-                   "Status must be 'To Be Done',
-                    'In Progress', 'Done', or a
-                    valid alias (e.g., '1', '2', 'tobedone').");
+                   "Status must be 'To Be Done', "
+                   "'In Progress', 'Done', or a "
+                   "valid alias (e.g., '1', '2', 'tobedone').");
     }
 
     auto all = issues().listAllIssues();
