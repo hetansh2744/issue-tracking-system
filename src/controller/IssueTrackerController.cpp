@@ -236,7 +236,6 @@ User IssueTrackerController::createUser(const std::string& name,
   return repo->saveUser(newUser);
 }
 
-// allows the view / API to change user name/role
 bool IssueTrackerController::updateUser(const std::string& userId,
                                         const std::string& field,
                                         const std::string& value) {
@@ -247,19 +246,16 @@ bool IssueTrackerController::updateUser(const std::string& userId,
         return false;
       }
       if (value == userId) {
-        return true;  // nothing to change
+        return true;
       }
 
-      // Do not clobber another existing user.
       try {
         if (repo->getUser(value).getName() == value) {
           return false;
         }
       } catch (...) {
-        // ok, target id not in use
       }
 
-      // Propagate the rename to all issues and comments.
       for (Issue issue : repo->listIssues()) {
         bool issueChanged = false;
         if (issue.getAuthorId() == userId) {
@@ -283,7 +279,6 @@ bool IssueTrackerController::updateUser(const std::string& userId,
         }
       }
 
-      // Replace user record with new id.
       userObj.setName(value);
       repo->saveUser(userObj);
       repo->deleteUser(userId);

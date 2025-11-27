@@ -85,7 +85,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       return "Done";
     }
 
-    // Fallback: keep whatever the caller used
     return raw;
   }
 
@@ -106,20 +105,17 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       : oatpp::web::server::api::ApiController(objectMapper),
         dbService(std::make_shared<DatabaseService>()) {}
 
-  // Convert helpers
   static oatpp::Object<IssueDto> issueToDto(const Issue& i) {
     auto dto = IssueDto::createShared();
     dto->id = i.getId();
     dto->authorId = i.getAuthorId().c_str();
     dto->title = i.getTitle().c_str();
 
-    // Description: mirror other fields by emitting a string (empty if absent).
     dto->description = i.hasDescriptionComment() ? i.getDescriptionComment().c_str() : "";
 
     dto->assignedTo =
         i.hasAssignee() ? i.getAssignedTo().c_str() : "";
 
-    // Status (stored on Issue; ensure IssueDto has a "status" field).
     dto->status = i.getStatus().c_str();
 
     auto ids = oatpp::List<oatpp::Int32>::createShared();
@@ -203,6 +199,17 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     for (auto& i : issueList) {
       list->push_back(issueToDto(i));
     }
+    return createDtoResponse(Status::CODE_200, list);
+  }
+
+  ENDPOINT("GET", "/issues/unassigned", listUnassignedIssues) {
+    auto issueList = issues().listAllUnassignedIssues(); // Assuming issues() is IssueService
+    auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
+    
+    for (auto& i : issueList) {
+      list->push_back(issueToDto(i));
+    }
+    
     return createDtoResponse(Status::CODE_200, list);
   }
 
@@ -849,7 +856,6 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     auto list = oatpp::List<oatpp::Object<IssueDto>>::createShared();
 
     if (!status) {
-      // No status provided → return empty list (200)
       return createDtoResponse(Status::CODE_200, list);
     }
 
