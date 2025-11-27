@@ -55,7 +55,7 @@ BASE_INCLUDE = \
     -I include \
     -I src \
     -I src/dto \
-    -I third_par1ty/sqlite-build/include
+    -I third_party/sqlite-build/include
 
 REST_INCLUDE = $(BASE_INCLUDE) $(OATPP_INCLUDE)
 
