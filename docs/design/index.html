@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Issue Tracker UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pink: #f52781;
+      --yellow: #f9d74b;
+      --mint: #6cee94;
+      --teal: #24c4e8;
+      --blue: #0f8ccf;
+      --green: #6ffb58;
+      --violet-tag: #c256b9;
+      --blue-tag: #49a3d8;
+      --search: #e9e9e9;
+      --border: #000000;
+      --text: #000000;
+      --muted: #333333;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px;
+    }
+
+    .wrapper {
+      width: min(980px, 100%);
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      text-align: center;
+      font-size: 28px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .canvas {
+      display: flex;
+      gap: 20px;
+    }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 150px;
+    }
+
+    .nav-btn {
+      border: 3px solid var(--border);
+      border-radius: 0;
+      color: #000;
+      font-weight: 600;
+      padding: 14px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .issues { background: var(--pink); }
+    .milestones { background: var(--yellow); }
+    .users { background: var(--mint); }
+    .databases { background: var(--teal); }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .issues-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filters {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-bottom: 4px;
+    }
+
+    .state-group {
+      display: flex;
+      border: 3px solid var(--border);
+      border-right: none;
+    }
+
+    .state-btn {
+      background: var(--blue);
+      color: #ffffff;
+      border: none;
+      border-right: 3px solid var(--border);
+      border-radius: 0;
+      padding: 12px 18px;
+      font-weight: 600;
+      min-width: 140px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .state-btn:last-child {
+      border-right: none;
+    }
+
+    .create {
+      background: var(--green);
+      border: 3px solid var(--border);
+      border-radius: 0;
+      min-width: 160px;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .search {
+      margin-top: 4px;
+      width: 100%;
+      background: var(--search);
+      border: 3px solid var(--border);
+      border-radius: 0;
+      padding: 10px 12px;
+      font-size: 15px;
+      color: #555;
+      font-style: italic;
+    }
+
+    .issue-card {
+      border: 3px solid var(--border);
+      border-radius: 0;
+      padding: 16px 18px;
+      background: #ffffff;
+      margin: 0;
+    }
+
+    .issue-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .issue-title-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .issue-meta {
+      margin: 6px 0 16px;
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    .issue-meta span + span::before {
+      content: " · ";
+      color: var(--muted);
+      padding: 0 2px;
+    }
+
+    .tags {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .actions-right {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 15px;
+      border: 3px solid var(--border);
+      cursor: pointer;
+      color: #000;
+    }
+
+    .action-btn.edit {
+      background: #f7e48c;
+    }
+
+    .action-btn.delete {
+      background: #f44336;
+      color: #fff;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-weight: 600;
+      color: #fff;
+      font-size: 15px;
+      border: 3px solid var(--border);
+    }
+
+    .tag.violet { background: var(--violet-tag); }
+    .tag.blue { background: var(--blue-tag); }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.32);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1000;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #ffffff;
+      border: 3px solid var(--border);
+      width: min(920px, 95%);
+      padding: 16px 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+    }
+
+    .detail-title-box {
+      border: 3px solid var(--border);
+      padding: 8px 10px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .detail-description {
+      border: 3px solid var(--border);
+      padding: 16px;
+      min-height: 120px;
+      margin-top: 12px;
+      font-size: 15px;
+    }
+
+    .detail-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-self: flex-start;
+    }
+
+    .detail-pill {
+      border: 3px solid var(--border);
+      border-radius: 0;
+      padding: 10px 12px;
+      font-weight: 600;
+      min-width: 130px;
+      text-align: center;
+      color: #000;
+      cursor: pointer;
+    }
+
+    .detail-pill.assignees { background: var(--pink); }
+    .detail-pill.tags { background: var(--yellow); }
+    .detail-pill.milestone { background: var(--mint); }
+    .detail-pill.status { background: var(--teal); }
+
+    .add-comment {
+      margin: 16px 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border: 3px solid var(--border);
+      background: var(--green);
+      font-weight: 700;
+      cursor: pointer;
+      color: #000;
+    }
+
+    .comments {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .comment-card {
+      border: 3px solid var(--border);
+      padding: 12px;
+      background: #ffffff;
+    }
+
+    .comment-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .comment-body {
+      border: 2px solid var(--border);
+      padding: 10px;
+      font-size: 15px;
+      background: #fdfdfd;
+    }
+
+    .comment-delete {
+      border: 3px solid var(--border);
+      background: #f44336;
+      color: #fff;
+      padding: 6px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 999px;
+    }
+
+    @media (max-width: 800px) {
+      .canvas {
+        flex-direction: column;
+      }
+
+      aside {
+        flex-direction: row;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .filters {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>ISSUE CREATION UI</h1>
+
+    <div class="canvas">
+      <aside aria-label="Primary navigation">
+        <button class="nav-btn issues">Issues</button>
+        <button class="nav-btn milestones">Milestones</button>
+        <button class="nav-btn users">Users</button>
+        <button class="nav-btn databases">Databases</button>
+      </aside>
+
+      <main class="content">
+        <div class="filters">
+          <div class="state-group">
+            <button class="state-btn">Open (#)</button>
+            <button class="state-btn">Closed (#)</button>
+            <button class="state-btn">All (#)</button>
+          </div>
+          <button class="create">Create Issue</button>
+        </div>
+
+        <input
+          class="search"
+          type="text"
+          placeholder="Search for issue or by tags, milestone, or assigned user"
+          aria-label="Search for issue or by tags, milestone, or assigned user"
+        >
+
+        <div class="actions">
+          <button class="create" id="add-mock">Add mock issue</button>
+        </div>
+
+        <div class="issues-list" id="issues-list"></div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
