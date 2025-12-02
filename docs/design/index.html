@@ -106,6 +106,25 @@
       margin-bottom: 4px;
     }
 
+    .status-bar {
+      font-size: 14px;
+      color: #444;
+      padding: 6px 10px;
+      border: 2px dashed #999;
+      background: #f9f9f9;
+      display: none;
+    }
+
+    .status-bar.error {
+      color: #b00020;
+      border-color: #b00020;
+      background: #ffecec;
+    }
+
+    .status-bar.show {
+      display: block;
+    }
+
     .state-group {
       display: flex;
       border: 3px solid var(--border);
@@ -417,7 +436,7 @@
             <button class="state-btn">Closed (#)</button>
             <button class="state-btn">All (#)</button>
           </div>
-          <button class="create">Create Issue</button>
+          <button class="create" id="create-issue-btn">Create Issue</button>
         </div>
 
         <input
@@ -426,6 +445,8 @@
           placeholder="Search for issue or by tags, milestone, or assigned user"
           aria-label="Search for issue or by tags, milestone, or assigned user"
         >
+
+        <div id="load-status" class="status-bar"></div>
 
         <div class="actions">
           <button class="create" id="add-mock">Add mock issue</button>

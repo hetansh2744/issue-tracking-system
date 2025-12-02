@@ -2,6 +2,8 @@
 // Entry point helper that wires the HTTP router, controllers, and server.
 #include "Runner.hpp"
 
+#include "oatpp/web/server/interceptor/AllowCorsGlobal.hpp"
+
 void Runner::run() {
   // Pull shared components configured in AppComponent/SwaggerComponent.
   OATPP_COMPONENT(std::shared_ptr<oatpp::data::mapping::ObjectMapper>,
@@ -26,6 +28,11 @@ void Runner::run() {
 
   auto connectionHandler =
       oatpp::web::server::HttpConnectionHandler::createShared(router);
+  // Allow browser requests from other origins (dev UI on different port).
+  connectionHandler->addResponseInterceptor(
+      std::make_shared<oatpp::web::server::interceptor::AllowCorsGlobal>());
+  connectionHandler->addRequestInterceptor(
+      std::make_shared<oatpp::web::server::interceptor::AllowOptionsGlobal>());
 
   oatpp::network::Server server(m_tcpConnectionProvider, connectionHandler);
   server.run();

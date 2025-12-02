@@ -2,6 +2,7 @@ const issues = [
   {
     title: "Issue Title",
     id: "#1024",
+    rawId: 1024,
     database: "Database name",
     createdAt: "Creation Date",
     author: "Author",
@@ -18,6 +19,7 @@ const issues = [
   {
     title: "Fix login redirect loop",
     id: "#2048",
+    rawId: 2048,
     database: "Auth DB",
     createdAt: "2025-03-01",
     author: "A. Nash",
@@ -45,6 +47,7 @@ export const addMockIssue = () => {
   const newIssue = {
     title: "New mock issue",
     id: `#${idNum}`,
+    rawId: idNum,
     database: "New DB",
     createdAt: "Today",
     author: "You",
