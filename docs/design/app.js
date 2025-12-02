@@ -1,7 +1,7 @@
 import { getIssues, addMockIssue } from "./data.js";
 import { renderIssues } from "./issue.js";
 import { createModal } from "./modal.js";
-import { fetchIssues, fetchComments } from "./api.js";
+import { fetchIssues, fetchComments, fetchActiveDatabase } from "./api.js";
 
 const issuesListEl = document.getElementById("issues-list");
 const addMockBtn = document.getElementById("add-mock");
@@ -10,6 +10,7 @@ const statusEl = document.getElementById("load-status");
 
 const modal = createModal();
 let cachedIssues = [];
+let activeDatabase = undefined;
 
 const setStatus = (message, isError = false) => {
   if (!statusEl) return;
@@ -29,8 +30,13 @@ const renderAll = () => {
 
 const refreshFromApi = async () => {
   try {
-    cachedIssues = await fetchIssues();
-    setStatus(`Loaded ${cachedIssues.length} issue(s) from API.`);
+    activeDatabase = await fetchActiveDatabase();
+  } catch (err) {
+    console.error("Failed to load databases, continuing without:", err);
+  }
+  try {
+    cachedIssues = await fetchIssues(activeDatabase);
+    setStatus(`Loaded ${cachedIssues.length} issue(s) from API.${activeDatabase ? " Active DB: " + activeDatabase : ""}`);
   } catch (err) {
     console.error("Failed to load issues from API, using local data:", err);
     cachedIssues = getIssues();

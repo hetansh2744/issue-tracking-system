@@ -16,9 +16,21 @@ const handleResponse = async (res, path) => {
 
 const fmtDate = (value) => {
   if (value === undefined || value === null) return "Unknown date";
-  const date = new Date(Number(value));
+  const num = Number(value);
+  if (Number.isNaN(num)) return "Unknown date";
+  // createdAt is stored as chrono time since epoch (seconds or ms).
+  const date = new Date(num > 1e12 ? num : num * 1000);
   if (Number.isNaN(date.getTime())) return "Unknown date";
   return date.toLocaleDateString();
+};
+
+const pick = (obj, keys, fallback = undefined) => {
+  for (const k of keys) {
+    if (obj && obj[k] !== undefined && obj[k] !== null) {
+      return obj[k];
+    }
+  }
+  return fallback;
 };
 
 const mapTags = (tags) =>
@@ -27,18 +39,24 @@ const mapTags = (tags) =>
     color: t.color || "#49a3d8"
   }));
 
-const mapIssue = (dto) => ({
-  rawId: dto.id,
-  id: dto.id !== undefined && dto.id !== null ? `#${dto.id}` : "#?",
-  title: dto.title || "Untitled Issue",
-  database: dto.assignedTo || "Unassigned",
-  createdAt: fmtDate(dto.createdAt),
-  author: dto.authorId || "Unknown",
-  milestone: dto.status || "No status",
-  description: dto.description || "",
-  tags: mapTags(dto.tags),
-  comments: []
-});
+const mapIssue = (dto, activeDatabase) => {
+  const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
+  const authorRaw = pick(dto, ["authorId", "author_id"], "Author");
+  const statusRaw = pick(dto, ["status"], "Milestone");
+
+  return {
+    rawId: dto.id,
+    id: dto.id !== undefined && dto.id !== null ? `#${dto.id}` : "#?",
+    title: dto.title || "Untitled Issue",
+    database: activeDatabase || dto.assignedTo || pick(dto, ["database", "db"], "Database name"),
+    createdAt: fmtDate(createdAtRaw),
+    author: authorRaw,
+    milestone: statusRaw,
+    description: dto.description || "",
+    tags: mapTags(dto.tags),
+    comments: []
+  };
+};
 
 const mapComment = (dto) => ({
   author: dto.authorId || "Unknown",
@@ -46,11 +64,11 @@ const mapComment = (dto) => ({
   text: dto.text || ""
 });
 
-export const fetchIssues = async () => {
+export const fetchIssues = async (activeDatabase) => {
   const path = "/issues";
   const res = await fetch(`${apiBase()}${path}`);
   const json = await handleResponse(res, path);
-  return (json || []).map(mapIssue);
+  return (json || []).map((dto) => mapIssue(dto, activeDatabase));
 };
 
 export const fetchComments = async (issueId) => {
@@ -59,6 +77,17 @@ export const fetchComments = async (issueId) => {
   const res = await fetch(`${apiBase()}${path}`);
   const json = await handleResponse(res, path);
   return (json || []).map(mapComment);
+};
+
+export const fetchActiveDatabase = async () => {
+  const path = "/databases";
+  const res = await fetch(`${apiBase()}${path}`);
+  const json = await handleResponse(res, path);
+  if (!Array.isArray(json)) return undefined;
+  const active = json.find((db) => db.active === true);
+  if (active && active.name) return active.name;
+  const first = json.find((db) => db.name);
+  return first ? first.name : undefined;
 };
 
 export const setApiBase = (base) => {
