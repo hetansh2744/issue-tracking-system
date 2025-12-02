@@ -3,6 +3,7 @@
 
 #include "oatpp/core/macro/codegen.hpp"
 #include "oatpp/core/Types.hpp"
+#include "TagDto.hpp"
 
 #include OATPP_CODEGEN_BEGIN(DTO)
 class IssueDto : public oatpp::DTO {
@@ -16,7 +17,7 @@ class IssueDto : public oatpp::DTO {
   DTO_FIELD(oatpp::List<oatpp::Int32>, commentIds, "comment_ids");
   DTO_FIELD(oatpp::Int64, createdAt, "created_at");
   DTO_FIELD(oatpp::String, status);
-  DTO_FIELD(oatpp::List<oatpp::String>, tags);
+  DTO_FIELD(oatpp::List<oatpp::Object<TagDto>>, tags);
 };
 
 class IssueCreateDto : public oatpp::DTO {

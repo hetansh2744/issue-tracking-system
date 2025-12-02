@@ -7,7 +7,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <set>
+#include <map>
+#include "Tag.hpp"
 #include "Comment.hpp"
 
 /**
@@ -43,7 +44,7 @@ class Issue{
   std::vector<Comment> comments_; ///< stored Comment objects
 
   TimePoint created_at_{0}; ///< creation time; 0 => unknown
-  std::set<std::string> tags_;
+  std::map<std::string, std::string> tags_;  ///< name -> color
 
  public:
   /// @brief Default construct (id==0, empty fields).
@@ -285,32 +286,30 @@ class Issue{
   // ---------------------------
 
   /**
-   * @brief Add a tag to the issue.
-   * @param tag non-empty tag string
-   * @return true if the tag was newly added, false if it already existed
-   * @throws std::invalid_argument if tag is empty
+   * @brief Add or update a tag on the issue.
+   * @param tag Tag with name (required) and color.
+   * @return true if added or updated, false otherwise.
+   * @throws std::invalid_argument if name is empty
    */
-  bool addTag(const std::string &tag);
+  bool addTag(const Tag &tag);
 
   /**
-   * @brief Remove a tag from the issue.
-   * @param tag tag to remove
+   * @brief Remove a tag from the issue by name.
+   * @param tagName tag name to remove
    * @return true if the tag was removed, false if it did not exist
    */
-  bool removeTag(const std::string &tag);
+  bool removeTag(const std::string &tagName);
 
   /**
-   * @brief Check if the issue has a given tag.
-   * @param tag tag to check
-   * @return true if the tag exists on this issue
+   * @brief Check if the issue has a given tag by name.
    */
-  bool hasTag(const std::string &tag) const;
+  bool hasTag(const std::string &tagName) const;
 
   /**
    * @brief Get all tags on this issue.
-   * @return set of tags
+   * @return vector of Tag objects (deterministic order by name)
    */
-  std::set<std::string> getTags() const;
+  std::vector<Tag> getTags() const;
 };
 
 #endif // ISSUE_HPP_

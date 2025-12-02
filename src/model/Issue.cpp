@@ -194,21 +194,38 @@ bool Issue::removeCommentById(int id) {
   return removeComment(id);
 }
 
-bool Issue::addTag(const std::string& tag) {
-  if (tag.empty()) {
-    throw std::invalid_argument("tag must not be empty");
+bool Issue::addTag(const Tag& tag) {
+  if (tag.getName().empty()) {
+    throw std::invalid_argument("tag name must not be empty");
   }
-  return tags_.insert(tag).second;
+
+  auto it = tags_.find(tag.getName());
+  if (it == tags_.end()) {
+    tags_.emplace(tag.getName(), tag.getColor());
+    return true;  // brand new tag
+  }
+
+  if (it->second == tag.getColor()) {
+    return false;  // no change
+  }
+
+  it->second = tag.getColor();
+  return true;  // updated color
 }
 
-bool Issue::removeTag(const std::string& tag) {
-  return tags_.erase(tag) > 0;
+bool Issue::removeTag(const std::string& tagName) {
+  return tags_.erase(tagName) > 0;
 }
 
-bool Issue::hasTag(const std::string& tag) const {
-  return tags_.find(tag) != tags_.end();
+bool Issue::hasTag(const std::string& tagName) const {
+  return tags_.find(tagName) != tags_.end();
 }
 
-std::set<std::string> Issue::getTags() const {
-  return tags_;
+std::vector<Tag> Issue::getTags() const {
+  std::vector<Tag> result;
+  result.reserve(tags_.size());
+  for (const auto& [name, color] : tags_) {
+    result.emplace_back(name, color);
+  }
+  return result;
 }

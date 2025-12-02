@@ -324,7 +324,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: '#/components/schemas/Tag'
         '404':
           description: Issue not found
           content:
@@ -1028,6 +1028,8 @@ components:
         - tag
       properties:
         tag:
+          type: string
+        color:
           type: string
 
     Database:

@@ -9,6 +9,7 @@
 #include "Issue.hpp"
 #include "User.hpp"
 #include "Milestone.hpp"
+#include "Tag.hpp"
 
 /**
  * @brief Abstract repository interface for issue tracking data operations
@@ -47,7 +48,7 @@ class IssueRepository {
 
   /// Add a tag to an issue
   virtual bool addTagToIssue(int issueId,
-                             const std::string& tag);
+                             const Tag& tag);
 
   /// Remove a tag from an issue
   virtual bool removeTagFromIssue(int issueId,

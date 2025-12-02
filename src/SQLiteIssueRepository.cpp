@@ -131,6 +131,7 @@ void SQLiteIssueRepository::initializeSchema() {
       "CREATE TABLE IF NOT EXISTS issue_tags ("
       "issue_id INTEGER NOT NULL,"
       "tag TEXT NOT NULL,"
+      "color TEXT,"
       "PRIMARY KEY(issue_id, tag),"
       "FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE);",
 
@@ -165,6 +166,18 @@ void SQLiteIssueRepository::initializeSchema() {
     const std::string msg = e.what();
     // If the column already exists, SQLite will say something like
     // "duplicate column name: status". That is safe to ignore.
+    if (msg.find("duplicate column name") == std::string::npos) {
+      throw;
+    }
+  }
+
+  // Migration for issue_tags color column so tags can store a color value.
+  try {
+    execOrThrow(
+        "ALTER TABLE issue_tags "
+        "ADD COLUMN color TEXT;");
+  } catch (const std::runtime_error& e) {
+    const std::string msg = e.what();
     if (msg.find("duplicate column name") == std::string::npos) {
       throw;
     }
@@ -326,12 +339,13 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
   }
 
   forEachRow(
-      "SELECT tag FROM issue_tags WHERE issue_id = ?;",
+      "SELECT tag, color FROM issue_tags WHERE issue_id = ?;",
       [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); },
       [&issue](sqlite3_stmt* stmt) {
         std::string tag = columnText(stmt, 0);
+        std::string color = columnText(stmt, 1);
         if (!tag.empty()) {
-          issue.addTag(tag);
+          issue.addTag(Tag(tag, color));
         }
       });
   return issue;
@@ -440,9 +454,11 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
   for (const auto& tag : stored.getTags()) {
     SqliteStmt tagStmt(
         db_,
-        "INSERT INTO issue_tags (issue_id, tag) VALUES (?, ?);");
+        "INSERT INTO issue_tags (issue_id, tag, color) VALUES (?, ?, ?);");
     sqlite3_bind_int(tagStmt.get(), 1, stored.getId());
-    sqlite3_bind_text(tagStmt.get(), 2, tag.c_str(), -1,
+    sqlite3_bind_text(tagStmt.get(), 2, tag.getName().c_str(), -1,
+                      SQLITE_TRANSIENT);
+    sqlite3_bind_text(tagStmt.get(), 3, tag.getColor().c_str(), -1,
                       SQLITE_TRANSIENT);
     sqlite3_step(tagStmt.get());
   }
@@ -507,7 +523,7 @@ std::vector<Issue> SQLiteIssueRepository::listAllUnassigned() const {
 }
 
 bool SQLiteIssueRepository::addTagToIssue(
-    int issueId, const std::string& tag) {
+    int issueId, const Tag& tag) {
   return IssueRepository::addTagToIssue(issueId, tag);
 }
 

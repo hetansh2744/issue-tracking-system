@@ -214,15 +214,20 @@ TEST(IssueModel, RemoveCommentByIdRemovesObjectsAndIds) {
 TEST(IssueModel, TagLifecycleAndValidation) {
   Issue is{0, "u1", "T", 0};
 
-  EXPECT_TRUE(is.addTag("backend"));
-  EXPECT_FALSE(is.addTag("backend"));
+  EXPECT_TRUE(is.addTag(Tag("backend", "#123456")));
+  EXPECT_FALSE(is.addTag(Tag("backend", "#123456")));
+  EXPECT_TRUE(is.addTag(Tag("backend", "#abcdef")));  // color update
   EXPECT_TRUE(is.hasTag("backend"));
-  EXPECT_EQ(is.getTags().count("backend"), 1u);
+
+  const auto tags = is.getTags();
+  ASSERT_EQ(tags.size(), 1u);
+  EXPECT_EQ(tags.front().getName(), "backend");
+  EXPECT_EQ(tags.front().getColor(), "#abcdef");
 
   EXPECT_TRUE(is.removeTag("backend"));
   EXPECT_FALSE(is.hasTag("backend"));
   EXPECT_FALSE(is.removeTag("backend"));
-  EXPECT_THROW(is.addTag(""), std::invalid_argument);
+  EXPECT_THROW(is.addTag(Tag("", "")), std::invalid_argument);
 }
 
 TEST(IssueModel, TimestampRejectsNegativeValues) {

@@ -20,7 +20,7 @@ std::vector<Issue> IssueRepository::listAllUnassigned() const {
 }
 
 bool IssueRepository::addTagToIssue(int issueId,
-  const std::string& tag) {
+  const Tag& tag) {
   Issue issue = getIssue(issueId);
   bool added = issue.addTag(tag);
   saveIssue(issue);

@@ -379,7 +379,7 @@ std::vector<User> IssueTrackerController::listAllUsers() {
 }
 
 bool IssueTrackerController::addTagToIssue(int issueId,
-                                           const std::string& tag) {
+                                           const Tag& tag) {
   try {
     return repo->addTagToIssue(issueId, tag);
   } catch (...) {

@@ -107,7 +107,7 @@ class IssueService {
     return controller_.listAllUsers();
   }
 
-  bool addTagToIssue(int issueId, const std::string& tag) {
+  bool addTagToIssue(int issueId, const Tag& tag) {
     return controller_.addTagToIssue(issueId, tag);
   }
   std::vector<Issue> findIssuesByTag(const std::string& tag) {

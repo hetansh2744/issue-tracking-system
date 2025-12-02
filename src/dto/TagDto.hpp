@@ -10,6 +10,7 @@ class TagDto : public oatpp::DTO {
   DTO_INIT(TagDto, DTO)
 
   DTO_FIELD(oatpp::String, tag);
+  DTO_FIELD(oatpp::String, color);
 };
 
 #include OATPP_CODEGEN_END(DTO)

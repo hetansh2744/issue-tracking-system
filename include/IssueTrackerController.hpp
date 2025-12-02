@@ -219,7 +219,7 @@ class IssueTrackerController {
    */
   virtual std::vector<User> listAllUsers();
 
-  bool addTagToIssue(int issueId, const std::string& tag);
+  bool addTagToIssue(int issueId, const Tag& tag);
 
   bool removeTagFromIssue(int issueId, const std::string& tag);
   Milestone createMilestone(const std::string& name, const std::string& desc,

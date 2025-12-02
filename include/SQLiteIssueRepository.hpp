@@ -57,7 +57,7 @@ class SQLiteIssueRepository : public IssueRepository {
       const std::string& userId) const override;
 
   // ---- Tag operations ----
-  bool addTagToIssue(int issueId, const std::string& tag) override;
+  bool addTagToIssue(int issueId, const Tag& tag) override;
   bool removeTagFromIssue(int issueId, const std::string& tag) override;
 
   // ---- Comment operations ----

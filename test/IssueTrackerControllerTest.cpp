@@ -21,7 +21,7 @@ class MockIssueRepository : public IssueRepository {
               (const, override));
   MOCK_METHOD(std::vector<Issue>, listAllUnassigned, (), (const, override));
 
-  MOCK_METHOD(bool, addTagToIssue, (int issueId, const std::string& tag),
+  MOCK_METHOD(bool, addTagToIssue, (int issueId, const Tag& tag),
               (override));
   MOCK_METHOD(bool, removeTagFromIssue, (int issueId, const std::string& tag),
               (override));
@@ -550,13 +550,16 @@ TEST(IssueTrackerControllerTest, DeleteCommentReturnsFalseWhenRepoRefuses) {
 TEST(IssueTrackerControllerTest, TagOperationsPropagateToRepository) {
   MockIssueRepository mockRepo;
 
-  EXPECT_CALL(mockRepo, addTagToIssue(4, "bug"))
+  EXPECT_CALL(mockRepo, addTagToIssue(
+                           4, testing::Truly([](const Tag& t) {
+                             return t.getName() == "bug" && t.getColor().empty();
+                           })))
       .WillOnce(testing::Return(true));
   EXPECT_CALL(mockRepo, removeTagFromIssue(4, "bug"))
       .WillOnce(testing::Throw(std::runtime_error("db failure")));
 
   IssueTrackerController controller(&mockRepo);
-  EXPECT_TRUE(controller.addTagToIssue(4, "bug"));
+  EXPECT_TRUE(controller.addTagToIssue(4, Tag("bug", "")));
   EXPECT_FALSE(controller.removeTagFromIssue(4, "bug"));
 }
 
@@ -591,7 +594,7 @@ class IssueTrackerControllerIntegrationTest : public ::testing::Test {
 
 TEST_F(IssueTrackerControllerIntegrationTest, FiltersByStatusAndTags) {
   Issue done = controller->createIssue("Done item", "desc", "owner");
-  controller->addTagToIssue(done.getId(), "backend");
+  controller->addTagToIssue(done.getId(), Tag("backend", "#000000"));
   controller->updateIssueField(done.getId(), "status", "Done");
 
   controller->createIssue("Todo item", "", "owner");

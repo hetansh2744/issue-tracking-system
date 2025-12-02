@@ -126,9 +126,12 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     }
     dto->commentIds = ids;
 
-    auto tags = oatpp::List<oatpp::String>::createShared();
+    auto tags = oatpp::List<oatpp::Object<TagDto>>::createShared();
     for (const auto& t : i.getTags()) {
-      tags->push_back(t.c_str());
+      auto tagDto = TagDto::createShared();
+      tagDto->tag = t.getName().c_str();
+      tagDto->color = t.getColor().c_str();
+      tags->push_back(tagDto);
     }
     dto->tags = tags;
 
@@ -590,7 +593,10 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
                    "Missing tag");
     }
 
-    bool ok = issues().addTagToIssue(id, tag);
+    const std::string color =
+        body->color ? asStdString(body->color) : std::string();
+
+    bool ok = issues().addTagToIssue(id, Tag(tag, color));
 
     return ok ? createResponse(Status::CODE_201, "Tag added")
               : error(Status::CODE_400,
@@ -631,7 +637,7 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
 
   ENDPOINT_INFO(listTags) {
     info->summary = "List tags for an issue";
-    info->addResponse<List<String>>(Status::CODE_200, "application/json");
+    info->addResponse<List<Object<TagDto>>>(Status::CODE_200, "application/json");
     info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
                                         "Issue not found");
   }
@@ -639,9 +645,12 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     try {
       Issue issue = issues().getIssue(id);
 
-      auto list = oatpp::List<oatpp::String>::createShared();
+      auto list = oatpp::List<oatpp::Object<TagDto>>::createShared();
       for (const auto& tag : issue.getTags()) {
-        list->push_back(tag.c_str());
+        auto dto = TagDto::createShared();
+        dto->tag = tag.getName().c_str();
+        dto->color = tag.getColor().c_str();
+        list->push_back(dto);
       }
 
       return createDtoResponse(Status::CODE_200, list);
