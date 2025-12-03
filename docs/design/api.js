@@ -17,6 +17,13 @@ const handleResponse = async (res, path) => {
 
 const fmtDate = (value) => {
   if (value === undefined || value === null) return "Unknown date";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "Unknown date";
+    const asNum = Number(trimmed);
+    if (Number.isNaN(asNum)) return trimmed;
+    value = asNum;
+  }
   const num = Number(value);
   if (Number.isNaN(num)) return "Unknown date";
   // createdAt is stored as chrono time since epoch (seconds or ms).
@@ -47,13 +54,16 @@ export const setActiveDatabaseName = (name) => {
 export const getActiveDatabaseName = () => activeDatabaseName;
 
 export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
+  const rawIdStr = dto && dto.id !== undefined && dto.id !== null ? `${dto.id}` : "";
+  const numericId = Number(rawIdStr.replace(/^#/, ""));
+  const rawId = Number.isNaN(numericId) ? rawIdStr : numericId;
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
-  const authorRaw = pick(dto, ["authorId", "author_id"], "Author");
+  const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");
 
   return {
-    rawId: dto.id,
-    id: dto.id !== undefined && dto.id !== null ? `#${dto.id}` : "#?",
+    rawId,
+    id: rawId !== undefined && rawId !== null && rawId !== "" ? `#${rawId}` : "#?",
     title: dto.title || "Untitled Issue",
     database: activeDatabase || dto.assignedTo || pick(dto, ["database", "db"], "Database name"),
     createdAt: fmtDate(createdAtRaw),
@@ -104,8 +114,22 @@ export const setApiBase = (base) => {
   localStorage.setItem("API_BASE", base);
 };
 
+const normalizeIssueId = (issueId) => {
+  if (issueId === undefined || issueId === null) {
+    throw new Error("Missing issue id");
+  }
+  if (typeof issueId === "string") {
+    const cleaned = issueId.startsWith("#") ? issueId.slice(1) : issueId;
+    const asNum = Number(cleaned);
+    if (!Number.isNaN(asNum)) return asNum;
+    return cleaned;
+  }
+  return issueId;
+};
+
 const patchIssueField = async (issueId, field, value) => {
-  const path = `/issues/${issueId}`;
+  const id = normalizeIssueId(issueId);
+  const path = `/issues/${id}`;
   const res = await fetch(`${apiBase()}${path}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -118,18 +142,16 @@ const patchIssueField = async (issueId, field, value) => {
 };
 
 export const patchIssueFields = async (issueId, updates = {}) => {
-  if (issueId === undefined || issueId === null) {
-    throw new Error("Cannot patch issue without an id");
-  }
+  const id = normalizeIssueId(issueId);
   const tasks = [];
   if (updates.title !== undefined) {
-    tasks.push(patchIssueField(issueId, "title", updates.title));
+    tasks.push(patchIssueField(id, "title", updates.title));
   }
   if (updates.description !== undefined) {
-    tasks.push(patchIssueField(issueId, "description", updates.description));
+    tasks.push(patchIssueField(id, "description", updates.description));
   }
   if (updates.status !== undefined) {
-    tasks.push(patchIssueField(issueId, "status", updates.status));
+    tasks.push(patchIssueField(id, "status", updates.status));
   }
 
   for (const task of tasks) {
@@ -170,6 +192,18 @@ export const createIssue = async ({ title, description, authorId }) => {
   return mapIssue(created);
 };
 
+export const deleteIssue = async (issueId) => {
+  const id = normalizeIssueId(issueId);
+  const path = `/issues/${id}`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "DELETE"
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${text}`);
+  }
+};
+
 export const apiClient = {
   setActiveDatabaseName,
   getActiveDatabaseName,
@@ -180,5 +214,6 @@ export const apiClient = {
   fetchUsers,
   createUser,
   createIssue,
-  patchIssueFields
+  patchIssueFields,
+  deleteIssue
 };

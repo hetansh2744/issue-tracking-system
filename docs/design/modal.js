@@ -96,11 +96,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       });
 
       const currentAuthor = workingIssue.author || workingIssue.authorId;
-      if (currentAuthor) {
-        select.value = currentAuthor;
-      } else {
-        workingIssue.author = users[0].name || users[0].id || users[0];
-      }
+      const defaultAuthor = users[0].name || users[0].id || users[0];
+      const resolvedAuthor = currentAuthor || defaultAuthor;
+      workingIssue.author = resolvedAuthor;
+      select.value = resolvedAuthor;
 
       select.addEventListener("change", (evt) => {
         workingIssue.author = evt.target.value;
@@ -219,6 +218,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     modal.dataset.issueId = issue.rawId ?? "";
     currentIssue = { ...issue };
     workingIssue = { ...issue };
+    if (!workingIssue.database) {
+      workingIssue.database =
+        (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
+    }
     fillView(modal, workingIssue);
     bindEditHandlers(modal);
     modal.querySelector(".modal-close").addEventListener("click", () => {
@@ -257,6 +260,7 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
         workingIssue = {
           ...workingIssue,
           ...mapped,
+          rawId: Number(mapped.rawId ?? mapped.id ?? workingIssue.rawId),
           database: mapped.database || dbName,
           author: mapped.author || workingIssue.author
         };

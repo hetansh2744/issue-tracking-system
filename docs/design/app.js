@@ -14,6 +14,11 @@ const modal = createModal({
     if (!normalized.database) {
       normalized.database = apiClient.getActiveDatabaseName();
     }
+    if (normalized.rawId === undefined || normalized.rawId === null) {
+      const cleanId = Number((normalized.id || "").toString().replace(/^#/, ""));
+      normalized.rawId = Number.isNaN(cleanId) ? normalized.id : cleanId;
+      normalized.id = normalized.rawId ? `#${normalized.rawId}` : normalized.id;
+    }
     const idx = cachedIssues.findIndex((issue) => issue.rawId === normalized.rawId);
     if (idx >= 0) {
       cachedIssues[idx] = { ...cachedIssues[idx], ...normalized };
@@ -39,7 +44,8 @@ const renderAll = () => {
     container: issuesListEl,
     issues: cachedIssues,
     onOpen: (issue) => openIssueDetail(issue),
-    onEdit: (issue) => modal.openEdit(issue)
+    onEdit: (issue) => modal.openEdit(issue),
+    onDelete: (issue) => handleDelete(issue)
   });
 };
 
@@ -81,5 +87,21 @@ addMockBtn.addEventListener("click", () => {
 createIssueBtn.addEventListener("click", () => {
   modal.openCreate();
 });
+
+const handleDelete = async (issue) => {
+  if (!issue || issue.rawId === undefined || issue.rawId === null) {
+    setStatus("Cannot delete: missing issue id.", true);
+    return;
+  }
+  try {
+    await apiClient.deleteIssue(issue.rawId);
+    cachedIssues = cachedIssues.filter((i) => i.rawId !== issue.rawId);
+    renderAll();
+    setStatus(`Deleted issue #${issue.rawId}.`, false);
+  } catch (err) {
+    console.error("Failed to delete issue:", err);
+    setStatus(err.message || "Failed to delete issue.", true);
+  }
+};
 
 refreshFromApi();

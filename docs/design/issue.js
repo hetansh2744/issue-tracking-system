@@ -4,7 +4,7 @@ import {
   actionButtonTemplate
 } from "./templates.js";
 
-export const renderIssues = ({ container, issues, onOpen, onEdit }) => {
+export const renderIssues = ({ container, issues, onOpen, onEdit, onDelete }) => {
   const fragment = document.createDocumentFragment();
 
   issues.forEach((issue) => {
@@ -33,7 +33,7 @@ export const renderIssues = ({ container, issues, onOpen, onEdit }) => {
     const deleteBtn = actionButtonTemplate("Delete", "delete");
     deleteBtn.addEventListener("click", (evt) => {
       evt.stopPropagation();
-      // Delete hook can be wired later; for now just stop propagation.
+      onDelete && onDelete(issue);
     });
     actionsWrap.appendChild(deleteBtn);
 
