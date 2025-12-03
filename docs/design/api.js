@@ -47,6 +47,18 @@ const mapTags = (tags) =>
     color: t.color || "#49a3d8"
   }));
 
+const mapComment = (dto = {}) => {
+  const author = pick(dto, ["author", "authorId", "author_id"], "Unknown");
+  const date = pick(dto, ["timestamp", "date"]);
+  const idRaw = pick(dto, ["id", "commentId", "comment_id"]);
+  return {
+    id: idRaw,
+    author: author || "Unknown",
+    date: fmtDate(date),
+    text: dto.text || dto.body || ""
+  };
+};
+
 export const setActiveDatabaseName = (name) => {
   activeDatabaseName = name || undefined;
 };
@@ -64,6 +76,7 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");
+  const commentsRaw = Array.isArray(dto?.comments) ? dto.comments.map(mapComment) : [];
 
   return {
     rawId,
@@ -76,15 +89,9 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
     status: statusRaw,
     description: dto.description || "",
     tags: mapTags(dto.tags),
-    comments: []
+    comments: commentsRaw
   };
 };
-
-const mapComment = (dto) => ({
-  author: dto.authorId || "Unknown",
-  date: fmtDate(dto.timestamp),
-  text: dto.text || ""
-});
 
 export const fetchIssues = async (activeDatabase) => {
   const path = "/issues";
@@ -96,7 +103,7 @@ export const fetchIssues = async (activeDatabase) => {
 
 export const fetchComments = async (issueId) => {
   if (issueId === undefined || issueId === null) return [];
-  const path = `/issues/${issueId}/comments`;
+  const path = `/issues/${normalizeIssueId(issueId)}/comments`;
   const res = await fetch(`${apiBase()}${path}`);
   const json = await handleResponse(res, path);
   return (json || []).map(mapComment);
@@ -163,6 +170,53 @@ export const patchIssueFields = async (issueId, updates = {}) => {
   }
 };
 
+export const createComment = async (issueId, { text, authorId }) => {
+  const id = normalizeIssueId(issueId);
+  const trimmed = (text || "").trim();
+  const author = (authorId || "").toString().trim();
+  if (!trimmed) throw new Error("Comment text is required.");
+  if (!author) throw new Error("Author is required to add a comment.");
+
+  const path = `/issues/${id}/comments`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: trimmed, authorId: author, author_id: author })
+  });
+  const json = await handleResponse(res, path);
+  return mapComment(json);
+};
+
+export const updateComment = async (issueId, commentId, text) => {
+  const id = normalizeIssueId(issueId);
+  const comment = normalizeIssueId(commentId);
+  const trimmed = (text || "").trim();
+  if (!trimmed) throw new Error("Comment text is required.");
+
+  const path = `/issues/${id}/comments/${comment}`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: trimmed })
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${body}`);
+  }
+  return trimmed;
+};
+
+export const deleteComment = async (issueId, commentId) => {
+  const id = normalizeIssueId(issueId);
+  const comment = normalizeIssueId(commentId);
+  const path = `/issues/${id}/comments/${comment}`;
+  const res = await fetch(`${apiBase()}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${body}`);
+  }
+};
+
 export const fetchUsers = async () => {
   const path = "/users";
   const res = await fetch(`${apiBase()}${path}`);
@@ -214,6 +268,9 @@ export const apiClient = {
   mapIssue,
   fetchIssues,
   fetchComments,
+  createComment,
+  updateComment,
+  deleteComment,
   fetchActiveDatabase,
   fetchUsers,
   createUser,

@@ -61,6 +61,7 @@ export const modalTemplate = () =>
         <div class="detail-sidebar" data-role="sidebar"></div>
       </div>
       <button type="button" class="add-comment">Add Comment</button>
+      <div data-role="comment-form-region"></div>
       <div class="comments" data-role="comments"></div>
     </div>
   `);
@@ -84,8 +85,29 @@ export const commentCardTemplate = (comment) => {
       <div class="comment-body"></div>
     </div>
   `);
+  if (comment.id !== undefined && comment.id !== null) {
+    el.dataset.commentId = comment.id;
+  }
   el.querySelector(".comment-meta").textContent =
     `${comment.author} · ${comment.date}`;
   el.querySelector(".comment-body").textContent = comment.text;
   return el;
 };
+
+export const commentFormTemplate = () =>
+  htmlToElement(`
+    <form class="comment-form" data-role="comment-form">
+      <label>
+        <span>Author</span>
+        <select data-field="comment-author"></select>
+      </label>
+      <label>
+        <span>Comment</span>
+        <textarea data-field="comment-text" rows="3" placeholder="Add a comment"></textarea>
+      </label>
+      <div class="comment-actions">
+        <button type="submit" class="comment-submit">Post Comment</button>
+        <button type="button" class="comment-cancel" data-role="cancel-comment">Cancel</button>
+      </div>
+    </form>
+  `);

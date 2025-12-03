@@ -386,6 +386,55 @@
       color: #000;
     }
 
+    .comment-form {
+      border: 3px dashed var(--border);
+      padding: 12px;
+      margin: 0 0 12px;
+      background: #f6fff6;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .comment-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .comment-form select,
+    .comment-form textarea {
+      border: 2px solid var(--border);
+      border-radius: 0;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .comment-form textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .comment-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .comment-submit,
+    .comment-cancel {
+      border: 3px solid var(--border);
+      font-weight: 700;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .comment-submit { background: var(--green); }
+    .comment-cancel { background: #f2f2f2; }
+
     .comments {
       display: flex;
       flex-direction: column;
@@ -411,6 +460,12 @@
       padding: 10px;
       font-size: 15px;
       background: #fdfdfd;
+      cursor: text;
+    }
+
+    .comment-body.editing-inline {
+      outline: 2px dashed var(--blue);
+      background: #eef7ff;
     }
 
     .comment-delete {

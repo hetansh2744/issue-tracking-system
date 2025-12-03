@@ -1,7 +1,7 @@
 import { getIssues, addMockIssue } from "./data.js";
 import { renderIssues } from "./issue.js";
 import { createModal } from "./modal.js";
-import { apiClient } from "./api.js";
+import { apiClient, fetchComments } from "./api.js";
 
 const issuesListEl = document.getElementById("issues-list");
 const addMockBtn = document.getElementById("add-mock");

@@ -2,7 +2,8 @@ import {
   modalBackdropTemplate,
   modalTemplate,
   pillTemplate,
-  commentCardTemplate
+  commentCardTemplate,
+  commentFormTemplate
 } from "./templates.js";
 import { patchIssueFields, fetchUsers, createIssue, mapIssue, apiClient } from "./api.js";
 
@@ -42,6 +43,162 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     box.classList.toggle("error", isError);
   };
 
+  const startCommentInlineEdit = (modal, bodyEl, comment, index) => {
+    if (!bodyEl || !comment) return;
+    const original = comment.text || "";
+
+    bodyEl.contentEditable = "true";
+    bodyEl.classList.add("editing-inline");
+    setStatus(modal, "Editing comment. Ctrl+Enter to save, Esc to cancel.");
+
+    const selectAll = () => {
+      const range = document.createRange();
+      range.selectNodeContents(bodyEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    selectAll();
+
+    const cleanup = () => {
+      bodyEl.contentEditable = "false";
+      bodyEl.classList.remove("editing-inline");
+      bodyEl.removeEventListener("keydown", onKeyDown);
+      bodyEl.removeEventListener("blur", onBlur);
+    };
+
+    const cancel = () => {
+      bodyEl.textContent = original;
+      cleanup();
+      setStatus(modal, "");
+    };
+
+    const save = async () => {
+      const next = bodyEl.textContent.trim();
+      if (next.length === 0) {
+        setStatus(modal, "Comment cannot be empty.", true);
+        bodyEl.focus();
+        return;
+      }
+      if (next === original) {
+        cancel();
+        return;
+      }
+
+      const addBtn = modal.querySelector(".add-comment");
+      if (addBtn) addBtn.disabled = true;
+
+      try {
+        setStatus(modal, "Saving comment...");
+        if (comment.id !== undefined && comment.id !== null && workingIssue?.rawId !== undefined && workingIssue?.rawId !== null) {
+          await apiClient.updateComment(workingIssue.rawId, comment.id, next);
+        }
+        const nextComments = (workingIssue.comments || []).map((c, i) => {
+          const matchesById =
+            c.id !== undefined && c.id !== null &&
+            comment.id !== undefined && comment.id !== null &&
+            c.id === comment.id;
+          if (matchesById || i === index) {
+            return { ...c, text: next };
+          }
+          return c;
+        });
+        workingIssue = { ...workingIssue, comments: nextComments };
+        currentIssue = { ...workingIssue };
+        renderComments(modal, workingIssue);
+        setStatus(modal, "Comment saved.");
+        if (onIssueUpdated) {
+          onIssueUpdated(workingIssue);
+        }
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to save comment.", true);
+      } finally {
+        cleanup();
+        if (addBtn) addBtn.disabled = false;
+      }
+    };
+
+    const onKeyDown = (evt) => {
+      if (evt.key === "Escape") {
+        evt.preventDefault();
+        cancel();
+      } else if (evt.key === "Enter" && (evt.ctrlKey || evt.metaKey)) {
+        evt.preventDefault();
+        bodyEl.blur();
+      }
+    };
+
+    const onBlur = () => {
+      void save();
+    };
+
+    bodyEl.addEventListener("keydown", onKeyDown);
+    bodyEl.addEventListener("blur", onBlur, { once: true });
+  };
+
+  const handleDeleteComment = async (modal, comment, index) => {
+    if (!workingIssue || workingIssue.rawId === undefined || workingIssue.rawId === null) {
+      setStatus(modal, "Save the issue before deleting comments.", true);
+      return;
+    }
+
+    const addBtn = modal.querySelector(".add-comment");
+    if (addBtn) addBtn.disabled = true;
+
+    try {
+      if (comment.id !== undefined && comment.id !== null) {
+        setStatus(modal, "Deleting comment...");
+        await apiClient.deleteComment(workingIssue.rawId, comment.id);
+      } else {
+        setStatus(modal, "Removing comment locally (no id).");
+      }
+      const nextComments = (workingIssue.comments || []).filter((c, i) => {
+        const matchesById =
+          c.id !== undefined && c.id !== null &&
+          comment.id !== undefined && comment.id !== null &&
+          c.id === comment.id;
+        return !(matchesById || i === index);
+      });
+      workingIssue = { ...workingIssue, comments: nextComments };
+      currentIssue = { ...workingIssue };
+      renderComments(modal, workingIssue);
+      setStatus(modal, "Comment deleted.");
+      if (onIssueUpdated) {
+        onIssueUpdated(workingIssue);
+      }
+    } catch (err) {
+      setStatus(modal, err.message || "Failed to delete comment.", true);
+    } finally {
+      if (addBtn) addBtn.disabled = false;
+    }
+  };
+
+  const renderComments = (modal, issue) => {
+    const commentsWrap = modal.querySelector('[data-role="comments"]');
+    if (!commentsWrap) return;
+    commentsWrap.replaceChildren();
+    (issue.comments || []).forEach((comment, idx) => {
+      const card = commentCardTemplate(comment);
+      const body = card.querySelector(".comment-body");
+      const deleteBtn = card.querySelector(".comment-delete");
+      body?.addEventListener("dblclick", () => {
+        startCommentInlineEdit(modal, body, comment, idx);
+      });
+      deleteBtn?.addEventListener("click", (evt) => {
+        evt.preventDefault();
+        void handleDeleteComment(modal, comment, idx);
+      });
+      commentsWrap.appendChild(card);
+    });
+  };
+
+  const loadUsers = async () => {
+    if (usersCache) return usersCache;
+    const users = await fetchUsers();
+    usersCache = users;
+    return users;
+  };
+
   const fillView = (modal, issue) => {
     const heading = issue.id ? `${issue.title} (${issue.id})` : issue.title || "Issue";
     setText(modal.querySelector('[data-field="heading"]'), heading, "Issue");
@@ -60,12 +217,7 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       el.textContent = value ? `${pill.label}: ${value}` : pill.label;
       sidebar.appendChild(el);
     });
-
-    const commentsWrap = modal.querySelector('[data-role="comments"]');
-    commentsWrap.replaceChildren();
-    (issue.comments || []).forEach((comment) => {
-      commentsWrap.appendChild(commentCardTemplate(comment));
-    });
+    renderComments(modal, issue);
   };
 
   const bindEditHandlers = (modal) => {
@@ -198,19 +350,130 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     descriptionBox?.addEventListener("dblclick", startDescEdit);
 
     // hydrate author selector once users are loaded
-    if (usersCache) {
-      populateAuthor(usersCache);
-    } else {
-      fetchUsers()
-        .then((users) => {
-          usersCache = users;
-          populateAuthor(users);
-        })
-        .catch((err) => {
-          authorWrap.textContent = err.message || "Failed to load users.";
-          authorWrap.classList.add("error");
-        });
+    loadUsers()
+      .then((users) => {
+        populateAuthor(users);
+      })
+      .catch((err) => {
+        authorWrap.textContent = err.message || "Failed to load users.";
+        authorWrap.classList.add("error");
+      });
+  };
+
+  const openCommentForm = async (modal) => {
+    if (!workingIssue || workingIssue.rawId === undefined || workingIssue.rawId === null) {
+      setStatus(modal, "Save the issue before adding comments.", true);
+      return;
     }
+
+    const existing = modal.querySelector('[data-role="comment-form"]');
+    if (existing) {
+      existing.querySelector('[data-field="comment-text"]')?.focus();
+      return;
+    }
+
+    const form = commentFormTemplate();
+    const authorSelect = form.querySelector('[data-field="comment-author"]');
+    const textArea = form.querySelector('[data-field="comment-text"]');
+    const cancelBtn = form.querySelector('[data-role="cancel-comment"]');
+    const region = modal.querySelector('[data-role="comment-form-region"]');
+
+    const populateAuthors = (users) => {
+      if (!authorSelect) return;
+      authorSelect.innerHTML = "";
+
+      if (!Array.isArray(users) || users.length === 0) {
+        const fallback = workingIssue.author || workingIssue.authorId || "Author";
+        const opt = document.createElement("option");
+        opt.value = fallback;
+        opt.textContent = fallback;
+        authorSelect.appendChild(opt);
+        return fallback;
+      }
+
+      users.forEach((u) => {
+        const name = u.name || u.id || u;
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        authorSelect.appendChild(opt);
+      });
+
+      const preferred = workingIssue.author || workingIssue.authorId;
+      const defaultAuthor = users[0].name || users[0].id || users[0];
+      const resolved = preferred || defaultAuthor;
+      authorSelect.value = resolved;
+      return resolved;
+    };
+
+    populateAuthors(usersCache || [workingIssue.author || workingIssue.authorId || "Author"]);
+    loadUsers()
+      .then((users) => {
+        populateAuthors(users);
+      })
+      .catch((err) => {
+        populateAuthors([]);
+        setStatus(modal, err.message || "Failed to load users; using fallback author.", true);
+      });
+
+    const onSubmit = async (evt) => {
+      evt.preventDefault();
+      const text = (textArea?.value || "").trim();
+      const authorId = (authorSelect?.value || "").trim();
+      if (!text) {
+        setStatus(modal, "Comment cannot be empty.", true);
+        textArea?.focus();
+        return;
+      }
+      if (!authorId) {
+        setStatus(modal, "Author is required for comments.", true);
+        authorSelect?.focus();
+        return;
+      }
+
+      const addBtn = modal.querySelector(".add-comment");
+      if (addBtn) addBtn.disabled = true;
+
+      try {
+        setStatus(modal, "Posting comment...");
+        const comment = await apiClient.createComment(workingIssue.rawId, { text, authorId });
+        const nextComments = [...(workingIssue.comments || []), comment];
+        workingIssue = { ...workingIssue, comments: nextComments };
+        currentIssue = { ...workingIssue };
+        renderComments(modal, workingIssue);
+        if (region) {
+          region.replaceChildren();
+        } else {
+          form.remove();
+        }
+        setStatus(modal, "Comment added.");
+        if (onIssueUpdated) {
+          onIssueUpdated(workingIssue);
+        }
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to add comment.", true);
+      } finally {
+        if (addBtn) addBtn.disabled = false;
+      }
+    };
+
+    form.addEventListener("submit", onSubmit);
+    cancelBtn?.addEventListener("click", (evt) => {
+      evt.preventDefault();
+      if (region) {
+        region.replaceChildren();
+      } else {
+        form.remove();
+      }
+      setStatus(modal, "");
+    });
+
+    if (region) {
+      region.replaceChildren(form);
+    } else {
+      modal.appendChild(form);
+    }
+    textArea?.focus();
   };
 
   const buildDetail = (issue) => {
@@ -224,6 +487,9 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     }
     fillView(modal, workingIssue);
     bindEditHandlers(modal);
+    modal.querySelector(".add-comment")?.addEventListener("click", () => {
+      void openCommentForm(modal);
+    });
     const cancelBtn = modal.querySelector('[data-role="cancel-modal"]');
     cancelBtn?.addEventListener("click", () => {
       void close(true);  // discard any changes
