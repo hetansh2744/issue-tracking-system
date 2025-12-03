@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE = "http://localhost:8600";
+let activeDatabaseName;
 
 const apiBase = () => {
   if (window.API_BASE) return window.API_BASE;
@@ -39,7 +40,13 @@ const mapTags = (tags) =>
     color: t.color || "#49a3d8"
   }));
 
-export const mapIssue = (dto, activeDatabase) => {
+export const setActiveDatabaseName = (name) => {
+  activeDatabaseName = name || undefined;
+};
+
+export const getActiveDatabaseName = () => activeDatabaseName;
+
+export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");
@@ -69,7 +76,8 @@ export const fetchIssues = async (activeDatabase) => {
   const path = "/issues";
   const res = await fetch(`${apiBase()}${path}`);
   const json = await handleResponse(res, path);
-  return (json || []).map((dto) => mapIssue(dto, activeDatabase));
+  const db = activeDatabase || activeDatabaseName;
+  return (json || []).map((dto) => mapIssue(dto, db));
 };
 
 export const fetchComments = async (issueId) => {
@@ -86,9 +94,10 @@ export const fetchActiveDatabase = async () => {
   const json = await handleResponse(res, path);
   if (!Array.isArray(json)) return undefined;
   const active = json.find((db) => db.active === true);
-  if (active && active.name) return active.name;
   const first = json.find((db) => db.name);
-  return first ? first.name : undefined;
+  const resolved = (active && active.name) || (first && first.name) || undefined;
+  setActiveDatabaseName(resolved);
+  return resolved;
 };
 
 export const setApiBase = (base) => {
@@ -157,5 +166,19 @@ export const createIssue = async ({ title, description, authorId }) => {
       author_id: authorId
     })
   });
-  return handleResponse(res, path);
+  const created = await handleResponse(res, path);
+  return mapIssue(created);
+};
+
+export const apiClient = {
+  setActiveDatabaseName,
+  getActiveDatabaseName,
+  mapIssue,
+  fetchIssues,
+  fetchComments,
+  fetchActiveDatabase,
+  fetchUsers,
+  createUser,
+  createIssue,
+  patchIssueFields
 };

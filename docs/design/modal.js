@@ -4,7 +4,7 @@ import {
   pillTemplate,
   commentCardTemplate
 } from "./templates.js";
-import { patchIssueFields, fetchUsers, createIssue, createUser, mapIssue } from "./api.js";
+import { patchIssueFields, fetchUsers, createIssue, mapIssue, apiClient } from "./api.js";
 
 const pillConfig = [
   { label: "Assignees", className: "assignees", value: (issue) => issue.assignedTo || "" },
@@ -31,27 +31,9 @@ const emptyIssue = {
 export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
   const backdrop = modalBackdropTemplate();
   document.body.appendChild(backdrop);
-  let cachedDefaultAuthor = null;
   let currentIssue = null;
   let workingIssue = null;
-
-  const resolveDefaultAuthor = async () => {
-    if (cachedDefaultAuthor) return cachedDefaultAuthor;
-    const users = await fetchUsers();
-    if (Array.isArray(users) && users.length > 0) {
-      // TODO: let the user choose an author instead of defaulting to the first.
-      cachedDefaultAuthor = users[0].name || users[0].id || users[0];
-      return cachedDefaultAuthor;
-    }
-
-    const generated = `default-user-${Date.now()}`;
-    const createdUser = await createUser({
-      name: generated,
-      role: "Developer"
-    });
-    cachedDefaultAuthor = createdUser.name || generated;
-    return cachedDefaultAuthor;
-  };
+  let usersCache = null;
 
   const setStatus = (modal, message, isError = false) => {
     const box = modal.querySelector('[data-role="form-status"]');
@@ -90,6 +72,44 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     const titleBox = modal.querySelector('[data-field="titleBox"]');
     const heading = modal.querySelector('[data-field="heading"]');
     const descriptionBox = modal.querySelector('[data-field="description"]');
+    const authorWrap = modal.querySelector('[data-role="author-select"]');
+
+    const populateAuthor = (users) => {
+      if (!authorWrap) return;
+      authorWrap.innerHTML = "";
+
+      if (!Array.isArray(users) || users.length === 0) {
+        authorWrap.textContent = "No users available. Please add a user.";
+        authorWrap.classList.add("error");
+        return;
+      }
+
+      const label = document.createElement("span");
+      label.textContent = "Author";
+      const select = document.createElement("select");
+      users.forEach((u) => {
+        const name = u.name || u.id || u;
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+
+      const currentAuthor = workingIssue.author || workingIssue.authorId;
+      if (currentAuthor) {
+        select.value = currentAuthor;
+      } else {
+        workingIssue.author = users[0].name || users[0].id || users[0];
+      }
+
+      select.addEventListener("change", (evt) => {
+        workingIssue.author = evt.target.value;
+        setStatus(modal, "Pending save (applies when closing).");
+      });
+
+      authorWrap.appendChild(label);
+      authorWrap.appendChild(select);
+    };
 
     const startInlineEdit = (field, el) => {
       if (!el) return;
@@ -177,6 +197,21 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     heading?.addEventListener("dblclick", startTitleEdit);
     titleBox?.addEventListener("dblclick", startTitleEdit);
     descriptionBox?.addEventListener("dblclick", startDescEdit);
+
+    // hydrate author selector once users are loaded
+    if (usersCache) {
+      populateAuthor(usersCache);
+    } else {
+      fetchUsers()
+        .then((users) => {
+          usersCache = users;
+          populateAuthor(users);
+        })
+        .catch((err) => {
+          authorWrap.textContent = err.message || "Failed to load users.";
+          authorWrap.classList.add("error");
+        });
+    }
   };
 
   const buildDetail = (issue) => {
@@ -203,23 +238,28 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
         setStatus(modal, "Title is required to create an issue.", true);
         return false;
       }
+      const authorId =
+        (workingIssue.author || workingIssue.authorId || (usersCache && usersCache[0] && (usersCache[0].name || usersCache[0].id || usersCache[0])) || "").trim();
+      if (!authorId) {
+        setStatus(modal, "Author is required to create an issue.", true);
+        return false;
+      }
       try {
         setStatus(modal, "Creating issue...");
-        const authorId = await resolveDefaultAuthor();
-        if (!authorId) {
-          setStatus(modal, "No author available; please create a user.", true);
-          return false;
-        }
         const created = await createIssue({
           title,
           description: workingIssue.description || "",
           authorId
         });
-        const mapped = mapIssue(
-          created,
-          getActiveDatabase ? getActiveDatabase() : undefined
-        );
-        workingIssue = { ...workingIssue, ...mapped };
+        const dbName =
+          (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
+        const mapped = mapIssue(created, dbName);
+        workingIssue = {
+          ...workingIssue,
+          ...mapped,
+          database: mapped.database || dbName,
+          author: mapped.author || workingIssue.author
+        };
         currentIssue = { ...workingIssue };
         if (onIssueUpdated) {
           onIssueUpdated(workingIssue);

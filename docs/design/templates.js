@@ -55,6 +55,7 @@ export const modalTemplate = () =>
             <div class="detail-title-box" data-field="titleBox"></div>
             <div class="detail-description" data-field="description"></div>
           </div>
+          <div class="author-row" data-role="author-select"></div>
           <div class="form-status" data-role="form-status" aria-live="polite"></div>
         </div>
         <div class="detail-sidebar" data-role="sidebar"></div>

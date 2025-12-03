@@ -1,7 +1,7 @@
 import { getIssues, addMockIssue } from "./data.js";
 import { renderIssues } from "./issue.js";
 import { createModal } from "./modal.js";
-import { fetchIssues, fetchComments, fetchActiveDatabase, mapIssue } from "./api.js";
+import { apiClient } from "./api.js";
 
 const issuesListEl = document.getElementById("issues-list");
 const addMockBtn = document.getElementById("add-mock");
@@ -10,7 +10,10 @@ const statusEl = document.getElementById("load-status");
 
 const modal = createModal({
   onIssueUpdated: (updated) => {
-    const normalized = updated.rawId ? updated : mapIssue(updated, activeDatabase);
+    const normalized = updated.rawId ? { ...updated } : apiClient.mapIssue(updated);
+    if (!normalized.database) {
+      normalized.database = apiClient.getActiveDatabaseName();
+    }
     const idx = cachedIssues.findIndex((issue) => issue.rawId === normalized.rawId);
     if (idx >= 0) {
       cachedIssues[idx] = { ...cachedIssues[idx], ...normalized };
@@ -19,7 +22,7 @@ const modal = createModal({
     }
     renderAll();
   },
-  getActiveDatabase: () => activeDatabase
+  getActiveDatabase: apiClient.getActiveDatabaseName
 });
 let cachedIssues = [];
 let activeDatabase = undefined;
@@ -42,12 +45,13 @@ const renderAll = () => {
 
 const refreshFromApi = async () => {
   try {
-    activeDatabase = await fetchActiveDatabase();
+    activeDatabase = await apiClient.fetchActiveDatabase();
   } catch (err) {
     console.error("Failed to load databases, continuing without:", err);
   }
   try {
-    cachedIssues = await fetchIssues(activeDatabase);
+    apiClient.setActiveDatabaseName(activeDatabase);
+    cachedIssues = await apiClient.fetchIssues();
     setStatus(`Loaded ${cachedIssues.length} issue(s) from API.${activeDatabase ? " Active DB: " + activeDatabase : ""}`);
   } catch (err) {
     console.error("Failed to load issues from API, using local data:", err);
