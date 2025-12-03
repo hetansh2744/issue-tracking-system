@@ -312,6 +312,12 @@
       gap: 16px;
     }
 
+    .detail-main {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
     .detail-title-box {
       border: 3px solid var(--border);
       padding: 8px 10px;
@@ -398,6 +404,32 @@
       font-weight: 700;
       cursor: pointer;
       border-radius: 999px;
+    }
+
+    .detail-title-box,
+    .detail-description {
+      cursor: text;
+    }
+
+    .editing-inline {
+      box-shadow: 0 0 0 3px var(--blue);
+      background: #fffef2;
+    }
+
+    .form-status {
+      font-size: 14px;
+      color: #333;
+      min-height: 18px;
+      margin-top: 6px;
+      min-height: 22px;
+    }
+
+    .form-status.error {
+      color: #b00020;
+    }
+
+    .hidden {
+      display: none !important;
     }
 
     @media (max-width: 800px) {

@@ -4,7 +4,7 @@ import {
   actionButtonTemplate
 } from "./templates.js";
 
-export const renderIssues = ({ container, issues, onOpen }) => {
+export const renderIssues = ({ container, issues, onOpen, onEdit }) => {
   const fragment = document.createDocumentFragment();
 
   issues.forEach((issue) => {
@@ -23,8 +23,25 @@ export const renderIssues = ({ container, issues, onOpen }) => {
     issue.tags.forEach((tag) => tagsWrap.appendChild(tagTemplate(tag)));
 
     const actionsWrap = card.querySelector('[data-role="actions"]');
-    actionsWrap.appendChild(actionButtonTemplate("Edit", "edit"));
-    actionsWrap.appendChild(actionButtonTemplate("Delete", "delete"));
+    const editBtn = actionButtonTemplate("Edit", "edit");
+    editBtn.addEventListener("click", (evt) => {
+      evt.stopPropagation();
+      onEdit && onEdit(issue);
+    });
+    actionsWrap.appendChild(editBtn);
+
+    const deleteBtn = actionButtonTemplate("Delete", "delete");
+    deleteBtn.addEventListener("click", (evt) => {
+      evt.stopPropagation();
+      // Delete hook can be wired later; for now just stop propagation.
+    });
+    actionsWrap.appendChild(deleteBtn);
+
+    // Open detail when clicking anywhere on the card except buttons.
+    card.addEventListener("click", (evt) => {
+      if (evt.target.tagName === "BUTTON") return;
+      onOpen(issue);
+    });
 
     fragment.appendChild(card);
   });

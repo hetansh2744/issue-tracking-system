@@ -29,8 +29,10 @@ void Runner::run() {
   auto connectionHandler =
       oatpp::web::server::HttpConnectionHandler::createShared(router);
   // Allow browser requests from other origins (dev UI on different port).
+  // Explicitly include PATCH/DELETE so inline edits from the design UI succeed.
   connectionHandler->addResponseInterceptor(
-      std::make_shared<oatpp::web::server::interceptor::AllowCorsGlobal>());
+      std::make_shared<oatpp::web::server::interceptor::AllowCorsGlobal>(
+          "*", "GET, POST, PATCH, DELETE, OPTIONS"));
   connectionHandler->addRequestInterceptor(
       std::make_shared<oatpp::web::server::interceptor::AllowOptionsGlobal>());
 

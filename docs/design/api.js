@@ -39,7 +39,7 @@ const mapTags = (tags) =>
     color: t.color || "#49a3d8"
   }));
 
-const mapIssue = (dto, activeDatabase) => {
+export const mapIssue = (dto, activeDatabase) => {
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");
@@ -52,6 +52,7 @@ const mapIssue = (dto, activeDatabase) => {
     createdAt: fmtDate(createdAtRaw),
     author: authorRaw,
     milestone: statusRaw,
+    status: statusRaw,
     description: dto.description || "",
     tags: mapTags(dto.tags),
     comments: []
@@ -92,4 +93,69 @@ export const fetchActiveDatabase = async () => {
 
 export const setApiBase = (base) => {
   localStorage.setItem("API_BASE", base);
+};
+
+const patchIssueField = async (issueId, field, value) => {
+  const path = `/issues/${issueId}`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ field, value })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${text}`);
+  }
+};
+
+export const patchIssueFields = async (issueId, updates = {}) => {
+  if (issueId === undefined || issueId === null) {
+    throw new Error("Cannot patch issue without an id");
+  }
+  const tasks = [];
+  if (updates.title !== undefined) {
+    tasks.push(patchIssueField(issueId, "title", updates.title));
+  }
+  if (updates.description !== undefined) {
+    tasks.push(patchIssueField(issueId, "description", updates.description));
+  }
+  if (updates.status !== undefined) {
+    tasks.push(patchIssueField(issueId, "status", updates.status));
+  }
+
+  for (const task of tasks) {
+    await task;
+  }
+};
+
+export const fetchUsers = async () => {
+  const path = "/users";
+  const res = await fetch(`${apiBase()}${path}`);
+  return handleResponse(res, path);
+};
+
+export const createUser = async ({ name, role }) => {
+  const path = "/users";
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, role })
+  });
+  return handleResponse(res, path);
+};
+
+export const createIssue = async ({ title, description, authorId }) => {
+  const path = "/issues";
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // Server DTO uses "author_id" as the JSON field name.
+    body: JSON.stringify({
+      title,
+      description,
+      authorId,      // keep for compatibility
+      author_id: authorId
+    })
+  });
+  return handleResponse(res, path);
 };

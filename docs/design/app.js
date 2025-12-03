@@ -1,14 +1,26 @@
 import { getIssues, addMockIssue } from "./data.js";
 import { renderIssues } from "./issue.js";
 import { createModal } from "./modal.js";
-import { fetchIssues, fetchComments, fetchActiveDatabase } from "./api.js";
+import { fetchIssues, fetchComments, fetchActiveDatabase, mapIssue } from "./api.js";
 
 const issuesListEl = document.getElementById("issues-list");
 const addMockBtn = document.getElementById("add-mock");
 const createIssueBtn = document.getElementById("create-issue-btn");
 const statusEl = document.getElementById("load-status");
 
-const modal = createModal();
+const modal = createModal({
+  onIssueUpdated: (updated) => {
+    const normalized = updated.rawId ? updated : mapIssue(updated, activeDatabase);
+    const idx = cachedIssues.findIndex((issue) => issue.rawId === normalized.rawId);
+    if (idx >= 0) {
+      cachedIssues[idx] = { ...cachedIssues[idx], ...normalized };
+    } else {
+      cachedIssues = [{ ...normalized, rawId: normalized.rawId }, ...cachedIssues];
+    }
+    renderAll();
+  },
+  getActiveDatabase: () => activeDatabase
+});
 let cachedIssues = [];
 let activeDatabase = undefined;
 

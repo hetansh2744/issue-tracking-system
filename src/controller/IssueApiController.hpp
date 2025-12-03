@@ -327,6 +327,10 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
       auto list = oatpp::List<oatpp::Object<CommentDto>>::createShared();
 
       for (auto& c : comments) {
+        // Skip the synthetic description comment (id == 0).
+        if (c.getId() <= 0) {
+          continue;
+        }
         list->push_back(commentToDto(c));
       }
       return createDtoResponse(Status::CODE_200, list);

@@ -50,9 +50,12 @@ export const modalTemplate = () =>
         <button type="button" class="modal-close">X</button>
       </div>
       <div class="detail-grid">
-        <div>
-          <div class="detail-title-box" data-field="titleBox"></div>
-          <div class="detail-description" data-field="description"></div>
+        <div class="detail-main">
+          <div class="detail-view" data-role="detail-view">
+            <div class="detail-title-box" data-field="titleBox"></div>
+            <div class="detail-description" data-field="description"></div>
+          </div>
+          <div class="form-status" data-role="form-status" aria-live="polite"></div>
         </div>
         <div class="detail-sidebar" data-role="sidebar"></div>
       </div>
