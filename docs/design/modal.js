@@ -25,6 +25,7 @@ const emptyIssue = {
   title: "",
   description: "",
   status: "To Be Done",
+  assignedTo: "",
   comments: [],
   tags: []
 };
@@ -199,6 +200,133 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     return users;
   };
 
+  const normalizeUser = (u) => (u && u.name) || u?.id || u || "";
+
+  const findUserByName = (users, name) => {
+    if (!name) return null;
+    const target = name.toLowerCase();
+    return (users || []).find((u) => normalizeUser(u).toLowerCase() === target) || null;
+  };
+
+  const startAssigneeEdit = async (modal, pillEl) => {
+    if (!workingIssue || workingIssue.rawId === undefined || workingIssue.rawId === null) {
+      setStatus(modal, "Save the issue before assigning.", true);
+      return;
+    }
+
+    const originalText = pillEl.textContent;
+    pillEl.classList.add("editing-assignee");
+    pillEl.textContent = "";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter user to assign";
+    input.value = workingIssue.assignedTo || "";
+    input.classList.add("assignee-input");
+    pillEl.appendChild(input);
+    input.focus();
+    input.select();
+
+    const restoreLabel = () => {
+      pillEl.classList.remove("editing-assignee");
+      pillEl.textContent = originalText;
+    };
+
+    const applyLabel = (assignee) => {
+      pillEl.classList.remove("editing-assignee");
+      pillEl.textContent = assignee ? `Assignees: ${assignee}` : "Assignees";
+    };
+
+    const onCancel = () => {
+      restoreLabel();
+      setStatus(modal, "");
+    };
+
+    const commit = async () => {
+      const value = (input.value || "").trim();
+      let users = [];
+      if (value) {
+        try {
+          users = await loadUsers();
+        } catch (err) {
+          setStatus(modal, err.message || "Failed to load users.", true);
+          input.focus();
+          input.select();
+          return;
+        }
+      }
+      const match = findUserByName(users, value);
+
+      if (!value) {
+        try {
+          setStatus(modal, "Unassigning...");
+          const updated = await apiClient.unassignIssue(workingIssue.rawId);
+          const dbName =
+            (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
+        const mapped = mapIssue(updated, dbName);
+        workingIssue = { ...workingIssue, ...mapped };
+        currentIssue = { ...workingIssue };
+        fillView(modal, workingIssue);
+        setStatus(modal, "Issue unassigned.");
+        if (onIssueUpdated) {
+          onIssueUpdated(workingIssue);
+        }
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to unassign.", true);
+        restoreLabel();
+      }
+      return;
+      }
+
+      if (!match) {
+        setStatus(modal, "User not found. Try another name.", true);
+        input.focus();
+        input.select();
+        return;
+      }
+
+      if (value === workingIssue.assignedTo) {
+        applyLabel(value);
+        setStatus(modal, "");
+        return;
+      }
+
+      try {
+        setStatus(modal, "Assigning user...");
+        const updated = await apiClient.assignUserToIssue(workingIssue.rawId, value);
+        const dbName =
+          (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
+        const mapped = mapIssue(updated, dbName);
+        workingIssue = { ...workingIssue, ...mapped };
+        currentIssue = { ...workingIssue };
+        fillView(modal, workingIssue);
+        setStatus(modal, `Assignee set to ${workingIssue.assignedTo || value}.`);
+        if (onIssueUpdated) {
+          onIssueUpdated(workingIssue);
+        }
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to assign user.", true);
+        restoreLabel();
+      }
+    };
+
+    const onKeyDown = (evt) => {
+      if (evt.key === "Escape") {
+        evt.preventDefault();
+        onCancel();
+      } else if (evt.key === "Enter") {
+        evt.preventDefault();
+        void commit();
+      }
+    };
+
+    const onBlur = () => {
+      void commit();
+    };
+
+    input.addEventListener("keydown", onKeyDown);
+    input.addEventListener("blur", onBlur, { once: true });
+  };
+
   const fillView = (modal, issue) => {
     const heading = issue.id ? `${issue.title} (${issue.id})` : issue.title || "Issue";
     setText(modal.querySelector('[data-field="heading"]'), heading, "Issue");
@@ -216,6 +344,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       const value = pill.value ? pill.value(issue) : "";
       el.textContent = value ? `${pill.label}: ${value}` : pill.label;
       sidebar.appendChild(el);
+    });
+    const assigneePill = sidebar.querySelector(".detail-pill.assignees");
+    assigneePill?.addEventListener("dblclick", () => {
+      void startAssigneeEdit(modal, assigneePill);
     });
     renderComments(modal, issue);
   };

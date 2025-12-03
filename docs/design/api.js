@@ -76,6 +76,7 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");
+  const assignedRaw = pick(dto, ["assignedTo", "assigned_to"]);
   const commentsRaw = Array.isArray(dto?.comments) ? dto.comments.map(mapComment) : [];
 
   return {
@@ -88,6 +89,7 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
     milestone: statusRaw,
     status: statusRaw,
     description: dto.description || "",
+    assignedTo: assignedRaw || "",
     tags: mapTags(dto.tags),
     comments: commentsRaw
   };
@@ -217,6 +219,29 @@ export const deleteComment = async (issueId, commentId) => {
   }
 };
 
+export const assignUserToIssue = async (issueId, userName) => {
+  const id = normalizeIssueId(issueId);
+  const user = (userName || "").toString().trim();
+  if (!user) throw new Error("User is required to assign.");
+
+  const path = `/users/${encodeURIComponent(user)}/issues`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ issueId: id })
+  });
+  const json = await handleResponse(res, path);
+  return mapIssue(json);
+};
+
+export const unassignIssue = async (issueId) => {
+  const id = normalizeIssueId(issueId);
+  const path = `/issues/${id}/unassign`;
+  const res = await fetch(`${apiBase()}${path}`, { method: "PATCH" });
+  const json = await handleResponse(res, path);
+  return mapIssue(json);
+};
+
 export const fetchUsers = async () => {
   const path = "/users";
   const res = await fetch(`${apiBase()}${path}`);
@@ -271,6 +296,8 @@ export const apiClient = {
   createComment,
   updateComment,
   deleteComment,
+  assignUserToIssue,
+  unassignIssue,
   fetchActiveDatabase,
   fetchUsers,
   createUser,

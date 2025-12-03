@@ -269,9 +269,10 @@
       inset: 0;
       background: rgba(0, 0, 0, 0.32);
       display: none;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       padding: 24px;
+      overflow-y: auto;
       z-index: 1000;
     }
 
@@ -285,6 +286,8 @@
       width: min(920px, 95%);
       padding: 16px 18px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      max-height: calc(100vh - 60px);
+      overflow: auto;
     }
 
     .modal-header {
@@ -372,6 +375,19 @@
     .detail-pill.tags { background: var(--yellow); }
     .detail-pill.milestone { background: var(--mint); }
     .detail-pill.status { background: var(--teal); }
+    .detail-pill.editing-assignee {
+      background: #fff3fc;
+      color: #000;
+    }
+
+    .assignee-input {
+      width: 100%;
+      border: 2px solid var(--border);
+      padding: 6px 8px;
+      font: inherit;
+      text-align: center;
+      background: #fff;
+    }
 
     .add-comment {
       margin: 16px 0;
