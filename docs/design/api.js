@@ -77,7 +77,8 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
   const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");
   const assignedRaw = pick(dto, ["assignedTo", "assigned_to"]);
-  const commentsRaw = Array.isArray(dto?.comments) ? dto.comments.map(mapComment) : [];
+  const hasComments = Array.isArray(dto?.comments);
+  const commentsRaw = hasComments ? dto.comments.map(mapComment) : undefined;
 
   return {
     rawId,
@@ -91,7 +92,7 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
     description: dto.description || "",
     assignedTo: assignedRaw || "",
     tags: mapTags(dto.tags),
-    comments: commentsRaw
+    ...(hasComments ? { comments: commentsRaw } : {})
   };
 };
 
