@@ -54,9 +54,13 @@ export const setActiveDatabaseName = (name) => {
 export const getActiveDatabaseName = () => activeDatabaseName;
 
 export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
-  const rawIdStr = dto && dto.id !== undefined && dto.id !== null ? `${dto.id}` : "";
-  const numericId = Number(rawIdStr.replace(/^#/, ""));
-  const rawId = Number.isNaN(numericId) ? rawIdStr : numericId;
+  const hasId = dto && dto.id !== undefined && dto.id !== null && dto.id !== "";
+  let rawId;
+  if (hasId) {
+    const rawIdStr = `${dto.id}`.replace(/^#/, "");
+    const numericId = Number(rawIdStr);
+    rawId = Number.isNaN(numericId) ? rawIdStr : numericId;
+  }
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
   const statusRaw = pick(dto, ["status"], "Milestone");

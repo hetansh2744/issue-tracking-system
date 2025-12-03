@@ -47,7 +47,7 @@ export const modalTemplate = () =>
     <div class="modal">
       <div class="modal-header">
         <span data-field="heading"></span>
-        <button type="button" class="modal-close">X</button>
+        <button type="button" class="modal-close" data-role="cancel-modal">Cancel</button>
       </div>
       <div class="detail-grid">
         <div class="detail-main">

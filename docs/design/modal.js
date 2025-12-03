@@ -216,16 +216,20 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
   const buildDetail = (issue) => {
     const modal = modalTemplate();
     modal.dataset.issueId = issue.rawId ?? "";
-    currentIssue = { ...issue };
-    workingIssue = { ...issue };
+    currentIssue = { ...apiClient.mapIssue(issue) };
+    workingIssue = { ...currentIssue };
     if (!workingIssue.database) {
       workingIssue.database =
         (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
     }
     fillView(modal, workingIssue);
     bindEditHandlers(modal);
-    modal.querySelector(".modal-close").addEventListener("click", () => {
-      void close();
+    const cancelBtn = modal.querySelector('[data-role="cancel-modal"]');
+    cancelBtn?.addEventListener("click", () => {
+      void close(true);  // discard any changes
+    });
+    modal.querySelector(".modal-close")?.addEventListener("click", () => {
+      void close(true);
     });
     setStatus(modal, "");
     return modal;
@@ -301,9 +305,9 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     }
   };
 
-  const close = async () => {
+  const close = async (discard = false) => {
     const modal = backdrop.querySelector(".modal");
-    if (modal) {
+    if (modal && !discard) {
       const ok = await persistChanges(modal);
       if (!ok) {
         return;
