@@ -324,6 +324,12 @@ export const fetchUsers = async () => {
   return handleResponse(res, path);
 };
 
+export const fetchUserRoles = async () => {
+  const path = "/users/roles";
+  const res = await fetch(`${apiBase()}${path}`);
+  return handleResponse(res, path);
+};
+
 export const createUser = async ({ name, role }) => {
   const path = "/users";
   const res = await fetch(`${apiBase()}${path}`, {
@@ -332,6 +338,42 @@ export const createUser = async ({ name, role }) => {
     body: JSON.stringify({ name, role })
   });
   return handleResponse(res, path);
+};
+
+export const updateUser = async (id, updates = {}) => {
+  if (!id) throw new Error("User id is required to update.");
+  const tasks = [];
+  const path = (field) => `/users/${encodeURIComponent(id)}`;
+  const send = async (field, value) => {
+    const res = await fetch(`${apiBase()}${path(field)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ field, value })
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Request failed for ${path(field)}: ${res.status} ${text}`);
+    }
+  };
+  if (updates.name !== undefined) {
+    tasks.push(send("name", updates.name));
+  }
+  if (updates.role !== undefined) {
+    tasks.push(send("role", updates.role));
+  }
+  for (const task of tasks) {
+    await task;
+  }
+};
+
+export const deleteUser = async (id) => {
+  if (!id) throw new Error("User id is required to delete.");
+  const path = `/users/${encodeURIComponent(id)}`;
+  const res = await fetch(`${apiBase()}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${text}`);
+  }
 };
 
 export const createIssue = async ({ title, description, authorId }) => {
@@ -377,7 +419,10 @@ export const apiClient = {
   unassignIssue,
   fetchActiveDatabase,
   fetchUsers,
+  fetchUserRoles,
   createUser,
+  updateUser,
+  deleteUser,
   createIssue,
   patchIssueFields,
   deleteIssue,

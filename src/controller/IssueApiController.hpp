@@ -432,6 +432,18 @@ class IssueApiController : public oatpp::web::server::api::ApiController {
     return createDtoResponse(Status::CODE_200, list);
   }
 
+  ENDPOINT_INFO(listUserRoles) {
+    info->summary = "List all allowed user roles";
+    info->addResponse<List<String>>(Status::CODE_200, "application/json");
+  }
+  ENDPOINT("GET", "/users/roles", listUserRoles) {
+    auto roles = oatpp::List<oatpp::String>::createShared();
+    for (const char* role : user_roles::allowedRoles()) {
+      roles->push_back(role);
+    }
+    return createDtoResponse(Status::CODE_200, roles);
+  }
+
   ENDPOINT_INFO(updateUser) {
     info->summary = "Update a user field";
     info->addConsumes<Object<UserUpdateDto>>("application/json");
