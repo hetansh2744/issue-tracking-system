@@ -355,6 +355,14 @@ export const fetchUsers = async () => {
   return handleResponse(res, path);
 };
 
+export const fetchUnassignedIssues = async (activeDatabase) => {
+  const path = "/issues/unassigned";
+  const res = await fetch(`${apiBase()}${path}`);
+  const json = await handleResponse(res, path);
+  const db = activeDatabase || activeDatabaseName;
+  return (json || []).map((dto) => mapIssue(dto, db));
+};
+
 export const fetchUserRoles = async () => {
   const path = "/users/roles";
   const res = await fetch(`${apiBase()}${path}`);
@@ -502,6 +510,7 @@ export const apiClient = {
   fetchDatabases,
   fetchUsers,
   fetchUserRoles,
+  fetchUnassignedIssues,
   createUser,
   updateUser,
   deleteUser,

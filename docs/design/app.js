@@ -1,10 +1,10 @@
-import { getIssues, addMockIssue } from "./data.js";
+import { getIssues } from "./data.js";
 import { renderIssues } from "./issue.js";
 import { createModal } from "./modal.js";
 import { apiClient, fetchComments } from "./api.js";
 
 const issuesListEl = document.getElementById("issues-list");
-const addMockBtn = document.getElementById("add-mock");
+const unassignedBtn = document.getElementById("show-unassigned");
 const createIssueBtn = document.getElementById("create-issue-btn");
 const statusEl = document.getElementById("load-status");
 const searchInput = document.getElementById("issue-search");
@@ -19,40 +19,12 @@ document.querySelectorAll(".nav-btn[data-target]").forEach((btn) => {
   });
 });
 
-const stateGroup = document.querySelector('[data-role="status-filters"]');
-const stateButtons = stateGroup
-  ? Array.from(stateGroup.querySelectorAll(".state-btn"))
-  : [];
-
-const STATUS_LABELS = {
-  TODO: "To Be Done",
-  IN_PROGRESS: "In Progress",
-  DONE: "Done"
-};
-
-const normalizeStatusValue = (value) => {
-  if (value === undefined || value === null) return "";
-  const trimmed = `${value}`.trim();
-  if (!trimmed) return "";
-  const lower = trimmed.toLowerCase();
-  if (trimmed === "1" || lower === "todo" || lower === "to be done") {
-    return STATUS_LABELS.TODO;
-  }
-  if (trimmed === "2" || lower === "in progress") {
-    return STATUS_LABELS.IN_PROGRESS;
-  }
-  if (trimmed === "3" || lower === "done") {
-    return STATUS_LABELS.DONE;
-  }
-  return trimmed;
-};
-
-const getIssueStatus = (issue) =>
-  normalizeStatusValue(issue.status || issue.milestone || "");
-
 const modal = createModal({
   onIssueUpdated: (updated) => {
     const normalized = updated.rawId ? { ...updated } : apiClient.mapIssue(updated);
+    normalized.status = normalizeStatusValue(
+      normalized.status || normalized.milestone || ""
+    );
     if (!normalized.database) {
       normalized.database = apiClient.getActiveDatabaseName();
     }
@@ -75,7 +47,8 @@ const modal = createModal({
 let cachedIssues = [];
 let activeDatabase = undefined;
 let activeStatusFilter = "all";
-let currentStatusFilter = "ALL"; // CHECK BACK
+let filterMode = "unassigned"; // unassigned | assigned | all
+let unassignedCache = [];
 
 const setStatus = (message, isError = false) => {
   if (!statusEl) return;
@@ -87,6 +60,7 @@ const setStatus = (message, isError = false) => {
 const normalizeStatusValue = (value) => {
   const normalized = (value || "").toString().trim().toLowerCase();
   if (normalized === "to be done" || normalized === "to do" || normalized === "todo") return "todo";
+  if (normalized === "in progress" || normalized === "inprogress" || normalized === "progress") return "inprogress";
   if (normalized === "done") return "done";
   if (normalized === "backlog") return "backlog";
   return normalized;
@@ -106,13 +80,6 @@ const matchesIssueId = (issue, id) => {
   return Number(clean) === id;
 };
 
-const filterByStatus = (issues = []) => {
-  if (currentStatusFilter === "ALL") return issues;
-  const label = STATUS_LABELS[currentStatusFilter];
-  if (!label) return issues;
-  return issues.filter((issue) => getIssueStatus(issue) === label);
-};
-
 const filterIssuesByText = (issues = [], queryRaw = "") => {
   const query = (queryRaw || "").toLowerCase().trim();
   if (!query) return issues;
@@ -127,7 +94,6 @@ const filterIssuesByText = (issues = [], queryRaw = "") => {
       issue.author,
       issue.assignedTo,
       issue.milestone,
-      issue.status,
       tagLabels
     ]
       .filter(Boolean)
@@ -145,9 +111,6 @@ const filterIssuesByText = (issues = [], queryRaw = "") => {
         if (["assignee", "assigned", "signee"].includes(prefix)) {
           return (issue.assignedTo || "").toLowerCase().includes(value);
         }
-        if (["status"].includes(prefix)) {
-          return getIssueStatus(issue).toLowerCase().includes(value);
-        }
         return baseFields.includes(token);
       }
       return baseFields.includes(token);
@@ -158,27 +121,37 @@ const filterIssuesByText = (issues = [], queryRaw = "") => {
 const statusLabelByKey = (key) => {
   switch (key) {
     case "todo":
-      return "To be Done";
+      return "To Be Done";
+    case "inprogress":
+      return "In Progress";
     case "done":
       return "Done";
-    case "backlog":
-      return "Backlog";
     default:
       return "All";
   }
+};
+
+const renderAll = (issuesToRender = cachedIssues) => {
+  renderIssues({
+    container: issuesListEl,
+    issues: issuesToRender,
+    onOpen: (issue) => openIssueDetail(issue),
+    onEdit: (issue) => modal.openEdit(issue),
+    onDelete: (issue) => handleDelete(issue)
+  });
 };
 
 const updateStatusButtons = () => {
   const counts = cachedIssues.reduce(
     (acc, issue) => {
       const statusKey = normalizeStatusValue(issue.status);
-      if (statusKey === "todo" || statusKey === "done" || statusKey === "backlog") {
+      if (statusKey === "todo" || statusKey === "inprogress" || statusKey === "done") {
         acc[statusKey] += 1;
       }
       acc.all += 1;
       return acc;
     },
-    { todo: 0, done: 0, backlog: 0, all: 0 }
+    { todo: 0, inprogress: 0, done: 0, all: 0 }
   );
 
   statusButtons.forEach((btn) => {
@@ -192,8 +165,18 @@ const updateStatusButtons = () => {
 };
 
 const renderFiltered = (issuesToRender) => {
-  const searchFiltered =
-    issuesToRender || filterIssues(cachedIssues, searchInput?.value || "");
+  let baseList = issuesToRender || cachedIssues;
+  if (!issuesToRender) {
+    if (filterMode === "unassigned") {
+      baseList = unassignedCache.length ? unassignedCache : cachedIssues.filter((i) => !i.assignedTo);
+    } else if (filterMode === "assigned") {
+      baseList = cachedIssues.filter((i) => i.assignedTo);
+    } else {
+      baseList = cachedIssues;
+    }
+  }
+
+  const searchFiltered = filterIssuesByText(baseList, searchInput?.value || "");
   const statusFiltered =
     activeStatusFilter === "all"
       ? searchFiltered
@@ -236,15 +219,36 @@ const handleSearchEnter = async () => {
 
 const handleSearchInput = () => {
   renderFiltered();
-  const filtered = getFilteredIssues();
   if (searchInput?.value.trim()) {
-    const statusFiltered =
-      activeStatusFilter === "all"
-        ? filtered
-        : filtered.filter(
-            (issue) => normalizeStatusValue(issue.status) === activeStatusFilter
-          );
-    setStatus(`Found ${statusFiltered.length} matching issue(s).`);
+    setStatus(`Filtered by search and status.`);
+  }
+};
+
+const setAssignToggleLabel = () => {
+  if (!unassignedBtn) return;
+  if (filterMode === "unassigned") {
+    unassignedBtn.textContent = "Assigned only";
+  } else if (filterMode === "assigned") {
+    unassignedBtn.textContent = "All issues";
+  } else {
+    unassignedBtn.textContent = "Unassigned only";
+  }
+};
+
+const loadUnassigned = async () => {
+  setStatus("Loading unassigned issues...");
+  try {
+    unassignedCache = await apiClient.fetchUnassignedIssues(activeDatabase);
+    filterMode = "unassigned";
+    setAssignToggleLabel();
+    renderFiltered(unassignedCache);
+    setStatus(`Showing ${unassignedCache.length} unassigned issue(s).`);
+  } catch (err) {
+    console.error("Failed to load unassigned issues:", err);
+    unassignedCache = [];
+    filterMode = "assigned";
+    setAssignToggleLabel();
+    setStatus("Failed to load unassigned issues.", true);
   }
 };
 
@@ -256,7 +260,10 @@ const refreshFromApi = async () => {
   }
   try {
     apiClient.setActiveDatabaseName(activeDatabase);
-    cachedIssues = await apiClient.fetchIssues();
+    cachedIssues = (await apiClient.fetchIssues()).map((issue) => ({
+      ...issue,
+      status: normalizeStatusValue(issue.status || issue.milestone || "")
+    }));
     setStatus(
       `Loaded ${cachedIssues.length} issue(s) from API.${
         activeDatabase ? " Active DB: " + activeDatabase : ""
@@ -279,13 +286,6 @@ const openIssueDetail = async (issue) => {
     modal.openDetail(issue);
   }
 };
-
-addMockBtn.addEventListener("click", () => {
-  addMockIssue();
-  cachedIssues = getIssues();
-  renderFiltered();
-  setStatus("Added a mock issue locally.", false);
-});
 
 createIssueBtn.addEventListener("click", () => {
   modal.openCreate();
@@ -310,6 +310,24 @@ statusButtons.forEach((btn) => {
   });
 });
 
+unassignedBtn?.addEventListener("click", () => {
+  if (filterMode === "unassigned") {
+    filterMode = "assigned";
+    setAssignToggleLabel();
+    renderFiltered();
+    setStatus("Showing assigned issue(s).");
+    return;
+  }
+  if (filterMode === "assigned") {
+    filterMode = "all";
+    setAssignToggleLabel();
+    renderFiltered();
+    setStatus("Showing all issue(s).");
+    return;
+  }
+  void loadUnassigned();
+});
+
 const handleDelete = async (issue) => {
   if (!issue || issue.rawId === undefined || issue.rawId === null) {
     setStatus("Cannot delete: missing issue id.", true);
@@ -325,39 +343,5 @@ const handleDelete = async (issue) => {
     setStatus(err.message || "Failed to delete issue.", true);
   }
 };
-
-if (addMockBtn) {
-  addMockBtn.addEventListener("click", () => {
-    addMockIssue();
-    cachedIssues = getIssues();
-    renderFiltered();
-    setStatus("Added a mock issue locally.", false);
-  });
-}
-
-if (createIssueBtn) {
-  createIssueBtn.addEventListener("click", () => {
-    modal.openCreate();
-  });
-}
-
-searchInput?.addEventListener("keydown", (evt) => {
-  if (evt.key === "Enter") {
-    evt.preventDefault();
-    handleSearchEnter();
-  }
-});
-
-searchInput?.addEventListener("input", () => {
-  handleSearchInput();
-});
-
-stateButtons.forEach((btn) => {
-  const filter = btn.dataset.statusFilter || "ALL";
-  btn.addEventListener("click", () => {
-    currentStatusFilter = filter;
-    renderFiltered();
-  });
-});
 
 refreshFromApi();
