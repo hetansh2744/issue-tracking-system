@@ -156,6 +156,12 @@
     text-align: center;
     cursor: pointer;
     font-size: var(--text-md);
+    display: block;
+    text-decoration: none;
+  }
+
+  .nav-btn.active {
+    box-shadow: inset 0 0 0 3px #000000;
   }
 
   .issues { background: var(--pink); }
@@ -866,10 +872,10 @@
 
     <div class="canvas">
       <aside aria-label="Primary navigation">
-        <button class="nav-btn issues">Issues</button>
-        <button class="nav-btn milestones">Milestones</button>
-        <button class="nav-btn users">Users</button>
-        <button class="nav-btn databases">Databases</button>
+        <button class="nav-btn issues active" type="button" data-nav="issues">Issues</button>
+        <button class="nav-btn milestones" type="button" data-nav="milestones">Milestones</button>
+        <button class="nav-btn users" type="button" data-nav="users" data-target="./users.html">Users</button>
+        <button class="nav-btn databases" type="button" data-nav="databases">Databases</button>
       </aside>
 
       <main class="content">

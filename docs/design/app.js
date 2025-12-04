@@ -8,6 +8,15 @@ const addMockBtn = document.getElementById("add-mock");
 const createIssueBtn = document.getElementById("create-issue-btn");
 const statusEl = document.getElementById("load-status");
 
+document.querySelectorAll(".nav-btn[data-target]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.target;
+    if (target) {
+      window.location.href = target;
+    }
+  });
+});
+
 const modal = createModal({
   onIssueUpdated: (updated) => {
     const normalized = updated.rawId ? { ...updated } : apiClient.mapIssue(updated);

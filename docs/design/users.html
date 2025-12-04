@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pink: #f52781;
+      --yellow: #f9d74b;
+      --mint: #6cee94;
+      --teal: #24c4e8;
+      --blue: #0f8ccf;
+      --green: #6ffb58;
+      --border: #000000;
+      --text: #000000;
+      --muted: #333333;
+      --font-sm: 14px;
+      --font-md: 16px;
+      --font-lg: 20px;
+      --border-width: 2px;
+      --button-height: 40px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px;
+    }
+
+    .wrapper { width: min(980px, 100%); }
+
+    h1 {
+      margin: 0 0 24px;
+      text-align: center;
+      font-size: var(--font-lg);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .canvas {
+      display: flex;
+      gap: 20px;
+    }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 150px;
+    }
+
+    .nav-btn {
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      color: #000;
+      font-weight: 600;
+      padding: 14px 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: var(--font-md);
+      display: block;
+      text-decoration: none;
+    }
+
+    .nav-btn.active { box-shadow: inset 0 0 0 3px #000000; }
+    .issues { background: var(--pink); }
+    .milestones { background: var(--yellow); }
+    .users { background: var(--mint); }
+    .databases { background: var(--teal); }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .user-controls {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .create {
+      background: var(--green);
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      min-width: 160px;
+      font-weight: 600;
+      font-size: var(--font-md);
+      cursor: pointer;
+      height: var(--button-height);
+    }
+
+    .search {
+      flex: 1 1 320px;
+      min-width: 240px;
+      background: #e9e9e9;
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      padding: 10px 12px;
+      font-size: var(--font-md);
+      color: #555;
+      font-style: italic;
+      height: var(--button-height);
+    }
+
+    .user-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: var(--border-width) solid var(--border);
+      padding: 10px 12px;
+      background: #ffffff;
+    }
+
+    .user-row.draft { background: #fffdf3; }
+
+    .user-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: var(--font-md);
+      font-weight: 700;
+    }
+
+    .user-meta .role {
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .user-meta .role::before {
+      content: "·";
+      color: var(--muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: var(--font-sm);
+      border: var(--border-width) solid var(--border);
+      cursor: pointer;
+      line-height: 1.1;
+      min-height: calc(var(--button-height) - 6px);
+      box-sizing: border-box;
+      background: #f2f2f2;
+      color: #000;
+    }
+
+    .btn-delete { background: #f44336; color: #fff; }
+    .user-cancel { background: var(--yellow); color: #000; }
+
+    .user-draft-fields {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .user-name-input {
+      border: var(--border-width) solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: var(--font-md);
+      min-width: 160px;
+    }
+
+    .user-role-select {
+      border: var(--border-width) solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: var(--font-sm);
+      background: #fffbe0;
+      min-width: 150px;
+    }
+
+    .user-empty {
+      border: var(--border-width) dashed #aaa;
+      padding: 10px 12px;
+      font-weight: 700;
+      background: #fdfdfd;
+    }
+
+    .hidden { display: none !important; }
+
+    .status {
+      font-size: var(--font-sm);
+      font-weight: 700;
+      color: #333;
+      min-height: 20px;
+    }
+
+    .status.error { color: #b00020; }
+
+    @media (max-width: 800px) {
+      .canvas { flex-direction: column; }
+      aside {
+        flex-direction: row;
+        width: 100%;
+        max-width: 100%;
+      }
+      .user-controls { flex-direction: column; }
+      .search { flex: 1 1 auto; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>USER UI</h1>
+
+    <div class="canvas">
+      <aside aria-label="Primary navigation">
+        <button class="nav-btn issues" type="button" data-target="./index.html">Issues</button>
+        <button class="nav-btn milestones" type="button">Milestones</button>
+        <button class="nav-btn users active" type="button">Users</button>
+        <button class="nav-btn databases" type="button">Databases</button>
+      </aside>
+
+      <main class="content">
+        <div class="user-controls">
+          <button class="create" id="create-user-btn" type="button">Create User</button>
+          <input
+            class="search"
+            type="search"
+            id="user-search"
+            placeholder="Search for User"
+            aria-label="Search for User"
+          >
+        </div>
+
+        <div id="user-status" class="status" role="status" aria-live="polite"></div>
+
+        <div class="user-list" id="user-list" role="list"></div>
+        <div class="user-empty hidden" id="user-empty">No users found. Try another name or role.</div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="./users.js"></script>
+</body>
+</html>
