@@ -3,7 +3,12 @@ import {
   modalTemplate,
   pillTemplate,
   commentCardTemplate,
-  commentFormTemplate
+  commentFormTemplate,
+  tagChipTemplate,
+  tagsPillTemplate,
+  tagManagerTemplate,
+  tagManagerRowTemplate,
+  tagEditorFormTemplate
 } from "./templates.js";
 import { patchIssueFields, fetchUsers, createIssue, mapIssue, apiClient } from "./api.js";
 
@@ -17,6 +22,34 @@ const pillConfig = [
 const setText = (el, value, fallback = "") => {
   if (!el) return;
   el.textContent = value || fallback;
+};
+
+const defaultTagColor = "#49a3d8";
+const normalizeTagName = (tag) =>
+  ((tag && (tag.label || tag.tag || "")) || "").toString();
+
+const normalizeTags = (tags) =>
+  (Array.isArray(tags) ? tags : []).map((t) => ({
+    label: normalizeTagName(t) || "Tag",
+    color: (t && t.color) || defaultTagColor
+  }));
+
+const updateTagsPill = (modal, tags = []) => {
+  const pill = modal.querySelector('[data-role="tags-pill"]');
+  if (!pill) return false;
+  const wrap = pill.querySelector('[data-role="tags-list"]');
+  if (!wrap) return false;
+  wrap.replaceChildren();
+  const normalized = normalizeTags(tags);
+  if (!normalized.length) {
+    const empty = document.createElement("div");
+    empty.className = "tags-pill__empty";
+    empty.textContent = "No tags yet";
+    wrap.appendChild(empty);
+  } else {
+    normalized.forEach((tag) => wrap.appendChild(tagChipTemplate(tag)));
+  }
+  return true;
 };
 
 const emptyIssue = {
@@ -327,19 +360,59 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     input.addEventListener("blur", onBlur, { once: true });
   };
 
-  const fillView = (modal, issue) => {
-    const heading = issue.id ? `${issue.title} (${issue.id})` : issue.title || "Issue";
-    setText(modal.querySelector('[data-field="heading"]'), heading, "Issue");
-    setText(modal.querySelector('[data-field="titleBox"]'), heading, "Issue");
-    setText(
-      modal.querySelector('[data-field="description"]'),
-      issue.description,
-      "No description provided."
-    );
-
+  const getTagManagerHost = (modal) => {
     const sidebar = modal.querySelector('[data-role="sidebar"]');
+    if (!sidebar) return null;
+    const tagsPill = sidebar.querySelector('[data-role="tags-pill"]');
+    if (!tagsPill) return null;
+    let host = tagsPill.nextElementSibling;
+    if (!host || host.dataset.role !== "tag-manager-inline") {
+      host = document.createElement("div");
+      host.dataset.role = "tag-manager-inline";
+      host.classList.add("hidden");
+      tagsPill.insertAdjacentElement("afterend", host);
+    }
+    return host;
+  };
+
+  const closeTagManager = (modal) => {
+    const host = getTagManagerHost(modal);
+    if (host) {
+      host.classList.add("hidden");
+      host.innerHTML = "";
+    }
+    const legacyRegion = modal.querySelector('[data-role="tag-manager-region"]');
+    if (legacyRegion) {
+      legacyRegion.classList.add("hidden");
+      legacyRegion.innerHTML = "";
+    }
+  };
+
+  const isTagManagerOpen = (modal) => {
+    const host = getTagManagerHost(modal);
+    return !!(host && !host.classList.contains("hidden"));
+  };
+
+  const renderSidebar = (modal, issue) => {
+    const sidebar = modal.querySelector('[data-role="sidebar"]');
+    if (!sidebar) return;
     sidebar.replaceChildren();
     pillConfig.forEach((pill) => {
+      if (pill.className === "tags") {
+        const tagsPill = tagsPillTemplate(normalizeTags(issue.tags));
+        tagsPill.title = "Double-click to manage tags";
+        tagsPill.addEventListener("dblclick", () => {
+          void openTagManager(modal);
+        });
+        tagsPill.addEventListener("keydown", (evt) => {
+          if (evt.key === "Enter" || evt.key === " ") {
+            evt.preventDefault();
+            void openTagManager(modal);
+          }
+        });
+        sidebar.appendChild(tagsPill);
+        return;
+      }
       const el = pillTemplate(pill.label, pill.className);
       const value = pill.value ? pill.value(issue) : "";
       el.textContent = value ? `${pill.label}: ${value}` : pill.label;
@@ -349,6 +422,298 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     assigneePill?.addEventListener("dblclick", () => {
       void startAssigneeEdit(modal, assigneePill);
     });
+  };
+
+  const openTagManager = async (modal) => {
+    if (!workingIssue || workingIssue.rawId === undefined || workingIssue.rawId === null) {
+      setStatus(modal, "Save the issue before managing tags.", true);
+      return;
+    }
+
+    const host = getTagManagerHost(modal);
+    if (!host) return;
+
+    host.innerHTML = "";
+    const manager = tagManagerTemplate();
+    host.appendChild(manager);
+    host.classList.remove("hidden");
+
+    const listEl = manager.querySelector('[data-role="tag-list"]');
+    const searchInput = manager.querySelector('[data-role="tag-search"]');
+    const closeBtn = manager.querySelector('[data-role="tag-manager-close"]');
+    const createTrigger = manager.querySelector('[data-role="open-tag-create"]');
+    const createHost = manager.querySelector('[data-role="tag-create-host"]');
+    let selectedName = "";
+    let activeForm = null;
+    let activeMode = null;
+    let assignedSet = new Set(
+      normalizeTags(workingIssue.tags).map((t) => normalizeTagName(t).toLowerCase())
+    );
+    let availableTags = [];
+
+    if (createTrigger) {
+      createTrigger.title = "Double-click to create a tag";
+    }
+
+    const destroyForm = () => {
+      if (activeForm && activeForm.parentNode) {
+        activeForm.parentNode.removeChild(activeForm);
+      }
+      activeForm = null;
+      activeMode = null;
+      selectedName = "";
+      listEl?.querySelectorAll(".tag-manager__row")
+        .forEach((row) => row.classList.remove("is-selected"));
+    };
+
+    const syncFromAvailable = () => {
+      const assigned = availableTags.filter((t) => t.assigned);
+      workingIssue = { ...workingIssue, tags: assigned };
+      currentIssue = { ...workingIssue };
+      updateTagsPill(modal, workingIssue.tags);
+      if (onIssueUpdated) {
+        onIssueUpdated(workingIssue);
+      }
+    };
+
+    const seedDefinitions = (defs = []) => {
+      const normalizedDefs = normalizeTags(defs);
+      normalizedDefs.forEach((tag) => {
+        const nameKey = normalizeTagName(tag).toLowerCase();
+        const existingIdx = availableTags.findIndex(
+            (t) => normalizeTagName(t).toLowerCase() == nameKey);
+        const assigned = assignedSet.has(nameKey) || (existingIdx >= 0 && availableTags[existingIdx].assigned);
+        const next = { ...tag, assigned };
+        if (existingIdx >= 0) {
+          availableTags[existingIdx] = { ...availableTags[existingIdx], ...next };
+        } else {
+          availableTags.push(next);
+        }
+      });
+    };
+
+    const applyServerTags = (latest = []) => {
+      const normalized = normalizeTags(latest);
+      assignedSet = new Set(normalized.map((t) => normalizeTagName(t).toLowerCase()));
+      // ensure we include any new definitions from server
+      seedDefinitions(normalized);
+      // update assigned flags across existing definitions
+      availableTags = availableTags.map((t) => {
+        const nameKey = normalizeTagName(t).toLowerCase();
+        return { ...t, assigned: assignedSet.has(nameKey) };
+      });
+      syncFromAvailable();
+    };
+
+    const handleFormSubmit = async (evt, nameInput, colorInput) => {
+      evt.preventDefault();
+      const tagName = (nameInput?.value || "").trim();
+      const color = colorInput?.value || "";
+      if (!tagName) {
+        setStatus(modal, "Tag name is required.", true);
+        nameInput?.focus();
+        return;
+      }
+
+      try {
+        setStatus(modal, "Saving tag...");
+        const updatedTags = await apiClient.addTagToIssue(
+          workingIssue.rawId,
+          { tag: tagName, color }
+        );
+        applyServerTags(updatedTags);
+        renderList(searchInput?.value || "");
+        destroyForm();
+        setStatus(modal, `Tag "${tagName}" saved.`);
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to save tag.", true);
+      }
+    };
+
+    const showForm = ({ tag = null, anchor = null, mode = "edit" } = {}) => {
+      destroyForm();
+      const form = tagEditorFormTemplate();
+      activeForm = form;
+      activeMode = mode;
+      const tagNameInput = form.querySelector('[data-field="tag-name"]');
+      const tagColorInput = form.querySelector('[data-field="tag-color"]');
+      const cancelBtn = form.querySelector('[data-role="cancel-tag-create"]');
+      const normalized = tag ? normalizeTags([tag])[0] : { label: "", color: defaultTagColor };
+      if (tagNameInput) {
+        tagNameInput.value = normalized.label || "";
+      }
+      if (tagColorInput) {
+        tagColorInput.value = normalized.color || defaultTagColor;
+      }
+      selectedName = normalized.label || "";
+      const target = anchor || createHost;
+      if (target) {
+        if (target.dataset && target.dataset.role === "tag-create-host") {
+          target.replaceChildren(form);
+        } else {
+          target.insertAdjacentElement("afterend", form);
+        }
+      } else {
+        manager.appendChild(form);
+      }
+      tagNameInput?.focus();
+      tagNameInput?.select();
+
+      cancelBtn?.addEventListener("click", (evt) => {
+        evt.preventDefault();
+        destroyForm();
+      });
+      form.addEventListener("submit", (evt) => {
+        void handleFormSubmit(evt, tagNameInput, tagColorInput);
+      });
+    };
+
+    const handleRemove = async (tag) => {
+      const name = normalizeTagName(tag);
+      if (!name) return;
+      try {
+        setStatus(modal, `Removing ${name}...`);
+        await apiClient.removeTagFromIssue(workingIssue.rawId, name);
+        availableTags = availableTags.map((t) =>
+          normalizeTagName(t).toLowerCase() === name.toLowerCase()
+            ? { ...t, assigned: false }
+            : t
+        );
+        if (activeForm && selectedName && selectedName.toLowerCase() === name.toLowerCase()) {
+          destroyForm();
+        }
+        const latest = await apiClient.fetchIssueTags(workingIssue.rawId);
+        applyServerTags(latest);
+        renderList(searchInput?.value || "");
+        setStatus(modal, `Removed ${name}.`);
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to remove tag.", true);
+      }
+    };
+
+    const renderList = (filterText = "") => {
+      if (!listEl) return;
+      if (activeForm && activeMode === "edit") {
+        destroyForm();
+      }
+      const filter = (filterText || "").toLowerCase().trim();
+      listEl.replaceChildren();
+      const tags = availableTags;
+      const filtered = filter
+        ? tags.filter((t) => t.label.toLowerCase().includes(filter))
+        : tags;
+      if (!filtered.length) {
+        const empty = document.createElement("div");
+        empty.className = "tag-manager__empty";
+        empty.textContent = filter ? "No tags match your search." : "No tags yet. Add one below.";
+        listEl.appendChild(empty);
+        return;
+      }
+      filtered.forEach((tag) => {
+        const row = tagManagerRowTemplate(tag);
+        const deleteBtn = row.querySelector(".tag-manager__delete");
+        const chip = row.querySelector(".tag-manager__chip");
+        const normalizedName = normalizeTagName(tag);
+        if (tag.assigned) {
+          row.classList.add("is-selected");
+          row.dataset.assigned = "true";
+        } else {
+          row.dataset.assigned = "false";
+        }
+        row.addEventListener("click", (evt) => {
+          if (evt.target && evt.target.closest(".tag-manager__chip")) {
+            return;
+          }
+          selectedName = normalizedName;
+          listEl.querySelectorAll(".tag-manager__row")
+            .forEach((r) => r.classList.remove("is-selected"));
+          row.classList.add("is-selected");
+          if (row.dataset.assigned === "true") {
+            void handleRemove(tag);
+          } else {
+            void handleAdd(tag);
+          }
+        });
+        chip?.addEventListener("click", (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          selectedName = normalizedName;
+          listEl.querySelectorAll(".tag-manager__row")
+            .forEach((r) => r.classList.remove("is-selected"));
+          row.classList.add("is-selected");
+          showForm({ tag, anchor: row, mode: "edit" });
+        });
+        deleteBtn?.addEventListener("click", (evt) => {
+          evt.stopPropagation();
+          void handleRemove(tag);
+        });
+        listEl.appendChild(row);
+      });
+    };
+
+    const handleAdd = async (tag) => {
+      const name = normalizeTagName(tag);
+      if (!name) return;
+      try {
+        setStatus(modal, `Adding ${name}...`);
+        const updated = await apiClient.addTagToIssue(
+          workingIssue.rawId,
+          { tag: name, color: tag.color || defaultTagColor }
+        );
+        applyServerTags(updated);
+        renderList(searchInput?.value || "");
+        setStatus(modal, `Added ${name}.`);
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to add tag.", true);
+      }
+    };
+
+    searchInput?.addEventListener("input", () => {
+      renderList(searchInput.value);
+    });
+    createTrigger?.addEventListener("dblclick", () => {
+      showForm({ tag: null, anchor: createHost, mode: "create" });
+    });
+    closeBtn?.addEventListener("click", () => {
+      closeTagManager(modal);
+    });
+
+    // Seed with currently assigned tags so something renders immediately.
+    seedDefinitions(workingIssue.tags);
+    renderList(searchInput?.value || "");
+
+    // Load all tag definitions so users can re-use across issues.
+    apiClient.fetchAllTags()
+      .then((allDefs) => {
+        seedDefinitions(allDefs);
+        renderList(searchInput?.value || "");
+      })
+      .catch((err) => {
+        console.error("Failed to load all tags", err);
+      });
+
+    try {
+      setStatus(modal, "Loading tags...");
+      const tags = await apiClient.fetchIssueTags(workingIssue.rawId);
+      applyServerTags(tags);
+      renderList(searchInput?.value || "");
+      setStatus(modal, "");
+    } catch (err) {
+      setStatus(modal, err.message || "Failed to load tags.", true);
+    }
+  };
+
+  const fillView = (modal, issue) => {
+    const heading = issue.id ? `${issue.title} (${issue.id})` : issue.title || "Issue";
+    setText(modal.querySelector('[data-field="heading"]'), heading, "Issue");
+    setText(modal.querySelector('[data-field="titleBox"]'), heading, "Issue");
+    setText(
+      modal.querySelector('[data-field="description"]'),
+      issue.description,
+      "No description provided."
+    );
+    renderSidebar(modal, issue);
+    updateTagsPill(modal, issue.tags);
     renderComments(modal, issue);
   };
 

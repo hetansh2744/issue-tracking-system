@@ -124,6 +124,10 @@ void SQLiteIssueRepository::initializeSchema() {
       "PRIMARY KEY(issue_id, id),"
       "FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE);",
 
+      "CREATE TABLE IF NOT EXISTS tags ("
+      "tag TEXT PRIMARY KEY,"
+      "color TEXT);",
+
       "CREATE TABLE IF NOT EXISTS users ("
       "name TEXT PRIMARY KEY,"
       "role TEXT NOT NULL);",
@@ -181,6 +185,15 @@ void SQLiteIssueRepository::initializeSchema() {
     if (msg.find("duplicate column name") == std::string::npos) {
       throw;
     }
+  }
+
+  // Backfill tags table from existing issue tags (idempotent).
+  try {
+    execOrThrow(
+        "INSERT OR IGNORE INTO tags (tag, color) "
+        "SELECT DISTINCT tag, COALESCE(color, '') FROM issue_tags;");
+  } catch (const std::runtime_error&) {
+    // ignore if issue_tags does not exist yet
   }
 }
 
@@ -269,6 +282,21 @@ bool SQLiteIssueRepository::commentExists(int issueId,
       });
 }
 
+namespace {
+void upsertTagDefinition(sqlite3* db, const Tag& tag) {
+  SqliteStmt stmt(
+      db,
+      "INSERT INTO tags (tag, color) VALUES (?, ?) "
+      "ON CONFLICT(tag) DO UPDATE SET "
+      "color = COALESCE(NULLIF(excluded.color, ''), color);");
+  sqlite3_bind_text(stmt.get(), 1, tag.getName().c_str(), -1,
+                    SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt.get(), 2, tag.getColor().c_str(), -1,
+                    SQLITE_TRANSIENT);
+  sqlite3_step(stmt.get());
+}
+}  // namespace
+
 int SQLiteIssueRepository::nextCommentIdForIssue(int issueId) const {
   SqliteStmt stmt(
       db_,
@@ -339,7 +367,10 @@ Issue SQLiteIssueRepository::getIssue(int issueId) const {
   }
 
   forEachRow(
-      "SELECT tag, color FROM issue_tags WHERE issue_id = ?;",
+      "SELECT it.tag, COALESCE(NULLIF(it.color, ''), t.color) "
+      "FROM issue_tags it "
+      "LEFT JOIN tags t ON t.tag = it.tag "
+      "WHERE it.issue_id = ?;",
       [issueId](sqlite3_stmt* stmt) { sqlite3_bind_int(stmt, 1, issueId); },
       [&issue](sqlite3_stmt* stmt) {
         std::string tag = columnText(stmt, 0);
@@ -452,6 +483,7 @@ Issue SQLiteIssueRepository::saveIssue(const Issue& issue) {
 
   // ---- INSERT NEW TAGS ----
   for (const auto& tag : stored.getTags()) {
+    upsertTagDefinition(db_, tag);
     SqliteStmt tagStmt(
         db_,
         "INSERT INTO issue_tags (issue_id, tag, color) VALUES (?, ?, ?);");
@@ -500,6 +532,37 @@ std::vector<Issue> SQLiteIssueRepository::findIssues(
   return filtered;
 }
 
+std::vector<Tag> SQLiteIssueRepository::listAllTags() const {
+  std::vector<Tag> tags;
+  forEachRow(
+      "SELECT tag, color FROM tags ORDER BY tag ASC;",
+      nullptr,
+      [&tags](sqlite3_stmt* stmt) {
+        tags.emplace_back(columnText(stmt, 0), columnText(stmt, 1));
+      });
+  return tags;
+}
+
+bool SQLiteIssueRepository::deleteTag(const std::string& tag) {
+  if (tag.empty()) {
+    return false;
+  }
+
+  {
+    SqliteStmt stmt(
+        db_, "DELETE FROM issue_tags WHERE LOWER(tag) = LOWER(?);");
+    sqlite3_bind_text(stmt.get(), 1, tag.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt.get());
+  }
+
+  SqliteStmt stmt(db_, "DELETE FROM tags WHERE LOWER(tag) = LOWER(?);");
+  sqlite3_bind_text(stmt.get(), 1, tag.c_str(), -1, SQLITE_TRANSIENT);
+  if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+    throw std::runtime_error("Failed to delete tag definition");
+  }
+  return sqlite3_changes(db_) > 0;
+}
+
 // --- Interface overrides that your controller uses ---
 
 std::vector<Issue> SQLiteIssueRepository::findIssues(
@@ -524,12 +587,57 @@ std::vector<Issue> SQLiteIssueRepository::listAllUnassigned() const {
 
 bool SQLiteIssueRepository::addTagToIssue(
     int issueId, const Tag& tag) {
-  return IssueRepository::addTagToIssue(issueId, tag);
+  if (tag.getName().empty() || !issueExists(issueId)) {
+    return false;
+  }
+
+  upsertTagDefinition(db_, tag);
+
+  bool alreadyAttached = exists(
+      "SELECT 1 FROM issue_tags WHERE issue_id = ? AND LOWER(tag) = LOWER(?) LIMIT 1;",
+      [issueId, &tag](sqlite3_stmt* stmt) {
+        sqlite3_bind_int(stmt, 1, issueId);
+        sqlite3_bind_text(stmt, 2, tag.getName().c_str(), -1,
+                          SQLITE_TRANSIENT);
+      });
+
+  if (alreadyAttached) {
+    SqliteStmt updateStmt(
+        db_,
+        "UPDATE issue_tags "
+        "SET color = COALESCE(NULLIF(?, ''), color) "
+        "WHERE issue_id = ? AND LOWER(tag) = LOWER(?);");
+    sqlite3_bind_text(updateStmt.get(), 1, tag.getColor().c_str(), -1,
+                      SQLITE_TRANSIENT);
+    sqlite3_bind_int(updateStmt.get(), 2, issueId);
+    sqlite3_bind_text(updateStmt.get(), 3, tag.getName().c_str(), -1,
+                      SQLITE_TRANSIENT);
+    sqlite3_step(updateStmt.get());
+    return true;
+  }
+
+  SqliteStmt stmt(
+      db_, "INSERT INTO issue_tags (issue_id, tag, color) VALUES (?, ?, ?);");
+  sqlite3_bind_int(stmt.get(), 1, issueId);
+  sqlite3_bind_text(stmt.get(), 2, tag.getName().c_str(), -1,
+                    SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt.get(), 3, tag.getColor().c_str(), -1,
+                    SQLITE_TRANSIENT);
+  sqlite3_step(stmt.get());
+  return true;
 }
 
 bool SQLiteIssueRepository::removeTagFromIssue(
     int issueId, const std::string& tag) {
-  return IssueRepository::removeTagFromIssue(issueId, tag);
+  if (tag.empty() || !issueExists(issueId)) {
+    return false;
+  }
+  SqliteStmt stmt(
+      db_, "DELETE FROM issue_tags WHERE issue_id = ? AND LOWER(tag) = LOWER(?);");
+  sqlite3_bind_int(stmt.get(), 1, issueId);
+  sqlite3_bind_text(stmt.get(), 2, tag.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_step(stmt.get());
+  return sqlite3_changes(db_) > 0;
 }
 
 // --- Comments ---

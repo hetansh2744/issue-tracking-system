@@ -43,7 +43,7 @@ const pick = (obj, keys, fallback = undefined) => {
 
 const mapTags = (tags) =>
   (tags || []).map((t) => ({
-    label: t.tag || "Tag",
+    label: t.tag || t.label || "Tag",
     color: t.color || "#49a3d8"
   }));
 
@@ -170,6 +170,72 @@ export const patchIssueFields = async (issueId, updates = {}) => {
 
   for (const task of tasks) {
     await task;
+  }
+};
+
+export const fetchIssueTags = async (issueId) => {
+  const id = normalizeIssueId(issueId);
+  const path = `/issues/${id}/tags`;
+  const res = await fetch(`${apiBase()}${path}`);
+  const json = await handleResponse(res, path);
+  return mapTags(json);
+};
+
+export const fetchAllTags = async () => {
+  const path = "/tags";
+  const res = await fetch(`${apiBase()}${path}`);
+  const json = await handleResponse(res, path);
+  return mapTags(json);
+};
+
+const normalizeTagInput = (tagInput) => {
+  if (typeof tagInput === "string") return tagInput.trim();
+  if (tagInput && typeof tagInput === "object") {
+    const candidate = tagInput.tag || tagInput.label || "";
+    return candidate.trim();
+  }
+  return "";
+};
+
+export const addTagToIssue = async (issueId, tagInput = {}) => {
+  const id = normalizeIssueId(issueId);
+  const tag = normalizeTagInput(tagInput);
+  const color = typeof tagInput === "object" ? (tagInput.color || "") : "";
+  if (!tag) throw new Error("Tag name is required.");
+
+  const payload = { tag };
+  if (color) {
+    payload.color = color;
+  }
+
+  const path = `/issues/${id}/tags`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${text}`);
+  }
+  // Return the latest tags list to keep UI in sync.
+  return fetchIssueTags(id);
+};
+
+export const removeTagFromIssue = async (issueId, tagInput) => {
+  const id = normalizeIssueId(issueId);
+  const tag = normalizeTagInput(tagInput);
+  if (!tag) throw new Error("Tag name is required to remove.");
+
+  const path = `/issues/${id}/tags`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tag })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${text}`);
   }
 };
 
@@ -304,5 +370,9 @@ export const apiClient = {
   createUser,
   createIssue,
   patchIssueFields,
-  deleteIssue
+  deleteIssue,
+  fetchIssueTags,
+  fetchAllTags,
+  addTagToIssue,
+  removeTagFromIssue
 };

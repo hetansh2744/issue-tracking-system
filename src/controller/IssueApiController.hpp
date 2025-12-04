@@ -665,6 +665,42 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
     }
   }
 
+  ENDPOINT_INFO(listAllTags) {
+    info->summary = "List all tag definitions";
+    info->addResponse<List<Object<TagDto>>>(Status::CODE_200, "application/json");
+  }
+  ENDPOINT("GET", "/tags", listAllTags) {
+    auto list = oatpp::List<oatpp::Object<TagDto>>::createShared();
+    for (const auto& tag : issues().listAllTags()) {
+      auto dto = TagDto::createShared();
+      dto->tag = tag.getName().c_str();
+      dto->color = tag.getColor().c_str();
+      list->push_back(dto);
+    }
+    return createDtoResponse(Status::CODE_200, list);
+  }
+
+  ENDPOINT_INFO(deleteTagDefinition) {
+    info->summary = "Delete a tag definition everywhere";
+    info->addResponse<String>(Status::CODE_204, "text/plain", "Tag deleted");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_400, "application/json",
+                                        "Missing tag");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Tag not found");
+  }
+  ENDPOINT("DELETE", "/tags/{tag}", deleteTagDefinition, PATH(oatpp::String, tag)) {
+    if (!tag || tag->empty()) {
+      return error(Status::CODE_400,
+                   "MISSING_TAG",
+                   "Missing tag");
+    }
+    bool ok = issues().deleteTagDefinition(asStdString(tag));
+    return ok ? createResponse(Status::CODE_204, "Tag deleted")
+              : error(Status::CODE_404,
+                      "TAG_NOT_FOUND",
+                      "Tag not found");
+  }
+
   ENDPOINT_INFO(getIssuesByTag) {
     info->summary = "Find issues with a specific tag";
     info->addResponse<List<Object<IssueDto>>>(Status::CODE_200,

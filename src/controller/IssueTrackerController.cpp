@@ -105,6 +105,13 @@ bool IssueTrackerController::updateIssueField(int id,
       repo->saveIssue(issue);
       return true;
 
+    } else if (field == "authorId" || field == "author") {
+      // Ensure the new author exists before updating.
+      repo->getUser(value);
+      issue.setAuthorId(value);
+      repo->saveIssue(issue);
+      return true;
+
     } else {
       // Unknown field
       return false;
@@ -371,6 +378,17 @@ std::vector<Issue> IssueTrackerController::findIssuesByTags(
     }
   }
   return filtered;
+}
+
+std::vector<Tag> IssueTrackerController::listAllTags() {
+  return repo->listAllTags();
+}
+
+bool IssueTrackerController::deleteTagDefinition(const std::string& tag) {
+  if (tag.empty()) {
+    return false;
+  }
+  return repo->deleteTag(tag);
 }
 
 //lists all the users created

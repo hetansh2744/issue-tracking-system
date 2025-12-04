@@ -213,6 +213,16 @@ class IssueTrackerController {
   std::vector<Issue> findIssuesByTags(const std::vector<std::string>& tags);
 
   /**
+   * @brief List all tag definitions in the system
+   */
+  std::vector<Tag> listAllTags();
+
+  /**
+   * @brief Delete a tag definition (removes from all issues)
+   */
+  bool deleteTagDefinition(const std::string& tag);
+
+  /**
    * @brief Gets all users in the system
    *
    * @return std::vector<User> List of all registered users

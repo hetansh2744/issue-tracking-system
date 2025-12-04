@@ -54,6 +54,12 @@ class IssueRepository {
   virtual bool removeTagFromIssue(int issueId,
                                   const std::string& tag);
 
+  /// List all tag definitions (name + color)
+  virtual std::vector<Tag> listAllTags() const { return {}; }
+
+  /// Delete a tag definition everywhere (removes it from all issues)
+  virtual bool deleteTag(const std::string& tag) { (void)tag; return false; }
+
   // ===================== COMMENTS =====================
 
   /// Get a specific comment by ID

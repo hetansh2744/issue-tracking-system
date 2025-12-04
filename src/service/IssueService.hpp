@@ -14,6 +14,7 @@
 #include "Comment.hpp"
 #include "User.hpp"
 #include "Milestone.hpp"
+#include "Tag.hpp"
 
 class IssueService {
  private:
@@ -109,6 +110,12 @@ class IssueService {
 
   bool addTagToIssue(int issueId, const Tag& tag) {
     return controller_.addTagToIssue(issueId, tag);
+  }
+  std::vector<Tag> listAllTags() {
+    return controller_.listAllTags();
+  }
+  bool deleteTagDefinition(const std::string& tag) {
+    return controller_.deleteTagDefinition(tag);
   }
   std::vector<Issue> findIssuesByTag(const std::string& tag) {
     return controller_.findIssuesByTag(tag);
