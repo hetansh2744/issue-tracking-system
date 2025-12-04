@@ -104,6 +104,15 @@ export const fetchIssues = async (activeDatabase) => {
   return (json || []).map((dto) => mapIssue(dto, db));
 };
 
+export const fetchIssueById = async (issueId, activeDatabase) => {
+  const id = normalizeIssueId(issueId);
+  const path = `/issues/${id}`;
+  const res = await fetch(`${apiBase()}${path}`);
+  const json = await handleResponse(res, path);
+  const db = activeDatabase || activeDatabaseName;
+  return mapIssue(json, db);
+};
+
 export const fetchComments = async (issueId) => {
   if (issueId === undefined || issueId === null) return [];
   const path = `/issues/${normalizeIssueId(issueId)}/comments`;
@@ -451,6 +460,7 @@ export const apiClient = {
   getActiveDatabaseName,
   mapIssue,
   fetchIssues,
+  fetchIssueById,
   fetchComments,
   createComment,
   updateComment,
