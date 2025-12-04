@@ -238,6 +238,12 @@
     border-right: none;
   }
 
+  .state-btn.is-active {
+    outline: 3px solid #000;
+    background: #fff;
+    color: #000;
+  }
+
   .create {
     background: var(--green);
     border: var(--border-width) solid var(--border);
@@ -881,9 +887,10 @@
       <main class="content">
         <div class="filters">
           <div class="state-group">
-            <button class="state-btn">Open (#)</button>
-            <button class="state-btn">Closed (#)</button>
-            <button class="state-btn">All (#)</button>
+            <button class="state-btn" data-status="todo">To be Done (#)</button>
+            <button class="state-btn" data-status="done">Done (#)</button>
+            <button class="state-btn" data-status="backlog">Backlog (#)</button>
+            <button class="state-btn" data-status="all">All (#)</button>
           </div>
           <button class="create" id="create-issue-btn">Create Issue</button>
         </div>

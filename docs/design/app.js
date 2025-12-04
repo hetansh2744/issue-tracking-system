@@ -8,6 +8,7 @@ const addMockBtn = document.getElementById("add-mock");
 const createIssueBtn = document.getElementById("create-issue-btn");
 const statusEl = document.getElementById("load-status");
 const searchInput = document.getElementById("issue-search");
+const statusButtons = document.querySelectorAll("[data-status]");
 
 document.querySelectorAll(".nav-btn[data-target]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -41,12 +42,21 @@ const modal = createModal({
 });
 let cachedIssues = [];
 let activeDatabase = undefined;
+let activeStatusFilter = "all";
 
 const setStatus = (message, isError = false) => {
   if (!statusEl) return;
   statusEl.textContent = message;
   statusEl.classList.toggle("error", isError);
   statusEl.classList.add("show");
+};
+
+const normalizeStatusValue = (value) => {
+  const normalized = (value || "").toString().trim().toLowerCase();
+  if (normalized === "to be done" || normalized === "to do" || normalized === "todo") return "todo";
+  if (normalized === "done") return "done";
+  if (normalized === "backlog") return "backlog";
+  return normalized;
 };
 
 const normalizeSearchId = (value) => {
@@ -101,10 +111,54 @@ const filterIssues = (issues = [], queryRaw = "") => {
   });
 };
 
+const statusLabelByKey = (key) => {
+  switch (key) {
+    case "todo":
+      return "To be Done";
+    case "done":
+      return "Done";
+    case "backlog":
+      return "Backlog";
+    default:
+      return "All";
+  }
+};
+
+const updateStatusButtons = () => {
+  const counts = cachedIssues.reduce(
+    (acc, issue) => {
+      const statusKey = normalizeStatusValue(issue.status);
+      if (statusKey === "todo" || statusKey === "done" || statusKey === "backlog") {
+        acc[statusKey] += 1;
+      }
+      acc.all += 1;
+      return acc;
+    },
+    { todo: 0, done: 0, backlog: 0, all: 0 }
+  );
+
+  statusButtons.forEach((btn) => {
+    const key = btn.dataset.status || "all";
+    const label = statusLabelByKey(key);
+    const count = counts[key] ?? counts.all;
+    btn.textContent = `${label} (${count})`;
+    btn.classList.toggle("is-active", key === activeStatusFilter);
+    btn.setAttribute("aria-pressed", key === activeStatusFilter ? "true" : "false");
+  });
+};
+
 const renderFiltered = (issuesToRender) => {
-  const toRender =
+  const searchFiltered =
     issuesToRender || filterIssues(cachedIssues, searchInput?.value || "");
-  renderAll(toRender);
+  const statusFiltered =
+    activeStatusFilter === "all"
+      ? searchFiltered
+      : searchFiltered.filter(
+          (issue) => normalizeStatusValue(issue.status) === activeStatusFilter
+        );
+
+  renderAll(statusFiltered);
+  updateStatusButtons();
 };
 
 const ensureIssueLoadedById = async (id) => {
@@ -140,7 +194,13 @@ const handleSearchInput = () => {
   const filtered = filterIssues(cachedIssues, searchInput?.value || "");
   renderFiltered(filtered);
   if (searchInput?.value.trim()) {
-    setStatus(`Found ${filtered.length} matching issue(s).`);
+    const statusFiltered =
+      activeStatusFilter === "all"
+        ? filtered
+        : filtered.filter(
+            (issue) => normalizeStatusValue(issue.status) === activeStatusFilter
+          );
+    setStatus(`Found ${statusFiltered.length} matching issue(s).`);
   }
 };
 
@@ -202,6 +262,14 @@ searchInput?.addEventListener("keydown", (evt) => {
 
 searchInput?.addEventListener("input", () => {
   handleSearchInput();
+});
+
+statusButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.status || "all";
+    activeStatusFilter = key;
+    renderFiltered();
+  });
 });
 
 const handleDelete = async (issue) => {
