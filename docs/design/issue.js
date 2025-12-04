@@ -17,10 +17,13 @@ export const renderIssues = ({ container, issues, onOpen, onEdit, onDelete }) =>
     card.querySelector('[data-field="database"]').textContent = issue.database;
     card.querySelector('[data-field="createdAt"]').textContent = issue.createdAt;
     card.querySelector('[data-field="author"]').textContent = issue.author;
-    card.querySelector('[data-field="milestone"]').textContent = issue.milestone;
+
+    const statusText = issue.status ? `Status: ${issue.status}` : "";
+    const milestoneEl = card.querySelector('[data-field="milestone"]');
+    milestoneEl.textContent = statusText || issue.milestone || "";
 
     const tagsWrap = card.querySelector('[data-role="tags"]');
-    issue.tags.forEach((tag) => tagsWrap.appendChild(tagTemplate(tag)));
+    (issue.tags || []).forEach((tag) => tagsWrap.appendChild(tagTemplate(tag)));
 
     const actionsWrap = card.querySelector('[data-role="actions"]');
     const editBtn = actionButtonTemplate("Edit", "edit");

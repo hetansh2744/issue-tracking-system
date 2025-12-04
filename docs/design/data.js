@@ -6,6 +6,8 @@ const issues = [
     database: "Database name",
     createdAt: "Creation Date",
     author: "Author",
+    // Default project status
+    status: "To Be Done",
     milestone: "Milestone",
     description: "System keeps crashing blah blah blah....",
     comments: [
@@ -23,13 +25,20 @@ const issues = [
     database: "Auth DB",
     createdAt: "2025-03-01",
     author: "A. Nash",
+    status: "In Progress",
     milestone: "Q1 Hardening",
     description: "Redirect loop observed when session expires mid-login.",
     comments: [
-      { author: "A. Nash", date: "2025-03-02",
-        text: "Root cause: stale cookie. Need to clear on 401." },
-      { author: "QA Team", date: "2025-03-03",
-        text: "Repro on Firefox 123 as well." }
+      {
+        author: "A. Nash",
+        date: "2025-03-02",
+        text: "Root cause: stale cookie. Need to clear on 401."
+      },
+      {
+        author: "QA Team",
+        date: "2025-03-03",
+        text: "Repro on Firefox 123 as well."
+      }
     ],
     tags: [
       { label: "Bug", color: "#f52781" },
@@ -51,11 +60,15 @@ export const addMockIssue = () => {
     database: "New DB",
     createdAt: "Today",
     author: "You",
+    status: "To Be Done",
     milestone: "Backlog",
     description: "This is a newly added mock issue.",
     comments: [
-      { author: "You", date: "Today",
-        text: "Drafting details for this mock issue." }
+      {
+        author: "You",
+        date: "Today",
+        text: "Drafting details for this mock issue."
+      }
     ],
     tags: [
       { label: "Mock", color: "#6cee94" },

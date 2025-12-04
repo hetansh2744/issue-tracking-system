@@ -41,6 +41,30 @@ const pick = (obj, keys, fallback = undefined) => {
   return fallback;
 };
 
+const STATUS_LABELS = {
+  TODO: "To Be Done",
+  IN_PROGRESS: "In Progress",
+  DONE: "Done"
+};
+
+const normalizeStatusValue = (value) => {
+  if (value === undefined || value === null) return "";
+  const trimmed = `${value}`.trim();
+  if (!trimmed) return "";
+
+  const lower = trimmed.toLowerCase();
+  if (trimmed === "1" || lower === "todo" || lower === "to be done") {
+    return STATUS_LABELS.TODO;
+  }
+  if (trimmed === "2" || lower === "in progress") {
+    return STATUS_LABELS.IN_PROGRESS;
+  }
+  if (trimmed === "3" || lower === "done") {
+    return STATUS_LABELS.DONE;
+  }
+  return trimmed;
+};
+
 const mapTags = (tags) =>
   (tags || []).map((t) => ({
     label: t.tag || t.label || "Tag",
@@ -75,7 +99,13 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
   }
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
-  const statusRaw = pick(dto, ["status"], "Milestone");
+  const statusRaw = pick(dto, ["status"], STATUS_LABELS.TODO);
+  const status = normalizeStatusValue(statusRaw);
+  const milestoneRaw = pick(
+    dto,
+    ["milestone", "milestoneName", "milestone_title"],
+    ""
+  );
   const assignedRaw = pick(dto, ["assignedTo", "assigned_to"]);
   const hasComments = Array.isArray(dto?.comments);
   const commentsRaw = hasComments ? dto.comments.map(mapComment) : undefined;
@@ -84,11 +114,12 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
     rawId,
     id: rawId !== undefined && rawId !== null && rawId !== "" ? `#${rawId}` : "#?",
     title: dto.title || "Untitled Issue",
-    database: activeDatabase || dto.assignedTo || pick(dto, ["database", "db"], "Database name"),
+    database:
+      activeDatabase || dto.assignedTo || pick(dto, ["database", "db"], "Database name"),
     createdAt: fmtDate(createdAtRaw),
     author: authorRaw,
-    milestone: statusRaw,
-    status: statusRaw,
+    milestone: milestoneRaw || status,
+    status,
     description: dto.description || "",
     assignedTo: assignedRaw || "",
     tags: mapTags(dto.tags),
@@ -385,7 +416,7 @@ export const createIssue = async ({ title, description, authorId }) => {
     body: JSON.stringify({
       title,
       description,
-      authorId,      // keep for compatibility
+      authorId, // keep for compatibility
       author_id: authorId
     })
   });
