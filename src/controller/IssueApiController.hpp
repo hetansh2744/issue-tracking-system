@@ -1112,6 +1112,62 @@ ENDPOINT("PATCH", "/issues/{issueId}/unassign", unassignIssue,
                  "Unable to delete database");
   }
 
+  ENDPOINT_INFO(renameDatabase) {
+    info->summary = "Rename a database";
+    info->addConsumes<Object<DatabaseRenameDto>>("application/json");
+    info->addResponse<Object<DatabaseDto>>(Status::CODE_200,
+                                           "application/json");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_404, "application/json",
+                                        "Database not found");
+    info->addResponse<Object<ErrorDto>>(Status::CODE_409, "application/json",
+                                        "Target name already exists");
+  }
+  ENDPOINT("PATCH", "/databases/{name}", renameDatabase,
+           PATH(oatpp::String, name),
+           BODY_DTO(oatpp::Object<DatabaseRenameDto>, body)) {
+    if (!body || !body->name) {
+      return error(Status::CODE_400,
+                   "MISSING_NAME",
+                   "New database name is required");
+    }
+
+    const std::string current = asStdString(name);
+    const std::string proposed = asStdString(body->name);
+    const std::string currentNormalized = withDbExtension(current);
+    const std::string targetNormalized = withDbExtension(proposed);
+
+    auto existing = dbService->listDatabases();
+    const bool currentExists =
+        std::find(existing.begin(), existing.end(), currentNormalized) !=
+        existing.end();
+    const bool targetExists =
+        std::find(existing.begin(), existing.end(), targetNormalized) !=
+        existing.end();
+
+    if (!currentExists) {
+      return error(Status::CODE_404,
+                   "DATABASE_NOT_FOUND",
+                   "Database not found");
+    }
+    if (targetExists && currentNormalized != targetNormalized) {
+      return error(Status::CODE_409,
+                   "DATABASE_EXISTS",
+                   "Database already exists");
+    }
+
+    bool ok = dbService->renameDatabase(current, proposed);
+    if (!ok) {
+      return error(Status::CODE_400,
+                   "DATABASE_RENAME_FAILED",
+                   "Unable to rename database");
+    }
+
+    auto dto = DatabaseDto::createShared();
+    dto->name = withDbExtension(proposed).c_str();
+    dto->active = dto->name == dbService->getActiveDatabaseName();
+    return createDtoResponse(Status::CODE_200, dto);
+  }
+
   ENDPOINT_INFO(switchDatabase) {
     info->summary = "Switch the active database";
     info->addResponse<Object<DatabaseDto>>(Status::CODE_200,

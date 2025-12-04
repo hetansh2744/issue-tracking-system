@@ -41,6 +41,30 @@ const pick = (obj, keys, fallback = undefined) => {
   return fallback;
 };
 
+const STATUS_LABELS = {
+  TODO: "To Be Done",
+  IN_PROGRESS: "In Progress",
+  DONE: "Done"
+};
+
+const normalizeStatusValue = (value) => {
+  if (value === undefined || value === null) return "";
+  const trimmed = `${value}`.trim();
+  if (!trimmed) return "";
+
+  const lower = trimmed.toLowerCase();
+  if (trimmed === "1" || lower === "todo" || lower === "to be done") {
+    return STATUS_LABELS.TODO;
+  }
+  if (trimmed === "2" || lower === "in progress") {
+    return STATUS_LABELS.IN_PROGRESS;
+  }
+  if (trimmed === "3" || lower === "done") {
+    return STATUS_LABELS.DONE;
+  }
+  return trimmed;
+};
+
 const mapTags = (tags) =>
   (tags || []).map((t) => ({
     label: t.tag || t.label || "Tag",
@@ -75,7 +99,13 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
   }
   const createdAtRaw = pick(dto, ["createdAt", "created_at"]);
   const authorRaw = pick(dto, ["author", "authorId", "author_id"], "Author");
-  const statusRaw = pick(dto, ["status"], "Milestone");
+  const statusRaw = pick(dto, ["status"], STATUS_LABELS.TODO);
+  const status = normalizeStatusValue(statusRaw);
+  const milestoneRaw = pick(
+    dto,
+    ["milestone", "milestoneName", "milestone_title"],
+    ""
+  );
   const assignedRaw = pick(dto, ["assignedTo", "assigned_to"]);
   const hasComments = Array.isArray(dto?.comments);
   const commentsRaw = hasComments ? dto.comments.map(mapComment) : undefined;
@@ -84,11 +114,12 @@ export const mapIssue = (dto, activeDatabase = activeDatabaseName) => {
     rawId,
     id: rawId !== undefined && rawId !== null && rawId !== "" ? `#${rawId}` : "#?",
     title: dto.title || "Untitled Issue",
-    database: activeDatabase || dto.assignedTo || pick(dto, ["database", "db"], "Database name"),
+    database:
+      activeDatabase || dto.assignedTo || pick(dto, ["database", "db"], "Database name"),
     createdAt: fmtDate(createdAtRaw),
     author: authorRaw,
-    milestone: statusRaw,
-    status: statusRaw,
+    milestone: milestoneRaw || status,
+    status,
     description: dto.description || "",
     assignedTo: assignedRaw || "",
     tags: mapTags(dto.tags),
@@ -330,6 +361,56 @@ export const fetchUserRoles = async () => {
   return handleResponse(res, path);
 };
 
+export const fetchDatabases = async () => {
+  const path = "/databases";
+  const res = await fetch(`${apiBase()}${path}`);
+  return handleResponse(res, path);
+};
+
+export const createDatabase = async (name) => {
+  if (!name) throw new Error("Database name is required.");
+  const path = "/databases";
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  return handleResponse(res, path);
+};
+
+export const deleteDatabase = async (name) => {
+  if (!name) throw new Error("Database name is required.");
+  const encoded = encodeURIComponent(name);
+  const path = `/databases/${encoded}`;
+  const res = await fetch(`${apiBase()}${path}`, { method: "DELETE" });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed for ${path}: ${res.status} ${text}`);
+  }
+};
+
+export const switchDatabase = async (name) => {
+  if (!name) throw new Error("Database name is required.");
+  const encoded = encodeURIComponent(name);
+  const path = `/databases/${encoded}/switch`;
+  const res = await fetch(`${apiBase()}${path}`, { method: "POST" });
+  return handleResponse(res, path);
+};
+
+export const renameDatabase = async (currentName, newName) => {
+  if (!currentName || !newName) {
+    throw new Error("Current and new database names are required.");
+  }
+  const encoded = encodeURIComponent(currentName);
+  const path = `/databases/${encoded}`;
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: newName })
+  });
+  return handleResponse(res, path);
+};
+
 export const createUser = async ({ name, role }) => {
   const path = "/users";
   const res = await fetch(`${apiBase()}${path}`, {
@@ -385,7 +466,7 @@ export const createIssue = async ({ title, description, authorId }) => {
     body: JSON.stringify({
       title,
       description,
-      authorId,      // keep for compatibility
+      authorId, // keep for compatibility
       author_id: authorId
     })
   });
@@ -418,11 +499,16 @@ export const apiClient = {
   assignUserToIssue,
   unassignIssue,
   fetchActiveDatabase,
+  fetchDatabases,
   fetchUsers,
   fetchUserRoles,
   createUser,
   updateUser,
   deleteUser,
+  createDatabase,
+  deleteDatabase,
+  switchDatabase,
+  renameDatabase,
   createIssue,
   patchIssueFields,
   deleteIssue,

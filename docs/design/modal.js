@@ -12,11 +12,34 @@ import {
 } from "./templates.js";
 import { patchIssueFields, fetchUsers, createIssue, mapIssue, apiClient } from "./api.js";
 
+const STATUS_OPTIONS = ["To Be Done", "In Progress", "Done"];
+
+const normalizeStatusValue = (value) => {
+  if (value === undefined || value === null) return "";
+  const trimmed = `${value}`.trim();
+  if (!trimmed) return "";
+  const lower = trimmed.toLowerCase();
+  if (trimmed === "1" || lower === "todo" || lower === "to be done") {
+    return STATUS_OPTIONS[0];
+  }
+  if (trimmed === "2" || lower === "in progress") {
+    return STATUS_OPTIONS[1];
+  }
+  if (trimmed === "3" || lower === "done") {
+    return STATUS_OPTIONS[2];
+  }
+  return trimmed;
+};
+
 const pillConfig = [
   { label: "Assignees", className: "assignees", value: (issue) => issue.assignedTo || "" },
   { label: "Tags", className: "tags", value: (issue) => (issue.tags || []).map((t) => t.label).join(", ") },
   { label: "Milestone", className: "milestone", value: (issue) => issue.milestone || "" },
-  { label: "Status", className: "status", value: (issue) => issue.status || issue.milestone || "" }
+  {
+    label: "Status",
+    className: "status",
+    value: (issue) => normalizeStatusValue(issue.status || issue.milestone || "")
+  }
 ];
 
 const setText = (el, value, fallback = "") => {
@@ -124,13 +147,20 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
 
       try {
         setStatus(modal, "Saving comment...");
-        if (comment.id !== undefined && comment.id !== null && workingIssue?.rawId !== undefined && workingIssue?.rawId !== null) {
+        if (
+          comment.id !== undefined &&
+          comment.id !== null &&
+          workingIssue?.rawId !== undefined &&
+          workingIssue?.rawId !== null
+        ) {
           await apiClient.updateComment(workingIssue.rawId, comment.id, next);
         }
         const nextComments = (workingIssue.comments || []).map((c, i) => {
           const matchesById =
-            c.id !== undefined && c.id !== null &&
-            comment.id !== undefined && comment.id !== null &&
+            c.id !== undefined &&
+            c.id !== null &&
+            comment.id !== undefined &&
+            comment.id !== null &&
             c.id === comment.id;
           if (matchesById || i === index) {
             return { ...c, text: next };
@@ -188,8 +218,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       }
       const nextComments = (workingIssue.comments || []).filter((c, i) => {
         const matchesById =
-          c.id !== undefined && c.id !== null &&
-          comment.id !== undefined && comment.id !== null &&
+          c.id !== undefined &&
+          c.id !== null &&
+          comment.id !== undefined &&
+          comment.id !== null &&
           c.id === comment.id;
         return !(matchesById || i === index);
       });
@@ -295,19 +327,19 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
           const updated = await apiClient.unassignIssue(workingIssue.rawId);
           const dbName =
             (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
-        const mapped = mapIssue(updated, dbName);
-        workingIssue = { ...workingIssue, ...mapped };
-        currentIssue = { ...workingIssue };
-        fillView(modal, workingIssue);
-        setStatus(modal, "Issue unassigned.");
-        if (onIssueUpdated) {
-          onIssueUpdated(workingIssue);
+          const mapped = mapIssue(updated, dbName);
+          workingIssue = { ...workingIssue, ...mapped };
+          currentIssue = { ...workingIssue };
+          fillView(modal, workingIssue);
+          setStatus(modal, "Issue unassigned.");
+          if (onIssueUpdated) {
+            onIssueUpdated(workingIssue);
+          }
+        } catch (err) {
+          setStatus(modal, err.message || "Failed to unassign.", true);
+          restoreLabel();
         }
-      } catch (err) {
-        setStatus(modal, err.message || "Failed to unassign.", true);
-        restoreLabel();
-      }
-      return;
+        return;
       }
 
       if (!match) {
@@ -358,6 +390,92 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
 
     input.addEventListener("keydown", onKeyDown);
     input.addEventListener("blur", onBlur, { once: true });
+  };
+
+  const startStatusEdit = async (modal, pillEl) => {
+    if (!workingIssue || workingIssue.rawId === undefined || workingIssue.rawId === null) {
+      setStatus(modal, "Save the issue before changing status.", true);
+      return;
+    }
+
+    const originalText = pillEl.textContent;
+    pillEl.classList.add("editing-status");
+    pillEl.textContent = "";
+
+    const select = document.createElement("select");
+    select.classList.add("status-select");
+
+    STATUS_OPTIONS.forEach((label) => {
+      const opt = document.createElement("option");
+      opt.value = label;
+      opt.textContent = label;
+      select.appendChild(opt);
+    });
+
+    const current = normalizeStatusValue(
+      workingIssue.status || workingIssue.milestone || ""
+    );
+    if (current) {
+      select.value = current;
+    }
+
+    pillEl.appendChild(select);
+    select.focus();
+
+    const restoreLabel = () => {
+      pillEl.classList.remove("editing-status");
+      pillEl.textContent = originalText;
+    };
+
+    const applyLabel = (status) => {
+      pillEl.classList.remove("editing-status");
+      pillEl.textContent = status ? `Status: ${status}` : "Status";
+    };
+
+    const commit = async () => {
+      const selected = normalizeStatusValue(select.value);
+      const previous = normalizeStatusValue(
+        workingIssue.status || workingIssue.milestone || ""
+      );
+      if (!selected || selected === previous) {
+        restoreLabel();
+        setStatus(modal, "");
+        return;
+      }
+
+      try {
+        setStatus(modal, "Updating status...");
+        await patchIssueFields(workingIssue.rawId, { status: selected });
+        workingIssue = { ...workingIssue, status: selected };
+        currentIssue = { ...workingIssue };
+        applyLabel(selected);
+        if (onIssueUpdated) {
+          onIssueUpdated(workingIssue);
+        }
+        setStatus(modal, "");
+      } catch (err) {
+        setStatus(modal, err.message || "Failed to update status.", true);
+        select.focus();
+      }
+    };
+
+    const onKeyDown = (evt) => {
+      if (evt.key === "Escape") {
+        evt.preventDefault();
+        restoreLabel();
+        setStatus(modal, "");
+      } else if (evt.key === "Enter") {
+        evt.preventDefault();
+        void commit();
+      }
+    };
+
+    const onBlur = () => {
+      void commit();
+    };
+
+    select.addEventListener("keydown", onKeyDown);
+    select.addEventListener("blur", onBlur);
   };
 
   const getTagManagerHost = (modal) => {
@@ -422,6 +540,18 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     assigneePill?.addEventListener("dblclick", () => {
       void startAssigneeEdit(modal, assigneePill);
     });
+
+    const statusPill = sidebar.querySelector(".detail-pill.status");
+    statusPill?.setAttribute("title", "Double-click to change status");
+    statusPill?.addEventListener("dblclick", () => {
+      void startStatusEdit(modal, statusPill);
+    });
+    statusPill?.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" || evt.key === " ") {
+        evt.preventDefault();
+        void startStatusEdit(modal, statusPill);
+      }
+    });
   };
 
   const openTagManager = async (modal) => {
@@ -462,8 +592,9 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       activeForm = null;
       activeMode = null;
       selectedName = "";
-      listEl?.querySelectorAll(".tag-manager__row")
-        .forEach((row) => row.classList.remove("is-selected"));
+      listEl?.querySelectorAll(".tag-manager__row").forEach((row) =>
+        row.classList.remove("is-selected")
+      );
     };
 
     const syncFromAvailable = () => {
@@ -481,8 +612,11 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       normalizedDefs.forEach((tag) => {
         const nameKey = normalizeTagName(tag).toLowerCase();
         const existingIdx = availableTags.findIndex(
-            (t) => normalizeTagName(t).toLowerCase() == nameKey);
-        const assigned = assignedSet.has(nameKey) || (existingIdx >= 0 && availableTags[existingIdx].assigned);
+          (t) => normalizeTagName(t).toLowerCase() === nameKey
+        );
+        const assigned =
+          assignedSet.has(nameKey) ||
+          (existingIdx >= 0 && availableTags[existingIdx].assigned);
         const next = { ...tag, assigned };
         if (existingIdx >= 0) {
           availableTags[existingIdx] = { ...availableTags[existingIdx], ...next };
@@ -517,10 +651,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
 
       try {
         setStatus(modal, "Saving tag...");
-        const updatedTags = await apiClient.addTagToIssue(
-          workingIssue.rawId,
-          { tag: tagName, color }
-        );
+        const updatedTags = await apiClient.addTagToIssue(workingIssue.rawId, {
+          tag: tagName,
+          color
+        });
         applyServerTags(updatedTags);
         renderList(searchInput?.value || "");
         destroyForm();
@@ -605,7 +739,9 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       if (!filtered.length) {
         const empty = document.createElement("div");
         empty.className = "tag-manager__empty";
-        empty.textContent = filter ? "No tags match your search." : "No tags yet. Add one below.";
+        empty.textContent = filter
+          ? "No tags match your search."
+          : "No tags yet. Add one below.";
         listEl.appendChild(empty);
         return;
       }
@@ -625,8 +761,9 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
             return;
           }
           selectedName = normalizedName;
-          listEl.querySelectorAll(".tag-manager__row")
-            .forEach((r) => r.classList.remove("is-selected"));
+          listEl.querySelectorAll(".tag-manager__row").forEach((r) =>
+            r.classList.remove("is-selected")
+          );
           row.classList.add("is-selected");
           if (row.dataset.assigned === "true") {
             void handleRemove(tag);
@@ -638,8 +775,9 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
           evt.preventDefault();
           evt.stopPropagation();
           selectedName = normalizedName;
-          listEl.querySelectorAll(".tag-manager__row")
-            .forEach((r) => r.classList.remove("is-selected"));
+          listEl.querySelectorAll(".tag-manager__row").forEach((r) =>
+            r.classList.remove("is-selected")
+          );
           row.classList.add("is-selected");
           showForm({ tag, anchor: row, mode: "edit" });
         });
@@ -656,10 +794,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       if (!name) return;
       try {
         setStatus(modal, `Adding ${name}...`);
-        const updated = await apiClient.addTagToIssue(
-          workingIssue.rawId,
-          { tag: name, color: tag.color || defaultTagColor }
-        );
+        const updated = await apiClient.addTagToIssue(workingIssue.rawId, {
+          tag: name,
+          color: tag.color || defaultTagColor
+        });
         applyServerTags(updated);
         renderList(searchInput?.value || "");
         setStatus(modal, `Added ${name}.`);
@@ -683,7 +821,8 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     renderList(searchInput?.value || "");
 
     // Load all tag definitions so users can re-use across issues.
-    apiClient.fetchAllTags()
+    apiClient
+      .fetchAllTags()
       .then((allDefs) => {
         seedDefinitions(allDefs);
         renderList(searchInput?.value || "");
@@ -763,9 +902,7 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
       if (!el) return;
 
       const original =
-        field === "title"
-          ? (workingIssue.title || "")
-          : (workingIssue.description || "");
+        field === "title" ? workingIssue.title || "" : workingIssue.description || "";
 
       // Temporarily show raw value (without the id suffix) for title edits.
       if (field === "title") {
@@ -933,7 +1070,10 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
 
       try {
         setStatus(modal, "Posting comment...");
-        const comment = await apiClient.createComment(workingIssue.rawId, { text, authorId });
+        const comment = await apiClient.createComment(workingIssue.rawId, {
+          text,
+          authorId
+        });
         const nextComments = [...(workingIssue.comments || []), comment];
         workingIssue = { ...workingIssue, comments: nextComments };
         currentIssue = { ...workingIssue };
@@ -978,6 +1118,7 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     modal.dataset.issueId = issue.rawId ?? "";
     currentIssue = { ...apiClient.mapIssue(issue) };
     workingIssue = { ...currentIssue };
+    workingIssue.status = normalizeStatusValue(workingIssue.status);
     if (!workingIssue.database) {
       workingIssue.database =
         (getActiveDatabase && getActiveDatabase()) || apiClient.getActiveDatabaseName();
@@ -989,7 +1130,7 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     });
     const cancelBtn = modal.querySelector('[data-role="cancel-modal"]');
     cancelBtn?.addEventListener("click", () => {
-      void close(true);  // discard any changes
+      void close(true); // discard any changes
     });
     modal.querySelector(".modal-close")?.addEventListener("click", () => {
       void close(true);
@@ -1008,8 +1149,14 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
         setStatus(modal, "Title is required to create an issue.", true);
         return false;
       }
-      const authorId =
-        (workingIssue.author || workingIssue.authorId || (usersCache && usersCache[0] && (usersCache[0].name || usersCache[0].id || usersCache[0])) || "").trim();
+      const authorId = (
+        workingIssue.author ||
+        workingIssue.authorId ||
+        (usersCache &&
+          usersCache[0] &&
+          (usersCache[0].name || usersCache[0].id || usersCache[0])) ||
+        ""
+      ).trim();
       if (!authorId) {
         setStatus(modal, "Author is required to create an issue.", true);
         return false;
@@ -1029,7 +1176,8 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
           ...mapped,
           rawId: Number(mapped.rawId ?? mapped.id ?? workingIssue.rawId),
           database: mapped.database || dbName,
-          author: mapped.author || workingIssue.author
+          author: mapped.author || workingIssue.author,
+          status: normalizeStatusValue(mapped.status || workingIssue.status)
         };
         currentIssue = { ...workingIssue };
         if (onIssueUpdated) {
@@ -1048,6 +1196,12 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     }
     if (workingIssue.description !== currentIssue.description) {
       payload.description = workingIssue.description;
+    }
+    if (
+      normalizeStatusValue(workingIssue.status) !==
+      normalizeStatusValue(currentIssue.status)
+    ) {
+      payload.status = normalizeStatusValue(workingIssue.status || currentIssue.status);
     }
 
     if (Object.keys(payload).length === 0) {
@@ -1088,7 +1242,6 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     backdrop.classList.add("open");
   };
 
-  // Basic placeholders for create/edit until wired to real forms.
   const openCreate = () => {
     openDetail(emptyIssue);
   };
@@ -1103,6 +1256,5 @@ export const createModal = ({ onIssueUpdated, getActiveDatabase } = {}) => {
     }
   });
 
-  // Keep `open` alias for backward compatibility.
   return { openDetail, openCreate, openEdit, close, open: openDetail };
 };

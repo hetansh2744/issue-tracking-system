@@ -19,6 +19,37 @@ document.querySelectorAll(".nav-btn[data-target]").forEach((btn) => {
   });
 });
 
+const stateGroup = document.querySelector('[data-role="status-filters"]');
+const stateButtons = stateGroup
+  ? Array.from(stateGroup.querySelectorAll(".state-btn"))
+  : [];
+
+const STATUS_LABELS = {
+  TODO: "To Be Done",
+  IN_PROGRESS: "In Progress",
+  DONE: "Done"
+};
+
+const normalizeStatusValue = (value) => {
+  if (value === undefined || value === null) return "";
+  const trimmed = `${value}`.trim();
+  if (!trimmed) return "";
+  const lower = trimmed.toLowerCase();
+  if (trimmed === "1" || lower === "todo" || lower === "to be done") {
+    return STATUS_LABELS.TODO;
+  }
+  if (trimmed === "2" || lower === "in progress") {
+    return STATUS_LABELS.IN_PROGRESS;
+  }
+  if (trimmed === "3" || lower === "done") {
+    return STATUS_LABELS.DONE;
+  }
+  return trimmed;
+};
+
+const getIssueStatus = (issue) =>
+  normalizeStatusValue(issue.status || issue.milestone || "");
+
 const modal = createModal({
   onIssueUpdated: (updated) => {
     const normalized = updated.rawId ? { ...updated } : apiClient.mapIssue(updated);
@@ -40,9 +71,11 @@ const modal = createModal({
   },
   getActiveDatabase: apiClient.getActiveDatabaseName
 });
+
 let cachedIssues = [];
 let activeDatabase = undefined;
 let activeStatusFilter = "all";
+let currentStatusFilter = "ALL"; // CHECK BACK
 
 const setStatus = (message, isError = false) => {
   if (!statusEl) return;
@@ -73,7 +106,14 @@ const matchesIssueId = (issue, id) => {
   return Number(clean) === id;
 };
 
-const filterIssues = (issues = [], queryRaw = "") => {
+const filterByStatus = (issues = []) => {
+  if (currentStatusFilter === "ALL") return issues;
+  const label = STATUS_LABELS[currentStatusFilter];
+  if (!label) return issues;
+  return issues.filter((issue) => getIssueStatus(issue) === label);
+};
+
+const filterIssuesByText = (issues = [], queryRaw = "") => {
   const query = (queryRaw || "").toLowerCase().trim();
   if (!query) return issues;
   const tokens = query.split(/\s+/).filter(Boolean);
@@ -87,6 +127,7 @@ const filterIssues = (issues = [], queryRaw = "") => {
       issue.author,
       issue.assignedTo,
       issue.milestone,
+      issue.status,
       tagLabels
     ]
       .filter(Boolean)
@@ -103,6 +144,9 @@ const filterIssues = (issues = [], queryRaw = "") => {
         }
         if (["assignee", "assigned", "signee"].includes(prefix)) {
           return (issue.assignedTo || "").toLowerCase().includes(value);
+        }
+        if (["status"].includes(prefix)) {
+          return getIssueStatus(issue).toLowerCase().includes(value);
         }
         return baseFields.includes(token);
       }
@@ -191,8 +235,8 @@ const handleSearchEnter = async () => {
 };
 
 const handleSearchInput = () => {
-  const filtered = filterIssues(cachedIssues, searchInput?.value || "");
-  renderFiltered(filtered);
+  renderFiltered();
+  const filtered = getFilteredIssues();
   if (searchInput?.value.trim()) {
     const statusFiltered =
       activeStatusFilter === "all"
@@ -204,16 +248,6 @@ const handleSearchInput = () => {
   }
 };
 
-const renderAll = (issuesToRender = cachedIssues) => {
-  renderIssues({
-    container: issuesListEl,
-    issues: issuesToRender,
-    onOpen: (issue) => openIssueDetail(issue),
-    onEdit: (issue) => modal.openEdit(issue),
-    onDelete: (issue) => handleDelete(issue)
-  });
-};
-
 const refreshFromApi = async () => {
   try {
     activeDatabase = await apiClient.fetchActiveDatabase();
@@ -223,7 +257,11 @@ const refreshFromApi = async () => {
   try {
     apiClient.setActiveDatabaseName(activeDatabase);
     cachedIssues = await apiClient.fetchIssues();
-    setStatus(`Loaded ${cachedIssues.length} issue(s) from API.${activeDatabase ? " Active DB: " + activeDatabase : ""}`);
+    setStatus(
+      `Loaded ${cachedIssues.length} issue(s) from API.${
+        activeDatabase ? " Active DB: " + activeDatabase : ""
+      }`
+    );
   } catch (err) {
     console.error("Failed to load issues from API, using local data:", err);
     cachedIssues = getIssues();
@@ -287,5 +325,39 @@ const handleDelete = async (issue) => {
     setStatus(err.message || "Failed to delete issue.", true);
   }
 };
+
+if (addMockBtn) {
+  addMockBtn.addEventListener("click", () => {
+    addMockIssue();
+    cachedIssues = getIssues();
+    renderFiltered();
+    setStatus("Added a mock issue locally.", false);
+  });
+}
+
+if (createIssueBtn) {
+  createIssueBtn.addEventListener("click", () => {
+    modal.openCreate();
+  });
+}
+
+searchInput?.addEventListener("keydown", (evt) => {
+  if (evt.key === "Enter") {
+    evt.preventDefault();
+    handleSearchEnter();
+  }
+});
+
+searchInput?.addEventListener("input", () => {
+  handleSearchInput();
+});
+
+stateButtons.forEach((btn) => {
+  const filter = btn.dataset.statusFilter || "ALL";
+  btn.addEventListener("click", () => {
+    currentStatusFilter = filter;
+    renderFiltered();
+  });
+});
 
 refreshFromApi();
