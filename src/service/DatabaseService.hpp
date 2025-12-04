@@ -196,6 +196,46 @@ class DatabaseService {
     resetIssueService(target);
     return true;
   }
+
+  bool renameDatabase(const std::string& currentName,
+                      const std::string& newName) {
+    if (useMemoryBackend_) {
+      return false;
+    }
+
+    const std::string sourcePath = databasePathForName(currentName);
+    const std::string targetPath = databasePathForName(newName);
+    if (sourcePath.empty() || targetPath.empty()) {
+      return false;
+    }
+
+    if (!std::filesystem::exists(sourcePath)) {
+      return false;
+    }
+    if (sourcePath == targetPath) {
+      return true;
+    }
+    if (std::filesystem::exists(targetPath)) {
+      return false;
+    }
+
+    std::error_code ec;
+    std::filesystem::rename(sourcePath, targetPath, ec);
+    if (ec) {
+      return false;
+    }
+
+    const auto normalizedActive =
+        std::filesystem::absolute(std::filesystem::path(activeDbPath_));
+    const auto normalizedTarget =
+        std::filesystem::absolute(std::filesystem::path(targetPath));
+    if (normalizedActive ==
+        std::filesystem::absolute(std::filesystem::path(sourcePath))) {
+      resetIssueService(normalizedTarget.string());
+    }
+
+    return true;
+  }
 };
 
 #endif

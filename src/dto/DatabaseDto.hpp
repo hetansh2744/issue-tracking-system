@@ -19,6 +19,12 @@ class DatabaseCreateDto : public oatpp::DTO {
   DTO_FIELD(oatpp::String, name);
 };
 
+class DatabaseRenameDto : public oatpp::DTO {
+  DTO_INIT(DatabaseRenameDto, DTO)
+
+  DTO_FIELD(oatpp::String, name, "name");
+};
+
 #include OATPP_CODEGEN_END(DTO)
 
 #endif
