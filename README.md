@@ -49,12 +49,11 @@ README.md
 ---
 
 ## Build & Run (Local)
-
-```bash
-# Build and run unit tests (GoogleTest)
-make test_project
-./test_project
-```
+make clean
+make its
+./its
+python3 -m http.server 8080
+http://localhost:8080/docs/design/index.html
 
 ## Quality, Style, and Static Analysis
 
