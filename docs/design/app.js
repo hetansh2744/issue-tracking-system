@@ -7,6 +7,7 @@ const issuesListEl = document.getElementById("issues-list");
 const addMockBtn = document.getElementById("add-mock");
 const createIssueBtn = document.getElementById("create-issue-btn");
 const statusEl = document.getElementById("load-status");
+const searchInput = document.getElementById("issue-search");
 
 const modal = createModal({
   onIssueUpdated: (updated) => {
@@ -25,7 +26,7 @@ const modal = createModal({
     } else {
       cachedIssues = [{ ...normalized, rawId: normalized.rawId }, ...cachedIssues];
     }
-    renderAll();
+    renderFiltered();
   },
   getActiveDatabase: apiClient.getActiveDatabaseName
 });
@@ -39,10 +40,105 @@ const setStatus = (message, isError = false) => {
   statusEl.classList.add("show");
 };
 
-const renderAll = () => {
+const normalizeSearchId = (value) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return null;
+  const cleaned = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
+  const asNum = Number(cleaned);
+  return Number.isNaN(asNum) ? null : asNum;
+};
+
+const matchesIssueId = (issue, id) => {
+  if (issue.rawId === id) return true;
+  const clean = `${issue.id || ""}`.replace(/^#/, "");
+  return Number(clean) === id;
+};
+
+const filterIssues = (issues = [], queryRaw = "") => {
+  const query = (queryRaw || "").toLowerCase().trim();
+  if (!query) return issues;
+  const tokens = query.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return issues;
+
+  return issues.filter((issue) => {
+    const tagLabels = (issue.tags || []).map((t) => t.label || "").join(" ");
+    const baseFields = [
+      issue.id,
+      issue.rawId,
+      issue.author,
+      issue.assignedTo,
+      issue.milestone,
+      tagLabels
+    ]
+      .filter(Boolean)
+      .map((f) => `${f}`.toLowerCase())
+      .join(" ");
+
+    return tokens.every((token) => {
+      const [prefix, rest] = token.split(":", 2);
+      if (rest !== undefined) {
+        const value = rest.trim();
+        if (!value) return true;
+        if (["author", "by"].includes(prefix)) {
+          return (issue.author || "").toLowerCase().includes(value);
+        }
+        if (["assignee", "assigned", "signee"].includes(prefix)) {
+          return (issue.assignedTo || "").toLowerCase().includes(value);
+        }
+        return baseFields.includes(token);
+      }
+      return baseFields.includes(token);
+    });
+  });
+};
+
+const renderFiltered = (issuesToRender) => {
+  const toRender =
+    issuesToRender || filterIssues(cachedIssues, searchInput?.value || "");
+  renderAll(toRender);
+};
+
+const ensureIssueLoadedById = async (id) => {
+  const existingIdx = cachedIssues.findIndex((issue) => matchesIssueId(issue, id));
+  if (existingIdx >= 0) return cachedIssues[existingIdx];
+
+  const issue = await apiClient.fetchIssueById(id, activeDatabase);
+  const updated = [...cachedIssues];
+  updated.unshift(issue);
+  cachedIssues = updated;
+  return issue;
+};
+
+const handleSearchEnter = async () => {
+  const parsedId = normalizeSearchId(searchInput?.value);
+  if (parsedId !== null) {
+    setStatus(`Searching for issue #${parsedId}...`);
+    try {
+      const issue = await ensureIssueLoadedById(parsedId);
+      setStatus(`Found issue #${issue.rawId ?? parsedId}.`);
+    } catch (err) {
+      console.error("Failed to search issue by id:", err);
+      const message = (err?.message || "").includes("404")
+        ? `Issue #${parsedId} not found.`
+        : "Search failed. Please try again.";
+      setStatus(message, true);
+    }
+  }
+  renderFiltered();
+};
+
+const handleSearchInput = () => {
+  const filtered = filterIssues(cachedIssues, searchInput?.value || "");
+  renderFiltered(filtered);
+  if (searchInput?.value.trim()) {
+    setStatus(`Found ${filtered.length} matching issue(s).`);
+  }
+};
+
+const renderAll = (issuesToRender = cachedIssues) => {
   renderIssues({
     container: issuesListEl,
-    issues: cachedIssues,
+    issues: issuesToRender,
     onOpen: (issue) => openIssueDetail(issue),
     onEdit: (issue) => modal.openEdit(issue),
     onDelete: (issue) => handleDelete(issue)
@@ -64,7 +160,7 @@ const refreshFromApi = async () => {
     cachedIssues = getIssues();
     setStatus("API load failed; showing local mock data.", true);
   }
-  renderAll();
+  renderFiltered();
 };
 
 const openIssueDetail = async (issue) => {
@@ -80,12 +176,23 @@ const openIssueDetail = async (issue) => {
 addMockBtn.addEventListener("click", () => {
   addMockIssue();
   cachedIssues = getIssues();
-  renderAll();
+  renderFiltered();
   setStatus("Added a mock issue locally.", false);
 });
 
 createIssueBtn.addEventListener("click", () => {
   modal.openCreate();
+});
+
+searchInput?.addEventListener("keydown", (evt) => {
+  if (evt.key === "Enter") {
+    evt.preventDefault();
+    handleSearchEnter();
+  }
+});
+
+searchInput?.addEventListener("input", () => {
+  handleSearchInput();
 });
 
 const handleDelete = async (issue) => {
@@ -96,7 +203,7 @@ const handleDelete = async (issue) => {
   try {
     await apiClient.deleteIssue(issue.rawId);
     cachedIssues = cachedIssues.filter((i) => i.rawId !== issue.rawId);
-    renderAll();
+    renderFiltered();
     setStatus(`Deleted issue #${issue.rawId}.`, false);
   } catch (err) {
     console.error("Failed to delete issue:", err);
