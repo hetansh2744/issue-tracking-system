@@ -2,7 +2,7 @@
 #define TAG_HPP_
 
 #include <string>
-
+#include <utility>
 /**
  * @brief Simple value object representing a tag with a name and color.
  */

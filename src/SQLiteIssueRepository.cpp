@@ -594,7 +594,11 @@ bool SQLiteIssueRepository::addTagToIssue(
   upsertTagDefinition(db_, tag);
 
   bool alreadyAttached = exists(
-      "SELECT 1 FROM issue_tags WHERE issue_id = ? AND LOWER(tag) = LOWER(?) LIMIT 1;",
+      "SELECT 1 FROM issue_tags "
+      "WHERE issue_id = ? "
+      "AND LOWER(tag) = LOWER(?) "
+      "LIMIT 1;",
+
       [issueId, &tag](sqlite3_stmt* stmt) {
         sqlite3_bind_int(stmt, 1, issueId);
         sqlite3_bind_text(stmt, 2, tag.getName().c_str(), -1,
@@ -632,13 +636,19 @@ bool SQLiteIssueRepository::removeTagFromIssue(
   if (tag.empty() || !issueExists(issueId)) {
     return false;
   }
+
   SqliteStmt stmt(
-      db_, "DELETE FROM issue_tags WHERE issue_id = ? AND LOWER(tag) = LOWER(?);");
+      db_,
+      "DELETE FROM issue_tags "
+      "WHERE issue_id = ? "
+      "AND LOWER(tag) = LOWER(?);");
   sqlite3_bind_int(stmt.get(), 1, issueId);
-  sqlite3_bind_text(stmt.get(), 2, tag.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt.get(), 2, tag.c_str(), -1,
+                    SQLITE_TRANSIENT);
   sqlite3_step(stmt.get());
   return sqlite3_changes(db_) > 0;
 }
+
 
 // --- Comments ---
 
