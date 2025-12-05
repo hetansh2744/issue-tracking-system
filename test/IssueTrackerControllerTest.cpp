@@ -550,10 +550,13 @@ TEST(IssueTrackerControllerTest, DeleteCommentReturnsFalseWhenRepoRefuses) {
 TEST(IssueTrackerControllerTest, TagOperationsPropagateToRepository) {
   MockIssueRepository mockRepo;
 
-  EXPECT_CALL(mockRepo, addTagToIssue(
-                           4, testing::Truly([](const Tag& t) {
-                             return t.getName() == "bug" && t.getColor().empty();
-                           })))
+EXPECT_CALL(mockRepo, addTagToIssue(
+                        4, 
+                        testing::Truly([](const Tag& t) {
+                          return t.getName() == "bug" && t.getColor().empty();
+                        })
+                    ));
+
       .WillOnce(testing::Return(true));
   EXPECT_CALL(mockRepo, removeTagFromIssue(4, "bug"))
       .WillOnce(testing::Throw(std::runtime_error("db failure")));
