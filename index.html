@@ -8,44 +8,41 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>Text-Based Issue Tracking System</h1>
-    <p class="subtitle">By Hetansh – CPSC 3720 Project</p>
+    <div class="topbar-inner">
+      <div>
+        <h1>Text-Based Issue Tracking System</h1>
+        <p class="subtitle">Frontend demo · Hosted on GitHub Pages · By Hetansh</p>
+      </div>
+      <div class="stats" id="stats-bar">
+        <!-- filled by JS -->
+      </div>
+    </div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <h2>About the Project</h2>
-      <p>
-        This project is a text-based Issue Tracking System (ITS) built in C++,
-        using an MVC-style architecture with repositories, controllers, and a
-        SQLite database. It supports creating, updating, deleting, tagging, and
-        searching issues.
-      </p>
-      <ul>
-        <li>Create and manage issues</li>
-        <li>Add comments and assign users</li>
-        <li>Tag issues and filter by status</li>
-        <li>Backed by a SQLite database</li>
-      </ul>
-    </section>
-
-    <section class="card">
-      <h2>Demo UI (Frontend Only)</h2>
-      <p>
-        This simple demo lets you enter issue details and “pretend” to create
-        an issue. Right now it runs in the browser only (no backend connected).
-        Later we can plug this into the real API.
+  <main class="layout">
+    <!-- LEFT: Create / Edit form -->
+    <section class="panel">
+      <h2 id="form-title">Create New Issue</h2>
+      <p class="panel-subtext">
+        This UI mimics your C++ text-based ITS but runs fully in the browser using JavaScript and localStorage.
       </p>
 
       <form id="issue-form">
+        <input type="hidden" id="issue-id" />
+
         <div class="field">
-          <label for="title">Title</label>
-          <input id="title" type="text" required />
+          <label for="title">Title <span class="required">*</span></label>
+          <input id="title" type="text" required placeholder="Short summary of the issue" />
         </div>
 
         <div class="field">
-          <label for="description">Description</label>
-          <textarea id="description" rows="3" required></textarea>
+          <label for="description">Description <span class="required">*</span></label>
+          <textarea id="description" rows="4" required placeholder="Detailed description of the issue"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="assignee">Assignee (optional)</label>
+          <input id="assignee" type="text" placeholder="User ID or name" />
         </div>
 
         <div class="field">
@@ -63,35 +60,61 @@
           <input id="tags" type="text" placeholder="bug, ui, database" />
         </div>
 
-        <button type="submit">Create Issue (Frontend Demo)</button>
+        <div class="form-actions">
+          <button type="submit" id="save-btn">Create Issue</button>
+          <button type="button" id="cancel-edit-btn" class="secondary" style="display:none;">
+            Cancel Edit
+          </button>
+        </div>
       </form>
     </section>
 
-    <section class="card">
-      <h2>Created Issues (In-Browser Demo)</h2>
-      <p>
-        These issues are stored only in your browser’s memory for demo
-        purposes. Refreshing the page will clear them.
-      </p>
-      <div id="issues-list" class="issues-list"></div>
-    </section>
+    <!-- RIGHT: Filters + Issue list -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Issues</h2>
+        <button id="clear-all-btn" class="danger small">Clear All</button>
+      </div>
 
-    <section class="card">
-      <h2>Project Details</h2>
-      <p><strong>Language:</strong> C++17</p>
-      <p><strong>Database:</strong> SQLite</p>
-      <p><strong>Architecture:</strong> Models, Repositories, Controllers</p>
-      <p><strong>Extras:</strong> GoogleTest, GitLab CI, cpplint</p>
-      <p>
-        Source code:
-        <a href="https://github.com/hetansh2744/REPO_NAME_HERE" target="_blank">
-          GitHub Repository
-        </a>
-      </p>
+      <div class="filters">
+        <div class="field">
+          <label for="search">Search</label>
+          <input
+            id="search"
+            type="text"
+            placeholder="Search by title, description, tags, assignee"
+          />
+        </div>
+
+        <div class="field">
+          <label for="filter-status">Status</label>
+          <select id="filter-status">
+            <option value="all">All</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="issues-list" class="issues-list">
+        <!-- Populated by JS -->
+      </div>
     </section>
   </main>
 
   <footer class="footer">
+    <p>
+      Backend version implemented in C++ / SQLite / MVC for CPSC 3720. This is a
+      browser-based frontend demo hosted on GitHub Pages.
+    </p>
+    <p>
+      Source code:
+      <a href="https://github.com/hetansh2744/issue-tracking-system" target="_blank">
+        github.com/hetansh2744/issue-tracking-system
+      </a>
+    </p>
     <p>© <span id="year"></span> Text-Based ITS by Hetansh</p>
   </footer>
 
