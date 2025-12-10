@@ -1,39 +1,79 @@
-// Simple frontend issue tracker using localStorage
-// This mimics your C++ text-based ITS at a high level.
-
-const STORAGE_KEY = "its_issues_v1";
+// Frontend issue tracker talking to a real backend API.
+// Adjust this to your deployed backend URL:
+const API_BASE = "https://your-its-backend.onrender.com"; // TODO: change this
 
 let issues = [];
+let isLoading = false;
 
 // Helpers
-function loadIssues() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    issues = raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Failed to load issues from storage", e);
-    issues = [];
-  }
-}
-
-function saveIssues() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(issues));
-  } catch (e) {
-    console.error("Failed to save issues", e);
-  }
-}
-
-function generateId() {
-  // Simple incremental ID
-  const maxId = issues.reduce((max, issue) => Math.max(max, issue.id), 0);
-  return maxId + 1;
-}
-
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   return d.toLocaleString();
+}
+
+function setLoading(loading) {
+  isLoading = loading;
+  const list = document.getElementById("issues-list");
+  if (loading) {
+    list.innerHTML =
+      '<div class="empty-state">Loading issues from server...</div>';
+  }
+}
+
+function showError(msg) {
+  alert(msg);
+}
+
+// API calls
+async function fetchIssuesFromApi() {
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE}/issues`);
+    if (!res.ok) throw new Error(`Failed to load issues: ${res.status}`);
+    const data = await res.json();
+    // Expect data to be an array of issue objects
+    issues = data;
+  } catch (e) {
+    console.error(e);
+    showError("Could not load issues from server.");
+  } finally {
+    setLoading(false);
+    renderIssues();
+  }
+}
+
+async function createIssueApi(payload) {
+  const res = await fetch(`${API_BASE}/issues`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to create issue: ${res.status}`);
+  }
+  return res.json(); // created issue
+}
+
+async function updateIssueApi(id, payload) {
+  const res = await fetch(`${API_BASE}/issues/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update issue: ${res.status}`);
+  }
+  return res.json(); // updated issue
+}
+
+async function deleteIssueApi(id) {
+  const res = await fetch(`${API_BASE}/issues/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete issue: ${res.status}`);
+  }
 }
 
 // UI updates
@@ -55,10 +95,8 @@ function updateStats() {
 }
 
 function applyFilters(issue, searchTerm, statusFilter) {
-  // Status filter
   if (statusFilter !== "all" && issue.status !== statusFilter) return false;
 
-  // Search filter
   if (searchTerm) {
     const s = searchTerm.toLowerCase();
     const haystack = [
@@ -69,7 +107,6 @@ function applyFilters(issue, searchTerm, statusFilter) {
     ]
       .join(" ")
       .toLowerCase();
-
     if (!haystack.includes(s)) return false;
   }
 
@@ -78,9 +115,10 @@ function applyFilters(issue, searchTerm, statusFilter) {
 
 function renderIssues() {
   const list = document.getElementById("issues-list");
+  if (isLoading) return; // already showing loading state
+
   const searchInput = document.getElementById("search");
   const statusFilter = document.getElementById("filter-status");
-
   const searchTerm = searchInput.value.trim().toLowerCase();
   const filterStatus = statusFilter.value;
 
@@ -99,7 +137,7 @@ function renderIssues() {
 
   filtered
     .slice()
-    .sort((a, b) => b.id - a.id) // newest first
+    .sort((a, b) => b.id - a.id)
     .forEach((issue) => {
       const item = document.createElement("div");
       item.className = "issue-item";
@@ -163,8 +201,8 @@ function resetForm() {
   document.getElementById("cancel-edit-btn").style.display = "none";
 }
 
-// Logic for creating/updating/deleting
-function handleFormSubmit(e) {
+// Create / update handler
+async function handleFormSubmit(e) {
   e.preventDefault();
 
   const idField = document.getElementById("issue-id");
@@ -181,7 +219,7 @@ function handleFormSubmit(e) {
   const tagsRaw = tagsField.value.trim();
 
   if (!title || !description) {
-    alert("Title and description are required.");
+    showError("Title and description are required.");
     return;
   }
 
@@ -193,44 +231,32 @@ function handleFormSubmit(e) {
           .map((t) => t.trim())
           .filter((t) => t.length > 0);
 
-  const now = new Date().toISOString();
   const existingId = idField.value ? parseInt(idField.value, 10) : null;
 
-  if (existingId) {
-    // Update
-    const idx = issues.findIndex((i) => i.id === existingId);
-    if (idx === -1) {
-      alert("Issue not found. It may have been deleted.");
-      resetForm();
-      return;
-    }
-    issues[idx] = {
-      ...issues[idx],
-      title,
-      description,
-      assignee: assignee || "",
-      status,
-      tags,
-      updatedAt: now,
-    };
-  } else {
-    // Create new
-    const newIssue = {
-      id: generateId(),
-      title,
-      description,
-      assignee: assignee || "",
-      status,
-      tags,
-      createdAt: now,
-      updatedAt: now,
-    };
-    issues.push(newIssue);
-  }
+  const payload = {
+    title,
+    description,
+    assignee: assignee || "",
+    status,
+    tags,
+  };
 
-  saveIssues();
-  renderIssues();
-  resetForm();
+  try {
+    let updatedOrNew;
+    if (existingId) {
+      updatedOrNew = await updateIssueApi(existingId, payload);
+      const idx = issues.findIndex((i) => i.id === existingId);
+      if (idx !== -1) issues[idx] = updatedOrNew;
+    } else {
+      updatedOrNew = await createIssueApi(payload);
+      issues.push(updatedOrNew);
+    }
+    renderIssues();
+    resetForm();
+  } catch (e) {
+    console.error(e);
+    showError("Failed to save issue on server.");
+  }
 }
 
 function beginEditIssue(id) {
@@ -248,71 +274,94 @@ function beginEditIssue(id) {
   document.getElementById("save-btn").textContent = "Save Changes";
   document.getElementById("cancel-edit-btn").style.display = "inline-flex";
 
-  // Scroll to top of page on small screens
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function deleteIssue(id) {
+async function deleteIssue(id) {
   if (!confirm(`Are you sure you want to delete issue #${id}?`)) return;
-  issues = issues.filter((i) => i.id !== id);
-  saveIssues();
-  renderIssues();
+  try {
+    await deleteIssueApi(id);
+    issues = issues.filter((i) => i.id !== id);
+    renderIssues();
+  } catch (e) {
+    console.error(e);
+    showError("Failed to delete issue on server.");
+  }
 }
 
-function cycleStatus(id) {
-  const idx = issues.findIndex((i) => i.id === id);
-  if (idx === -1) return;
+async function cycleStatus(id) {
+  const issue = issues.find((i) => i.id === id);
+  if (!issue) return;
 
   const order = ["open", "in_progress", "resolved", "closed"];
-  const current = issues[idx].status;
-  const currentIndex = order.indexOf(current);
+  const currentIndex = order.indexOf(issue.status);
   const nextStatus = order[(currentIndex + 1) % order.length];
 
-  issues[idx].status = nextStatus;
-  issues[idx].updatedAt = new Date().toISOString();
+  const payload = {
+    title: issue.title,
+    description: issue.description,
+    assignee: issue.assignee || "",
+    status: nextStatus,
+    tags: issue.tags || [],
+  };
 
-  saveIssues();
-  renderIssues();
+  try {
+    const updated = await updateIssueApi(id, payload);
+    const idx = issues.findIndex((i) => i.id === id);
+    if (idx !== -1) issues[idx] = updated;
+    renderIssues();
+  } catch (e) {
+    console.error(e);
+    showError("Failed to update status on server.");
+  }
 }
 
-// Clear all
-function clearAllIssues() {
+// Clear-all button can call a backend batch delete endpoint if you add one
+// For now, we just loop DELETE (optional feature).
+
+async function clearAllIssues() {
   if (!issues.length) {
-    alert("There are no issues to clear.");
+    showError("There are no issues to clear.");
     return;
   }
-  if (!confirm("Clear ALL issues from this demo? This cannot be undone.")) {
+  if (!confirm("Clear ALL issues from server? This cannot be undone.")) {
     return;
   }
-  issues = [];
-  saveIssues();
-  renderIssues();
+
+  try {
+    // naive: delete one by one
+    for (const issue of issues) {
+      await deleteIssueApi(issue.id);
+    }
+    issues = [];
+    renderIssues();
+  } catch (e) {
+    console.error(e);
+    showError("Failed to clear all issues on server.");
+  }
 }
 
-// Event wiring
+// Wire up events
 document.addEventListener("DOMContentLoaded", () => {
-  loadIssues();
-  renderIssues();
-
   document.getElementById("year").textContent = new Date().getFullYear();
 
-  const form = document.getElementById("issue-form");
-  form.addEventListener("submit", handleFormSubmit);
+  document
+    .getElementById("issue-form")
+    .addEventListener("submit", handleFormSubmit);
 
   document
     .getElementById("cancel-edit-btn")
     .addEventListener("click", () => resetForm());
-
-  document
-    .getElementById("clear-all-btn")
-    .addEventListener("click", clearAllIssues);
 
   document.getElementById("search").addEventListener("input", renderIssues);
   document
     .getElementById("filter-status")
     .addEventListener("change", renderIssues);
 
-  // Event delegation for actions on issue cards
+  document
+    .getElementById("clear-all-btn")
+    .addEventListener("click", clearAllIssues);
+
   document
     .getElementById("issues-list")
     .addEventListener("click", (event) => {
@@ -328,4 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
         cycleStatus(id);
       }
     });
+
+  // Initial load from backend
+  fetchIssuesFromApi();
 });
